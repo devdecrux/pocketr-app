@@ -1,0 +1,53 @@
+http:
+  routers:
+    api-router:
+      rule: "(Host(`localhost`) || Host(`127.0.0.1`) || Host(`host.docker.internal`)) && PathPrefix(`/api`)"
+      entryPoints:
+        - web
+      service: api-service
+
+    frontend-slash-router:
+      rule: "(Host(`localhost`) || Host(`127.0.0.1`) || Host(`host.docker.internal`)) && Path(`/frontend`)"
+      entryPoints:
+        - web
+      service: frontend-service
+      middlewares:
+        - redirect-frontend-slash@file
+
+    frontend-router:
+      rule: "(Host(`localhost`) || Host(`127.0.0.1`) || Host(`host.docker.internal`)) && PathPrefix(`/frontend/`)"
+      entryPoints:
+        - web
+      service: frontend-service
+
+    root-redirect:
+      rule: "(Host(`localhost`) || Host(`127.0.0.1`) || Host(`host.docker.internal`)) && Path(`/`)"
+      entryPoints:
+        - web
+      service: frontend-service
+      middlewares:
+        - redirect-to-frontend@file
+
+  middlewares:
+    redirect-frontend-slash:
+      redirectRegex:
+        regex: "^/frontend$"
+        replacement: "/frontend/"
+        permanent: false
+
+    redirect-to-frontend:
+      redirectRegex:
+        regex: "^/$"
+        replacement: "/frontend/"
+        permanent: false
+
+  services:
+    api-service:
+      loadBalancer:
+        servers:
+          - url: "http://host.docker.internal:8081"
+
+    frontend-service:
+      loadBalancer:
+        servers:
+          - url: "http://host.docker.internal:5173"

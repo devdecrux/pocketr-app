@@ -1,0 +1,9 @@
+spring:
+  datasource:
+    driver-class-name: org.postgresql.Driver
+    url: ${TEST_DB_URL:jdbc:postgresql://localhost:5432/pocketr_test_db}
+    username: ${TEST_DB_USERNAME:pocketr_user}
+    password: ${TEST_DB_PASSWORD:pocketr_password}
+  jpa:
+    hibernate:
+      ddl-auto: create-drop

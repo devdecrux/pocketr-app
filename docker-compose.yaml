@@ -1,0 +1,38 @@
+name: pocketr
+
+services:
+  db:
+    image: postgres:18.0-alpine3.22
+    container_name: pocketr-db
+    ports:
+      - "5432:5432"
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: pocketr_user
+      POSTGRES_PASSWORD: pocketr_password
+      POSTGRES_DB: pocketr_db
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    networks:
+      - pocketr-network
+
+  traefik-reverse-proxy:
+    image: traefik:v3.6.2
+    container_name: pocketr-traefik
+    ports:
+      - "80:80"
+    restart: unless-stopped
+    volumes:
+      - ./config/traefik/traefik.yml:/etc/traefik/traefik.yml:ro
+      - ./config/traefik/dynamic.yml:/etc/traefik/dynamic/dynamic.yml:ro
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - pocketr-network
+
+networks:
+  pocketr-network:
+    driver: bridge
+
+volumes:
+  db-data:

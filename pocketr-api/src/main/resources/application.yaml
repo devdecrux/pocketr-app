@@ -1,3 +1,19 @@
 spring:
   application:
     name: pocketr-api
+  mvc:
+    static-path-pattern: /frontend/**
+  web:
+    resources:
+      static-locations: classpath:/static/frontend/
+  datasource:
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+
+server:
+  servlet:
+    session:
+      timeout: 5m
+    context-path: /api

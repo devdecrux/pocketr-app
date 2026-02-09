@@ -1,0 +1,24 @@
+<component name="ProjectRunConfigurationManager">
+    <configuration default="false" name="pocketr external dependencies" type="docker-deploy" factoryName="docker-compose.yml"
+                   server-name="localhost docker">
+        <deployment type="docker-compose.yml">
+            <settings>
+                <option name="containerName" value=""/>
+                <option name="envFilePath" value=""/>
+                <option name="envFilePaths">
+                    <list>
+                        <option value=""/>
+                    </list>
+                </option>
+                <option name="services">
+                    <list>
+                        <option value="db"/>
+                        <option value="traefik-reverse-proxy"/>
+                    </list>
+                </option>
+                <option name="sourceFilePath" value="docker-compose.yaml"/>
+            </settings>
+        </deployment>
+        <method v="2"/>
+    </configuration>
+</component>
