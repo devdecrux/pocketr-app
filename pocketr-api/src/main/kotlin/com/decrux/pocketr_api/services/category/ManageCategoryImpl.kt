@@ -1,0 +1,88 @@
+package com.decrux.pocketr_api.services.category
+
+import com.decrux.pocketr_api.entities.db.auth.User
+import com.decrux.pocketr_api.entities.db.ledger.CategoryTag
+import com.decrux.pocketr_api.entities.dtos.CategoryDto
+import com.decrux.pocketr_api.entities.dtos.CreateCategoryDto
+import com.decrux.pocketr_api.entities.dtos.UpdateCategoryDto
+import com.decrux.pocketr_api.repositories.CategoryTagRepository
+import org.springframework.dao.DataIntegrityViolationException
+import org.springframework.http.HttpStatus
+import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
+import org.springframework.web.server.ResponseStatusException
+import java.util.UUID
+
+@Service
+class ManageCategoryImpl(
+    private val categoryTagRepository: CategoryTagRepository,
+) : ManageCategory {
+
+    @Transactional
+    override fun createCategory(dto: CreateCategoryDto, owner: User): CategoryDto {
+        val userId = requireNotNull(owner.userId) { "User ID must not be null" }
+        val name = dto.name.trim()
+
+        if (categoryTagRepository.existsByOwnerUserIdAndName(userId, name)) {
+            throw ResponseStatusException(HttpStatus.CONFLICT, "Category '$name' already exists")
+        }
+
+        val tag = CategoryTag(
+            owner = owner,
+            name = name,
+        )
+
+        return categoryTagRepository.save(tag).toDto()
+    }
+
+    @Transactional(readOnly = true)
+    override fun listCategories(owner: User): List<CategoryDto> {
+        val userId = requireNotNull(owner.userId) { "User ID must not be null" }
+        return categoryTagRepository.findByOwnerUserId(userId).map { it.toDto() }
+    }
+
+    @Transactional
+    override fun updateCategory(id: UUID, dto: UpdateCategoryDto, owner: User): CategoryDto {
+        val tag = categoryTagRepository.findById(id)
+            .orElseThrow { ResponseStatusException(HttpStatus.NOT_FOUND, "Category not found") }
+
+        if (tag.owner?.userId != owner.userId) {
+            throw ResponseStatusException(HttpStatus.FORBIDDEN, "Not the owner of this category")
+        }
+
+        val userId = requireNotNull(owner.userId) { "User ID must not be null" }
+        val newName = dto.name.trim()
+
+        if (newName != tag.name && categoryTagRepository.existsByOwnerUserIdAndName(userId, newName)) {
+            throw ResponseStatusException(HttpStatus.CONFLICT, "Category '$newName' already exists")
+        }
+
+        tag.name = newName
+        return categoryTagRepository.save(tag).toDto()
+    }
+
+    @Transactional
+    override fun deleteCategory(id: UUID, owner: User) {
+        val tag = categoryTagRepository.findById(id)
+            .orElseThrow { ResponseStatusException(HttpStatus.NOT_FOUND, "Category not found") }
+
+        if (tag.owner?.userId != owner.userId) {
+            throw ResponseStatusException(HttpStatus.FORBIDDEN, "Not the owner of this category")
+        }
+
+        try {
+            categoryTagRepository.delete(tag)
+            categoryTagRepository.flush()
+        } catch (_: DataIntegrityViolationException) {
+            throw ResponseStatusException(HttpStatus.CONFLICT, "Category is in use and cannot be deleted")
+        }
+    }
+
+    private companion object {
+        fun CategoryTag.toDto() = CategoryDto(
+            id = requireNotNull(id) { "Category ID must not be null" },
+            name = name,
+            createdAt = createdAt,
+        )
+    }
+}
