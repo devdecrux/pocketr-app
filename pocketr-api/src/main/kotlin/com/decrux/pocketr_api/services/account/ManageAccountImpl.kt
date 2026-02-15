@@ -12,12 +12,14 @@ import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import org.springframework.web.server.ResponseStatusException
+import java.time.LocalDate
 import java.util.UUID
 
 @Service
 class ManageAccountImpl(
     private val accountRepository: AccountRepository,
     private val currencyRepository: CurrencyRepository,
+    private val openingBalanceService: OpeningBalanceService,
 ) : ManageAccount {
 
     @Transactional
@@ -27,9 +29,29 @@ class ManageAccountImpl(
         } catch (_: IllegalArgumentException) {
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid account type: ${dto.type}")
         }
+        if (accountType == AccountType.EQUITY) {
+            throw ResponseStatusException(
+                HttpStatus.BAD_REQUEST,
+                "EQUITY accounts are system-managed and cannot be created manually",
+            )
+        }
 
         val currency = currencyRepository.findById(dto.currency)
             .orElseThrow { ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid currency: ${dto.currency}") }
+
+        val openingBalanceMinor = dto.openingBalanceMinor ?: 0L
+        if (openingBalanceMinor != 0L && accountType != AccountType.ASSET) {
+            throw ResponseStatusException(
+                HttpStatus.BAD_REQUEST,
+                "openingBalanceMinor is supported only for ASSET accounts",
+            )
+        }
+        if (openingBalanceMinor == 0L && dto.openingBalanceDate != null) {
+            throw ResponseStatusException(
+                HttpStatus.BAD_REQUEST,
+                "openingBalanceDate requires non-zero openingBalanceMinor",
+            )
+        }
 
         val account = Account(
             owner = owner,
@@ -38,7 +60,18 @@ class ManageAccountImpl(
             currency = currency,
         )
 
-        return accountRepository.save(account).toDto()
+        val savedAccount = accountRepository.save(account)
+
+        if (openingBalanceMinor != 0L) {
+            openingBalanceService.createForNewAssetAccount(
+                owner = owner,
+                assetAccount = savedAccount,
+                openingBalanceMinor = openingBalanceMinor,
+                txnDate = dto.openingBalanceDate ?: LocalDate.now(),
+            )
+        }
+
+        return savedAccount.toDto()
     }
 
     @Transactional(readOnly = true)

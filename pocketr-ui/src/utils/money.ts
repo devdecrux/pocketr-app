@@ -39,21 +39,29 @@ export function formatMinorPlain(amountMinor: number, minorUnit: number): string
  * Handles comma as decimal separator.
  * Returns NaN if the input is not a valid number.
  */
-export function parseToMinor(inputString: string, minorUnit: number): number {
+export function parseToMinor(
+  inputString: string,
+  minorUnit: number,
+  allowNegative = false,
+): number {
   const cleaned = inputString.trim().replace(/,/g, '.')
 
-  // Reject negative values — amount_minor must be > 0, side (DEBIT/CREDIT) determines direction
-  if (cleaned === '' || !/^\d+(\.\d*)?$/.test(cleaned)) {
+  const pattern = allowNegative ? /^-?\d+(\.\d*)?$/ : /^\d+(\.\d*)?$/
+  if (cleaned === '' || !pattern.test(cleaned)) {
     return NaN
   }
 
+  const isNegative = cleaned.startsWith('-')
+  const normalized = isNegative ? cleaned.slice(1) : cleaned
+
   if (minorUnit === 0) {
-    return Math.round(Number(cleaned))
+    const parsed = Math.round(Number(normalized))
+    return isNegative ? -parsed : parsed
   }
 
-  const parts = cleaned.split('.')
+  const parts = normalized.split('.')
   const intPart = parts[0]
   const fracPart = (parts[1] ?? '').padEnd(minorUnit, '0').slice(0, minorUnit)
-
-  return parseInt(intPart + fracPart, 10)
+  const parsed = parseInt(intPart + fracPart, 10)
+  return isNegative ? -parsed : parsed
 }

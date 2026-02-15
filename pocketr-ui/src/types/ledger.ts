@@ -19,6 +19,8 @@ export interface CreateAccountRequest {
   name: string
   type: AccountType
   currency: string
+  openingBalanceMinor?: number
+  openingBalanceDate?: string
 }
 
 export interface UpdateAccountRequest {

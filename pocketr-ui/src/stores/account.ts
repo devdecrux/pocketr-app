@@ -27,7 +27,10 @@ export const useAccountStore = defineStore('account', () => {
     return map
   })
 
-  const activeAccounts = computed(() => accounts.value)
+  // EQUITY accounts are system-managed (e.g. Opening Equity) and hidden from user account UIs.
+  const activeAccounts = computed(() =>
+    accounts.value.filter((account) => account.type !== 'EQUITY'),
+  )
 
   async function load(): Promise<void> {
     const viewModeStore = useModeStore()

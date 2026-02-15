@@ -37,7 +37,8 @@ import { useHouseholdStore } from '@/stores/household'
 import { createAccount, updateAccount } from '@/api/accounts'
 import { getAccountBalance } from '@/api/ledger'
 import { formatMinor } from '@/utils/money'
-import type { Account, AccountType } from '@/types/ledger'
+import type { Account, AccountType, CreateAccountRequest } from '@/types/ledger'
+import CurrencyAmountInput from '@/components/CurrencyAmountInput.vue'
 
 const accountStore = useAccountStore()
 const currencyStore = useCurrencyStore()
@@ -58,8 +59,10 @@ const newAccount = ref({
   type: 'ASSET' as AccountType,
   currency: 'EUR',
 })
+const openingBalanceMinor = ref(0)
+const openingBalanceDate = ref(todayString())
 
-const accountTypes: AccountType[] = ['ASSET', 'LIABILITY', 'INCOME', 'EXPENSE', 'EQUITY']
+const accountTypes: AccountType[] = ['ASSET', 'LIABILITY', 'INCOME', 'EXPENSE']
 
 const filteredAccounts = computed(() => {
   let list = accountStore.activeAccounts
@@ -76,6 +79,10 @@ const availableCurrencies = computed(() => {
   const codes = new Set(accountStore.accounts.map((a) => a.currency))
   return [...codes].sort()
 })
+
+const openingBalanceMinorUnit = computed(() =>
+  currencyStore.getMinorUnit(newAccount.value.currency),
+)
 
 const sharedAccountIds = computed(() => {
   const ids = new Set<string>()
@@ -224,15 +231,31 @@ async function submitCreate(): Promise<void> {
   isCreating.value = true
   createError.value = ''
   try {
-    await createAccount(newAccount.value)
+    const payload: CreateAccountRequest = {
+      name: newAccount.value.name,
+      type: newAccount.value.type,
+      currency: newAccount.value.currency,
+    }
+    if (newAccount.value.type === 'ASSET' && openingBalanceMinor.value !== 0) {
+      payload.openingBalanceMinor = openingBalanceMinor.value
+      payload.openingBalanceDate = openingBalanceDate.value || todayString()
+    }
+
+    await createAccount(payload)
     createDialogOpen.value = false
     newAccount.value = { name: '', type: 'ASSET', currency: 'EUR' }
+    openingBalanceMinor.value = 0
+    openingBalanceDate.value = todayString()
     await loadAll()
   } catch {
     createError.value = 'Failed to create account.'
   } finally {
     isCreating.value = false
   }
+}
+
+function todayString(): string {
+  return new Date().toISOString().slice(0, 10)
 }
 </script>
 
@@ -287,6 +310,27 @@ async function submitCreate(): Promise<void> {
                     </SelectItem>
                   </SelectContent>
                 </Select>
+              </div>
+              <div v-if="newAccount.type === 'ASSET'" class="grid gap-2">
+                <Label for="opening-balance">Initial balance</Label>
+                <CurrencyAmountInput
+                  id="opening-balance"
+                  v-model="openingBalanceMinor"
+                  :minor-unit="openingBalanceMinorUnit"
+                  :currency-code="newAccount.currency"
+                  :allow-negative="true"
+                  placeholder="0.00"
+                />
+                <p class="text-xs text-muted-foreground">
+                  Posted as an opening balance journal entry against Opening Equity.
+                </p>
+              </div>
+              <div
+                v-if="newAccount.type === 'ASSET' && openingBalanceMinor !== 0"
+                class="grid gap-2"
+              >
+                <Label for="opening-balance-date">Opening balance date</Label>
+                <Input id="opening-balance-date" v-model="openingBalanceDate" type="date" />
               </div>
               <p v-if="createError" class="text-sm text-red-600">{{ createError }}</p>
             </div>

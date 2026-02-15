@@ -16,6 +16,7 @@ import org.junit.jupiter.api.Test
 import org.mockito.ArgumentMatchers.any
 import org.mockito.Mockito.*
 import org.springframework.web.server.ResponseStatusException
+import java.time.LocalDate
 import java.util.Optional
 import java.util.UUID
 
@@ -24,6 +25,7 @@ class ManageAccountImplTest {
 
     private lateinit var accountRepository: AccountRepository
     private lateinit var currencyRepository: CurrencyRepository
+    private lateinit var openingBalanceService: CapturingOpeningBalanceService
     private lateinit var service: ManageAccountImpl
 
     private val eur = Currency(code = "EUR", minorUnit = 2, name = "Euro")
@@ -45,7 +47,8 @@ class ManageAccountImplTest {
     fun setUp() {
         accountRepository = mock(AccountRepository::class.java)
         currencyRepository = mock(CurrencyRepository::class.java)
-        service = ManageAccountImpl(accountRepository, currencyRepository)
+        openingBalanceService = CapturingOpeningBalanceService()
+        service = ManageAccountImpl(accountRepository, currencyRepository, openingBalanceService)
 
         `when`(currencyRepository.findById("EUR")).thenReturn(Optional.of(eur))
         `when`(currencyRepository.findById("USD")).thenReturn(Optional.of(usd))
@@ -74,12 +77,14 @@ class ManageAccountImplTest {
             assertEquals("Checking", result.name)
             assertEquals("ASSET", result.type)
             assertEquals("EUR", result.currency)
+            assertTrue(openingBalanceService.calls.isEmpty())
         }
 
         @Test
-        @DisplayName("should create accounts for all valid types")
-        fun createAccountForAllTypes() {
-            for (type in AccountType.entries) {
+        @DisplayName("should create accounts for all user-creatable types")
+        fun createAccountForUserCreatableTypes() {
+            val creatableTypes = listOf(AccountType.ASSET, AccountType.LIABILITY, AccountType.INCOME, AccountType.EXPENSE)
+            for (type in creatableTypes) {
                 val dto = CreateAccountDto(name = "Test ${type.name}", type = type.name, currency = "EUR")
                 `when`(accountRepository.save(any(Account::class.java))).thenAnswer { invocation ->
                     val account = invocation.getArgument<Account>(0)
@@ -90,6 +95,21 @@ class ManageAccountImplTest {
                 val result = service.createAccount(dto, ownerUser)
                 assertEquals(type.name, result.type)
             }
+            assertTrue(openingBalanceService.calls.isEmpty())
+        }
+
+        @Test
+        @DisplayName("should reject manual creation of EQUITY accounts")
+        fun rejectManualEquityCreation() {
+            val dto = CreateAccountDto(name = "Opening Equity", type = "EQUITY", currency = "EUR")
+
+            val ex = assertThrows(ResponseStatusException::class.java) {
+                service.createAccount(dto, ownerUser)
+            }
+            assertEquals(400, ex.statusCode.value())
+            assertTrue(ex.reason!!.contains("system-managed"))
+            verify(accountRepository, never()).save(any(Account::class.java))
+            assertTrue(openingBalanceService.calls.isEmpty())
         }
 
         @Test
@@ -129,6 +149,7 @@ class ManageAccountImplTest {
 
             val result = service.createAccount(dto, ownerUser)
             assertEquals("Checking", result.name)
+            assertTrue(openingBalanceService.calls.isEmpty())
         }
 
         @Test
@@ -144,6 +165,77 @@ class ManageAccountImplTest {
 
             service.createAccount(dto, ownerUser)
             verify(accountRepository).save(any(Account::class.java))
+            assertTrue(openingBalanceService.calls.isEmpty())
+        }
+
+        @Test
+        @DisplayName("should create opening balance transaction when openingBalanceMinor is non-zero")
+        fun createOpeningBalanceWhenRequested() {
+            val accountId = UUID.randomUUID()
+            val date = LocalDate.parse("2026-02-15")
+            val dto = CreateAccountDto(
+                name = "Checking",
+                type = "ASSET",
+                currency = "EUR",
+                openingBalanceMinor = 100_000,
+                openingBalanceDate = date,
+            )
+
+            `when`(accountRepository.save(any(Account::class.java))).thenAnswer { invocation ->
+                val account = invocation.getArgument<Account>(0)
+                account.id = accountId
+                account
+            }
+
+            val result = service.createAccount(dto, ownerUser)
+
+            assertEquals(accountId, result.id)
+            assertEquals(1, openingBalanceService.calls.size)
+            val call = openingBalanceService.calls.single()
+            assertEquals(ownerUser.userId, call.owner.userId)
+            assertEquals(accountId, call.account.id)
+            assertEquals(100_000L, call.amountMinor)
+            assertEquals(date, call.txnDate)
+        }
+
+        @Test
+        @DisplayName("should reject opening balance for non-ASSET account type")
+        fun rejectOpeningBalanceForNonAssetType() {
+            val dto = CreateAccountDto(
+                name = "Salary",
+                type = "INCOME",
+                currency = "EUR",
+                openingBalanceMinor = 50_000,
+            )
+
+            val ex = assertThrows(ResponseStatusException::class.java) {
+                service.createAccount(dto, ownerUser)
+            }
+
+            assertEquals(400, ex.statusCode.value())
+            assertTrue(ex.reason!!.contains("ASSET"))
+            verify(accountRepository, never()).save(any(Account::class.java))
+            assertTrue(openingBalanceService.calls.isEmpty())
+        }
+
+        @Test
+        @DisplayName("should reject openingBalanceDate when openingBalanceMinor is zero")
+        fun rejectOpeningBalanceDateWithoutAmount() {
+            val dto = CreateAccountDto(
+                name = "Checking",
+                type = "ASSET",
+                currency = "EUR",
+                openingBalanceDate = LocalDate.parse("2026-02-15"),
+            )
+
+            val ex = assertThrows(ResponseStatusException::class.java) {
+                service.createAccount(dto, ownerUser)
+            }
+
+            assertEquals(400, ex.statusCode.value())
+            assertTrue(ex.reason!!.contains("openingBalanceDate"))
+            verify(accountRepository, never()).save(any(Account::class.java))
+            assertTrue(openingBalanceService.calls.isEmpty())
         }
     }
 
@@ -247,6 +339,33 @@ class ManageAccountImplTest {
             val result = service.updateAccount(accountId, UpdateAccountDto(), ownerUser)
             assertEquals("Checking", result.name)
             assertEquals("ASSET", result.type)
+        }
+    }
+
+    private data class OpeningBalanceCall(
+        val owner: User,
+        val account: Account,
+        val amountMinor: Long,
+        val txnDate: LocalDate,
+    )
+
+    private class CapturingOpeningBalanceService : OpeningBalanceService {
+        val calls = mutableListOf<OpeningBalanceCall>()
+
+        override fun createForNewAssetAccount(
+            owner: User,
+            assetAccount: Account,
+            openingBalanceMinor: Long,
+            txnDate: LocalDate,
+        ) {
+            calls.add(
+                OpeningBalanceCall(
+                    owner = owner,
+                    account = assetAccount,
+                    amountMinor = openingBalanceMinor,
+                    txnDate = txnDate,
+                ),
+            )
         }
     }
 }
