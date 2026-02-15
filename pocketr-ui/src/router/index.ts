@@ -2,6 +2,7 @@ import type { RouteLocationNormalized } from 'vue-router'
 import { createRouter, createWebHistory } from 'vue-router'
 import AccountsPage from '@/views/AccountsPage.vue'
 import DashboardPage from '@/views/DashboardPage.vue'
+import HouseholdSettingsPage from '@/views/HouseholdSettingsPage.vue'
 import LoginPage from '@/views/auth/LoginPage.vue'
 import NotFoundPage from '@/views/NotFoundPage.vue'
 import RegistrationPage from '@/views/auth/RegistrationPage.vue'
@@ -48,6 +49,12 @@ const routes = [
     path: '/settings',
     name: 'settings',
     component: SettingsPage,
+    meta: { requiresAuth: true },
+  },
+  {
+    path: '/household/:householdId/settings',
+    name: 'household-settings',
+    component: HouseholdSettingsPage,
     meta: { requiresAuth: true },
   },
   {

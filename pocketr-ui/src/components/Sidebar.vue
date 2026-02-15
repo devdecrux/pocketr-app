@@ -19,6 +19,7 @@ import {
   Palette,
   RotateCw,
   User,
+  Users,
   WalletMinimal,
 } from 'lucide-vue-next'
 import { Separator } from '@/components/ui/separator'
@@ -35,9 +36,13 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import ThemeMenu from '@/components/ThemeMenu.vue'
+import ModeSwitcher from '@/components/ModeSwitcher.vue'
+import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { initialsFromName } from '@/utils/initials'
 import { useAuthStore } from '@/stores/auth'
+import { useHouseholdStore } from '@/stores/household'
+import { useModeStore } from '@/stores/mode'
 import { api } from '@/api/http'
 
 const routes = [
@@ -46,6 +51,16 @@ const routes = [
   { name: 'Accounts', path: '/accounts', icon: WalletMinimal, enabled: true },
   { name: 'Subscriptions', path: '/subscriptions', icon: RotateCw, enabled: false },
 ]
+
+const householdStore = useHouseholdStore()
+const modeStore = useModeStore()
+
+const householdSettingsPath = computed(() => {
+  if (!modeStore.isHousehold) return null
+  const membership = householdStore.households.find((h) => h.id === modeStore.householdId)
+  if (!membership || (membership.role !== 'OWNER' && membership.role !== 'ADMIN')) return null
+  return `/household/${modeStore.householdId}/settings`
+})
 
 const props = withDefaults(defineProps<SidebarProps>(), {
   collapsible: 'icon',
@@ -85,6 +100,12 @@ async function logout(): Promise<void> {
 
     <Separator class="bg-[#8fc79c] dark:bg-border" />
 
+    <SidebarGroup>
+      <SidebarGroupContent class="px-2">
+        <ModeSwitcher />
+      </SidebarGroupContent>
+    </SidebarGroup>
+
     <SidebarContent>
       <SidebarGroup>
         <SidebarGroupContent>
@@ -94,6 +115,14 @@ async function logout(): Promise<void> {
                 <RouterLink :to="route.path">
                   <component :is="route.icon" />
                   <span>{{ route.name }}</span>
+                </RouterLink>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem v-if="householdSettingsPath">
+              <SidebarMenuButton as-child>
+                <RouterLink :to="householdSettingsPath">
+                  <Users />
+                  <span>Household</span>
                 </RouterLink>
               </SidebarMenuButton>
             </SidebarMenuItem>
