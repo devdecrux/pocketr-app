@@ -41,8 +41,8 @@ class LedgerTransactionValidationTest {
     private val eur = Currency(code = "EUR", minorUnit = 2, name = "Euro")
     private val usd = Currency(code = "USD", minorUnit = 2, name = "US Dollar")
 
-    private val userA = User(userId = 1L, usernameValue = "alice", passwordValue = "encoded", email = "alice@test.com")
-    private val userB = User(userId = 2L, usernameValue = "bob", passwordValue = "encoded", email = "bob@test.com")
+    private val userA = User(userId = 1L, passwordValue = "encoded", email = "alice@test.com")
+    private val userB = User(userId = 2L, passwordValue = "encoded", email = "bob@test.com")
 
     private val checkingId = UUID.randomUUID()
     private val savingsId = UUID.randomUUID()

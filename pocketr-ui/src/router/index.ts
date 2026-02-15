@@ -1,6 +1,7 @@
 import type { RouteLocationNormalized } from 'vue-router'
 import { createRouter, createWebHistory } from 'vue-router'
 import AccountsPage from '@/views/AccountsPage.vue'
+import CategoriesPage from '@/views/CategoriesPage.vue'
 import DashboardPage from '@/views/DashboardPage.vue'
 import HouseholdSettingsPage from '@/views/HouseholdSettingsPage.vue'
 import LoginPage from '@/views/auth/LoginPage.vue'
@@ -43,6 +44,12 @@ const routes = [
     path: '/accounts',
     name: 'accounts',
     component: AccountsPage,
+    meta: { requiresAuth: true },
+  },
+  {
+    path: '/categories',
+    name: 'categories',
+    component: CategoriesPage,
     meta: { requiresAuth: true },
   },
   {

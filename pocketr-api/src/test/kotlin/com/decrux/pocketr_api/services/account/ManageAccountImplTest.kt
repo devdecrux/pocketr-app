@@ -31,14 +31,12 @@ class ManageAccountImplTest {
 
     private val ownerUser = User(
         userId = 1L,
-        usernameValue = "alice",
         passwordValue = "encoded",
         email = "alice@example.com",
     )
 
     private val otherUser = User(
         userId = 2L,
-        usernameValue = "bob",
         passwordValue = "encoded",
         email = "bob@example.com",
     )
@@ -72,10 +70,10 @@ class ManageAccountImplTest {
             val result = service.createAccount(dto, ownerUser)
 
             assertEquals(savedId, result.id)
+            assertEquals(1L, result.ownerUserId)
             assertEquals("Checking", result.name)
             assertEquals("ASSET", result.type)
             assertEquals("EUR", result.currency)
-            assertFalse(result.isArchived)
         }
 
         @Test
@@ -154,8 +152,8 @@ class ManageAccountImplTest {
     inner class ListAccounts {
 
         @Test
-        @DisplayName("should return non-archived accounts by default")
-        fun returnNonArchivedAccountsByDefault() {
+        @DisplayName("should return owner accounts")
+        fun returnOwnerAccounts() {
             val accounts = listOf(
                 Account(
                     id = UUID.randomUUID(), owner = ownerUser,
@@ -166,44 +164,23 @@ class ManageAccountImplTest {
                     name = "Savings", type = AccountType.ASSET, currency = eur,
                 ),
             )
-            `when`(accountRepository.findByOwnerUserIdAndIsArchivedFalse(1L)).thenReturn(accounts)
-
-            val result = service.listAccounts(ownerUser, includeArchived = false)
-            assertEquals(2, result.size)
-            assertEquals("Checking", result[0].name)
-            assertEquals("Savings", result[1].name)
-            verify(accountRepository).findByOwnerUserIdAndIsArchivedFalse(1L)
-            verify(accountRepository, never()).findByOwnerUserId(1L)
-        }
-
-        @Test
-        @DisplayName("should return all accounts including archived when requested")
-        fun returnAllAccountsIncludingArchived() {
-            val accounts = listOf(
-                Account(
-                    id = UUID.randomUUID(), owner = ownerUser,
-                    name = "Checking", type = AccountType.ASSET, currency = eur,
-                ),
-                Account(
-                    id = UUID.randomUUID(), owner = ownerUser,
-                    name = "Old Account", type = AccountType.ASSET, currency = eur,
-                    isArchived = true,
-                ),
-            )
             `when`(accountRepository.findByOwnerUserId(1L)).thenReturn(accounts)
 
-            val result = service.listAccounts(ownerUser, includeArchived = true)
+            val result = service.listAccounts(ownerUser)
             assertEquals(2, result.size)
+            assertEquals(1L, result[0].ownerUserId)
+            assertEquals(1L, result[1].ownerUserId)
+            assertEquals("Checking", result[0].name)
+            assertEquals("Savings", result[1].name)
             verify(accountRepository).findByOwnerUserId(1L)
-            verify(accountRepository, never()).findByOwnerUserIdAndIsArchivedFalse(1L)
         }
 
         @Test
         @DisplayName("should return empty list when user has no accounts")
         fun returnEmptyListWhenNoAccounts() {
-            `when`(accountRepository.findByOwnerUserIdAndIsArchivedFalse(1L)).thenReturn(emptyList())
+            `when`(accountRepository.findByOwnerUserId(1L)).thenReturn(emptyList())
 
-            val result = service.listAccounts(ownerUser, includeArchived = false)
+            val result = service.listAccounts(ownerUser)
             assertTrue(result.isEmpty())
         }
     }
@@ -226,27 +203,6 @@ class ManageAccountImplTest {
 
             val result = service.updateAccount(accountId, UpdateAccountDto(name = "Main Checking"), ownerUser)
             assertEquals("Main Checking", result.name)
-        }
-
-        @Test
-        @DisplayName("should archive account")
-        fun archiveAccount() {
-            `when`(accountRepository.findById(accountId)).thenReturn(Optional.of(existingAccount))
-            `when`(accountRepository.save(any(Account::class.java))).thenAnswer { it.getArgument<Account>(0) }
-
-            val result = service.updateAccount(accountId, UpdateAccountDto(isArchived = true), ownerUser)
-            assertTrue(result.isArchived)
-        }
-
-        @Test
-        @DisplayName("should unarchive account")
-        fun unarchiveAccount() {
-            existingAccount.isArchived = true
-            `when`(accountRepository.findById(accountId)).thenReturn(Optional.of(existingAccount))
-            `when`(accountRepository.save(any(Account::class.java))).thenAnswer { it.getArgument<Account>(0) }
-
-            val result = service.updateAccount(accountId, UpdateAccountDto(isArchived = false), ownerUser)
-            assertFalse(result.isArchived)
         }
 
         @Test
@@ -290,7 +246,7 @@ class ManageAccountImplTest {
 
             val result = service.updateAccount(accountId, UpdateAccountDto(), ownerUser)
             assertEquals("Checking", result.name)
-            assertFalse(result.isArchived)
+            assertEquals("ASSET", result.type)
         }
     }
 }

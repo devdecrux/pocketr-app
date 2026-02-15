@@ -25,8 +25,6 @@ class Account(
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "currency", nullable = false)
     var currency: Currency? = null,
-    @Column(name = "is_archived", nullable = false)
-    var isArchived: Boolean = false,
     @Column(name = "created_at", nullable = false, updatable = false)
     var createdAt: Instant = Instant.now(),
 )

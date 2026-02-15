@@ -27,7 +27,7 @@ export const useAccountStore = defineStore('account', () => {
     return map
   })
 
-  const activeAccounts = computed(() => accounts.value.filter((a) => !a.isArchived))
+  const activeAccounts = computed(() => accounts.value)
 
   async function load(): Promise<void> {
     const viewModeStore = useModeStore()

@@ -10,7 +10,7 @@ interface ManageAccount {
 
     fun createAccount(dto: CreateAccountDto, owner: User): AccountDto
 
-    fun listAccounts(owner: User, includeArchived: Boolean = false): List<AccountDto>
+    fun listAccounts(owner: User): List<AccountDto>
 
     fun updateAccount(id: UUID, dto: UpdateAccountDto, owner: User): AccountDto
 }

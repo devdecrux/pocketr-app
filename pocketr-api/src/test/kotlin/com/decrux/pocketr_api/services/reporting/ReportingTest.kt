@@ -37,8 +37,8 @@ class ReportingTest {
 
     private val eur = Currency(code = "EUR", minorUnit = 2, name = "Euro")
 
-    private val userA = User(userId = 1L, usernameValue = "alice", passwordValue = "encoded", email = "alice@test.com")
-    private val userB = User(userId = 2L, usernameValue = "bob", passwordValue = "encoded", email = "bob@test.com")
+    private val userA = User(userId = 1L, passwordValue = "encoded", email = "alice@test.com")
+    private val userB = User(userId = 2L, passwordValue = "encoded", email = "bob@test.com")
 
     private val checkingId = UUID.randomUUID()
     private val savingsId = UUID.randomUUID()
@@ -119,24 +119,6 @@ class ReportingTest {
             assertTrue(result.isEmpty())
         }
 
-        @Test
-        @DisplayName("should include isArchived flag in balance summary")
-        fun includeArchivedFlag() {
-            val archivedId = UUID.randomUUID()
-            val archivedAccount = Account(
-                id = archivedId, owner = userA, name = "Old",
-                type = AccountType.ASSET, currency = eur, isArchived = true,
-            )
-            val asOf = LocalDate.of(2026, 2, 15)
-            `when`(accountRepository.findByOwnerUserId(1L)).thenReturn(listOf(checking, archivedAccount))
-            `when`(ledgerSplitRepository.computeBalance(checkingId, asOf, SplitSide.DEBIT, SplitSide.CREDIT)).thenReturn(0L)
-            `when`(ledgerSplitRepository.computeBalance(archivedId, asOf, SplitSide.DEBIT, SplitSide.CREDIT)).thenReturn(0L)
-
-            val result = service.getAllAccountBalances(userA, asOf)
-            assertEquals(2, result.size)
-            assertFalse(result.first { it.accountName == "Checking" }.isArchived)
-            assertTrue(result.first { it.accountName == "Old" }.isArchived)
-        }
     }
 
     @Nested

@@ -11,14 +11,13 @@ data class CreateAccountDto(
 
 data class UpdateAccountDto(
     val name: String? = null,
-    val isArchived: Boolean? = null,
 )
 
 data class AccountDto(
     val id: UUID,
+    val ownerUserId: Long,
     val name: String,
     val type: String,
     val currency: String,
-    val isArchived: Boolean,
     val createdAt: Instant,
 )

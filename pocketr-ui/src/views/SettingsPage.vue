@@ -33,6 +33,7 @@ const householdError = ref('')
 const householdNameError = ref('')
 const isLeavingHousehold = ref(false)
 const leaveError = ref('')
+const inviteActionError = ref('')
 
 const activeHouseholds = computed(() => householdStore.activeHouseholds)
 
@@ -131,10 +132,19 @@ async function createHousehold(): Promise<void> {
 }
 
 async function handleAcceptInvite(householdId: string): Promise<void> {
+  inviteActionError.value = ''
+
+  if (activeHouseholds.value.length > 0) {
+    inviteActionError.value = 'Leave your current household before accepting another invitation.'
+    return
+  }
+
   const success = await householdStore.acceptInvite(householdId)
   if (success) {
     modeStore.switchToHousehold(householdId)
     await router.push({ name: 'household-settings', params: { householdId } })
+  } else {
+    inviteActionError.value = householdStore.error ?? 'Failed to accept invitation.'
   }
 }
 
@@ -284,10 +294,16 @@ async function handleLeaveHousehold(householdId: string): Promise<void> {
               <span class="text-sm font-medium">{{ invite.name }}</span>
               <Badge variant="secondary">Invited</Badge>
             </div>
-            <Button size="sm" class="h-8 px-3 text-xs" @click="handleAcceptInvite(invite.id)">
+            <Button
+              size="sm"
+              class="h-8 px-3 text-xs"
+              :disabled="activeHouseholds.length > 0"
+              @click="handleAcceptInvite(invite.id)"
+            >
               Accept
             </Button>
           </div>
+          <p v-if="inviteActionError" class="text-sm text-red-600">{{ inviteActionError }}</p>
         </div>
 
         <!-- Create household (only when user is not in any household) -->

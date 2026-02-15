@@ -27,10 +27,9 @@ class AccountController(
 
     @GetMapping
     fun listAccounts(
-        @RequestParam(defaultValue = "false") includeArchived: Boolean,
         @AuthenticationPrincipal user: User,
     ): List<AccountDto> {
-        return manageAccount.listAccounts(user, includeArchived)
+        return manageAccount.listAccounts(user)
     }
 
     @PatchMapping("/{id}")

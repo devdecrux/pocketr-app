@@ -1,6 +1,12 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import { listCategories } from '@/api/categories'
+import { HTTPError } from 'ky'
+import {
+  createCategory as apiCreateCategory,
+  deleteCategory as apiDeleteCategory,
+  listCategories,
+  updateCategory as apiUpdateCategory,
+} from '@/api/categories'
 import type { CategoryTag } from '@/types/ledger'
 
 export const useCategoryStore = defineStore('category', () => {
@@ -13,11 +19,62 @@ export const useCategoryStore = defineStore('category', () => {
     error.value = null
     try {
       categories.value = await listCategories()
-    } catch {
-      error.value = 'Failed to load categories.'
+    } catch (nextError: unknown) {
+      error.value = await resolveErrorMessage(nextError, 'Failed to load categories.')
     } finally {
       isLoading.value = false
     }
+  }
+
+  async function create(name: string): Promise<CategoryTag | null> {
+    error.value = null
+
+    try {
+      const created = await apiCreateCategory({ name })
+      categories.value = [...categories.value, created]
+      return created
+    } catch (nextError: unknown) {
+      error.value = await resolveErrorMessage(nextError, 'Failed to create category.')
+      return null
+    }
+  }
+
+  async function rename(id: string, name: string): Promise<CategoryTag | null> {
+    error.value = null
+
+    try {
+      const updated = await apiUpdateCategory(id, { name })
+      categories.value = categories.value.map((category) =>
+        category.id === id ? updated : category,
+      )
+      return updated
+    } catch (nextError: unknown) {
+      error.value = await resolveErrorMessage(nextError, 'Failed to rename category.')
+      return null
+    }
+  }
+
+  async function remove(id: string): Promise<boolean> {
+    error.value = null
+
+    try {
+      await apiDeleteCategory(id)
+      categories.value = categories.value.filter((category) => category.id !== id)
+      return true
+    } catch (nextError: unknown) {
+      error.value = await resolveErrorMessage(nextError, 'Failed to delete category.')
+      return false
+    }
+  }
+
+  async function resolveErrorMessage(nextError: unknown, fallback: string): Promise<string> {
+    if (nextError instanceof HTTPError) {
+      const payload = await nextError.response.json<{ message?: string }>().catch(() => null)
+      if (payload?.message?.trim()) {
+        return payload.message.trim()
+      }
+    }
+    return fallback
   }
 
   return {
@@ -25,5 +82,8 @@ export const useCategoryStore = defineStore('category', () => {
     isLoading,
     error,
     load,
+    create,
+    rename,
+    remove,
   }
 })

@@ -18,7 +18,6 @@ data class AccountBalanceSummaryDto(
     val accountType: String,
     val currency: String,
     val balanceMinor: Long,
-    val isArchived: Boolean,
 )
 
 data class BalanceTimeseriesPointDto(

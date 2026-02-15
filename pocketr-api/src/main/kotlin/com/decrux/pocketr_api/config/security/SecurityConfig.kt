@@ -42,6 +42,7 @@ class SecurityConfig(
             .formLogin { form ->
                 form.loginPage(SecurityConstants.FRONTEND_LOGIN_URL.value).permitAll()
                     .loginProcessingUrl(SecurityConstants.BACKEND_LOGIN_PROCESSING_URL.value).permitAll()
+                    .usernameParameter("email")
                     .successHandler(customAuthenticationSuccessHandler)
                     .failureHandler(customAuthenticationFailureHandler)
             }

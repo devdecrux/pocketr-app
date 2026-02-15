@@ -12,7 +12,6 @@ export interface Account {
   name: string
   type: AccountType
   currency: string
-  isArchived: boolean
   createdAt: string
 }
 
@@ -24,7 +23,6 @@ export interface CreateAccountRequest {
 
 export interface UpdateAccountRequest {
   name?: string
-  isArchived?: boolean
 }
 
 export interface CategoryTag {

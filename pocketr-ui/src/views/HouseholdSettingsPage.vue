@@ -11,13 +11,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 import type { HouseholdRole } from '@/types/household'
 import type { AccountType } from '@/types/ledger'
 
@@ -28,8 +21,7 @@ const authStore = useAuthStore()
 
 const householdId = computed(() => route.params.householdId as string)
 
-const inviteUsername = ref('')
-const inviteRole = ref<'ADMIN' | 'MEMBER'>('MEMBER')
+const inviteEmail = ref('')
 const isInviting = ref(false)
 const inviteError = ref('')
 const inviteSuccess = ref('')
@@ -84,6 +76,15 @@ function sharedAtForAccount(accountId: string): string | null {
   return share ? new Date(share.sharedAt).toLocaleDateString() : null
 }
 
+function displayPerson(
+  firstName: string | null | undefined,
+  lastName: string | null | undefined,
+  email: string | null | undefined,
+): string {
+  const name = `${firstName?.trim() ?? ''} ${lastName?.trim() ?? ''}`.trim()
+  return name || (email?.trim() ?? 'Unknown user')
+}
+
 async function toggleShareAccount(accountId: string): Promise<void> {
   sharingAccountId.value = accountId
   try {
@@ -98,8 +99,8 @@ async function toggleShareAccount(accountId: string): Promise<void> {
 }
 
 async function handleInvite(): Promise<void> {
-  if (!inviteUsername.value.trim()) {
-    inviteError.value = 'Username is required.'
+  if (!inviteEmail.value.trim()) {
+    inviteError.value = 'Email is required.'
     return
   }
 
@@ -109,14 +110,12 @@ async function handleInvite(): Promise<void> {
 
   try {
     const success = await householdStore.inviteMember(householdId.value, {
-      username: inviteUsername.value.trim(),
-      role: inviteRole.value,
+      email: inviteEmail.value.trim(),
     })
 
     if (success) {
-      inviteSuccess.value = `Invitation sent to ${inviteUsername.value}.`
-      inviteUsername.value = ''
-      inviteRole.value = 'MEMBER'
+      inviteSuccess.value = `Invitation sent to ${inviteEmail.value}.`
+      inviteEmail.value = ''
     } else {
       inviteError.value = householdStore.error ?? 'Failed to send invitation.'
     }
@@ -162,7 +161,10 @@ async function handleInvite(): Promise<void> {
             class="flex items-center justify-between rounded-md border border-border px-3 py-2"
           >
             <div class="flex flex-col gap-0.5">
-              <span class="text-sm font-medium">{{ member.username }}</span>
+              <span class="text-sm font-medium">
+                {{ displayPerson(member.firstName, member.lastName, member.email) }}
+              </span>
+              <span class="text-xs text-muted-foreground">{{ member.email }}</span>
               <span v-if="member.joinedAt" class="text-xs text-muted-foreground">
                 Joined {{ new Date(member.joinedAt).toLocaleDateString() }}
               </span>
@@ -184,29 +186,17 @@ async function handleInvite(): Promise<void> {
     <Card v-if="householdStore.isOwnerOrAdmin" class="w-full">
       <CardHeader>
         <CardTitle>Invite Member</CardTitle>
-        <CardDescription> Send an invitation to join this household by username. </CardDescription>
+        <CardDescription> Send an invitation to join this household by email. </CardDescription>
       </CardHeader>
       <CardContent class="space-y-4">
         <div class="grid gap-2">
-          <Label for="invite-username">Username</Label>
+          <Label for="invite-email">Email</Label>
           <Input
-            id="invite-username"
-            v-model="inviteUsername"
-            type="text"
-            placeholder="Enter username"
+            id="invite-email"
+            v-model="inviteEmail"
+            type="email"
+            placeholder="name@example.com"
           />
-        </div>
-        <div class="grid gap-2">
-          <Label for="invite-role">Role</Label>
-          <Select v-model="inviteRole">
-            <SelectTrigger id="invite-role">
-              <SelectValue placeholder="Select role" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="ADMIN">Admin</SelectItem>
-              <SelectItem value="MEMBER">Member</SelectItem>
-            </SelectContent>
-          </Select>
         </div>
         <Button size="sm" :disabled="isInviting" @click="handleInvite">
           {{ isInviting ? 'Sending...' : 'Send Invitation' }}
@@ -234,7 +224,8 @@ async function handleInvite(): Promise<void> {
             <div class="flex flex-col gap-0.5">
               <span class="text-sm font-medium">{{ share.accountName }}</span>
               <span class="text-xs text-muted-foreground">
-                Shared by {{ share.ownerUsername }}
+                Shared by
+                {{ displayPerson(share.ownerFirstName, share.ownerLastName, share.ownerEmail) }}
               </span>
             </div>
             <span class="text-xs text-muted-foreground">

@@ -7,7 +7,7 @@ import {
   getFilteredRowModel,
   useVueTable,
 } from '@tanstack/vue-table'
-import { Archive, ArchiveRestore, Pencil, Plus } from 'lucide-vue-next'
+import { Pencil, Plus } from 'lucide-vue-next'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -46,14 +46,12 @@ const householdStore = useHouseholdStore()
 
 const balances = ref<Map<string, number>>(new Map())
 const balancesLoading = ref(false)
-const showArchived = ref(false)
 const typeFilter = ref<string>('ALL')
 const currencyFilter = ref<string>('ALL')
 const createDialogOpen = ref(false)
 const isCreating = ref(false)
 const createError = ref('')
 const renameError = ref('')
-const archiveError = ref('')
 
 const newAccount = ref({
   name: '',
@@ -64,7 +62,7 @@ const newAccount = ref({
 const accountTypes: AccountType[] = ['ASSET', 'LIABILITY', 'INCOME', 'EXPENSE', 'EQUITY']
 
 const filteredAccounts = computed(() => {
-  let list = showArchived.value ? accountStore.accounts : accountStore.activeAccounts
+  let list = accountStore.activeAccounts
   if (typeFilter.value !== 'ALL') {
     list = list.filter((a) => a.type === typeFilter.value)
   }
@@ -145,28 +143,16 @@ const columns = computed<ColumnDef<Account>[]>(() => {
     id: 'actions',
     header: '',
     cell: ({ row }) => {
-      return h('div', { class: 'flex gap-1' }, [
-        h(
-          Button,
-          {
-            variant: 'ghost',
-            size: 'icon',
-            class: 'size-8',
-            onClick: () => startRename(row.original),
-          },
-          () => h(Pencil, { class: 'size-4' }),
-        ),
-        h(
-          Button,
-          {
-            variant: 'ghost',
-            size: 'icon',
-            class: 'size-8',
-            onClick: () => toggleArchive(row.original),
-          },
-          () => h(row.original.isArchived ? ArchiveRestore : Archive, { class: 'size-4' }),
-        ),
-      ])
+      return h(
+        Button,
+        {
+          variant: 'ghost',
+          size: 'icon',
+          class: 'size-8',
+          onClick: () => startRename(row.original),
+        },
+        () => h(Pencil, { class: 'size-4' }),
+      )
     },
   })
 
@@ -231,16 +217,6 @@ async function submitRename(): Promise<void> {
     await accountStore.load()
   } catch {
     renameError.value = 'Failed to rename account.'
-  }
-}
-
-async function toggleArchive(account: Account): Promise<void> {
-  archiveError.value = ''
-  try {
-    await updateAccount(account.id, { isArchived: !account.isArchived })
-    await accountStore.load()
-  } catch {
-    archiveError.value = `Failed to ${account.isArchived ? 'restore' : 'archive'} "${account.name}".`
   }
 }
 
@@ -346,13 +322,7 @@ async function submitCreate(): Promise<void> {
               </SelectItem>
             </SelectContent>
           </Select>
-          <label class="flex items-center gap-2 text-sm">
-            <input v-model="showArchived" type="checkbox" class="accent-primary" />
-            Show archived
-          </label>
         </div>
-
-        <p v-if="archiveError" class="mb-3 text-sm text-red-600">{{ archiveError }}</p>
 
         <div v-if="accountStore.isLoading" class="space-y-3">
           <Skeleton class="h-10 w-full" />

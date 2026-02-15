@@ -125,7 +125,6 @@ create table account (
   name text not null,
   type text not null check (type in ('ASSET','LIABILITY','INCOME','EXPENSE','EQUITY')),
   currency char(3) not null references currency(code),
-  is_archived boolean not null default false,
   created_at timestamptz not null default now()
 );
 
@@ -275,7 +274,7 @@ Creator may include accounts owned by others **only if**:
 
 - `POST /accounts`
 - `GET /accounts?mode=individual|household&householdId=...`
-- `PATCH /accounts/{id}` (rename, archive)
+- `PATCH /accounts/{id}` (rename)
 - `POST /households/{id}/shares` (share account into household)
 - `DELETE /households/{id}/shares/{accountId}` (unshare)
 

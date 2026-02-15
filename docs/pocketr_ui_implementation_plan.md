@@ -107,7 +107,6 @@ export interface Account {
     name: string;
     type: AccountType;
     currency: string; // currency code
-    isArchived: boolean;
     createdAt: string;
 }
 ```
@@ -209,10 +208,8 @@ export function listTxns(params: TxnQuery): Promise<LedgerTxn[]>
 
 export function shareAccount(householdId: string, accountId: string): Promise<void>
 
-export function inviteMember(householdId: string, payload: { emailOrUserId: string; role: 'ADMIN' | 'MEMBER' }): Promise<void>
+export function inviteMember(householdId: string, payload: { email: string }): Promise<void>
 ```
-
-> If backend uses userId invites later, UI can start with email input and show “pending invite” state.
 
 ---
 
@@ -311,8 +308,7 @@ Add routes if missing:
 2) Members list
     - show members + roles + statuses (INVITED/ACTIVE)
 3) Invite member form
-    - input: email (or userId if backend supports)
-    - select role: ADMIN or MEMBER
+    - input: email
     - submit invites (status=INVITED)
 4) Shared accounts configuration
     - list of user’s own accounts (owned)
@@ -352,14 +348,14 @@ Add routes if missing:
 
 ### UI details
 
-- Filters: type, currency, archived toggle
+- Filters: type, currency
 - Balance display:
     - if backend has balance endpoint: fetch balances in batch (or lazy-load per row)
     - else compute from transaction list (not recommended; too heavy)
 - Account cards/table should show:
     - name, type, currency, balance
     - owner (in household mode)
-    - actions: rename/archive (only if owned by me)
+    - actions: rename (only if owned by me)
 
 ### Household share indicator
 

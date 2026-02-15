@@ -18,12 +18,15 @@ data class HouseholdSummaryDto(
     val id: UUID,
     val name: String,
     val role: String,
+    val status: String,
     val createdAt: Instant,
 )
 
 data class HouseholdMemberDto(
     val userId: Long,
-    val username: String,
+    val email: String,
+    val firstName: String?,
+    val lastName: String?,
     val role: String,
     val status: String,
     val joinedAt: Instant?,
@@ -40,6 +43,8 @@ data class ShareAccountDto(
 data class HouseholdAccountShareDto(
     val accountId: UUID,
     val accountName: String,
-    val ownerUsername: String,
+    val ownerEmail: String,
+    val ownerFirstName: String?,
+    val ownerLastName: String?,
     val sharedAt: Instant,
 )

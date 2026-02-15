@@ -10,5 +10,5 @@ interface CategoryTagRepository : JpaRepository<CategoryTag, UUID> {
 
     fun findByOwnerUserId(userId: Long): List<CategoryTag>
 
-    fun existsByOwnerUserIdAndName(userId: Long, name: String): Boolean
+    fun existsByOwnerUserIdAndNameIgnoreCase(userId: Long, name: String): Boolean
 }

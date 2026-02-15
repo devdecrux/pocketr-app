@@ -122,42 +122,24 @@ Before implementing new features, verify and reconcile these gaps:
 1. Account listing mode:
 
     - Frontend calls `GET /api/v1/accounts?mode=...&householdId=...`
-    - Backend currently supports `includeArchived` only in `AccountController`.
+    - Backend currently ignores those params and returns owner accounts only.
 
-2. Account DTO shape:
-
-    - Frontend expects `ownerUserId` in `Account`.
-    - Backend `AccountDto` does not expose owner id.
-
-3. Household summary shape:
-
-    - Frontend expects `status` on household summary.
-    - Backend `HouseholdSummaryDto` has no `status` and list endpoint returns ACTIVE memberships only.
-
-4. Invite payload mismatch:
-
-    - Frontend sends `{ username, role }`.
-    - Backend expects `{ email }` and currently assigns `MEMBER` role.
-
-5. Leave household endpoint:
-
-    - Frontend calls `POST /api/v1/households/{id}/leave`.
-    - Backend has no such endpoint.
-
-6. Reporting DTO naming mismatch:
+2. Reporting DTO naming mismatch:
 
     - Frontend expects `categoryId`/`categoryName`.
     - Backend returns `categoryTagId`/`categoryTagName`.
 
-7. Household rules target vs implementation:
-
-    - Plans require "one household at a time" policy.
-    - Backend create/join flow does not enforce this globally.
-
-8. Household account visibility:
+3. Household account visibility:
 
     - Backend has `GET /api/v1/households/{id}/accounts`.
     - Frontend account loading currently does not use it.
+
+4. Household category label duplication:
+
+    - Categories are user-scoped (`owner_user_id`), not household-scoped.
+    - Household reporting/dashboard groups by `categoryTagId` and displays `categoryTagName`.
+    - If two members each have a category named `Groceries`, household dashboards can show duplicate `Groceries` rows (different category IDs).
+    - This is expected in current design and should be addressed later with an explicit product/contract decision.
 
 Any agent touching either side of these contracts must update both backend and frontend in the same change set or stage compatible migrations.
 

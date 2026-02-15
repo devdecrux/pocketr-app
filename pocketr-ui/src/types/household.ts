@@ -18,7 +18,9 @@ export interface HouseholdSummary {
 
 export interface HouseholdMember {
   userId: number
-  username: string
+  email: string
+  firstName: string | null
+  lastName: string | null
   role: HouseholdRole
   status: MembershipStatus
   joinedAt: string | null
@@ -27,7 +29,9 @@ export interface HouseholdMember {
 export interface HouseholdAccountShare {
   accountId: string
   accountName: string
-  ownerUsername: string
+  ownerEmail: string
+  ownerFirstName: string | null
+  ownerLastName: string | null
   sharedAt: string
 }
 
@@ -36,8 +40,7 @@ export interface CreateHouseholdRequest {
 }
 
 export interface InviteMemberRequest {
-  username: string
-  role: 'ADMIN' | 'MEMBER'
+  email: string
 }
 
 export interface ShareAccountRequest {

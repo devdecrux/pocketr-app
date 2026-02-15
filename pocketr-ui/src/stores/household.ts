@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
+import { HTTPError } from 'ky'
 import {
   acceptInvite as apiAcceptInvite,
   createHousehold as apiCreateHousehold,
@@ -26,9 +27,9 @@ export const useHouseholdStore = defineStore('household', () => {
   const isLoading = ref(false)
   const error = ref<string | null>(null)
 
-  const hasHousehold = computed(() => households.value.length > 0)
-
   const activeHouseholds = computed(() => households.value.filter((h) => h.status === 'ACTIVE'))
+
+  const hasHousehold = computed(() => activeHouseholds.value.length > 0)
 
   const pendingInvites = computed(() => households.value.filter((h) => h.status === 'INVITED'))
 
@@ -48,8 +49,8 @@ export const useHouseholdStore = defineStore('household', () => {
 
     try {
       households.value = await apiListHouseholds()
-    } catch {
-      error.value = 'Failed to load households.'
+    } catch (nextError: unknown) {
+      error.value = await resolveErrorMessage(nextError, 'Failed to load households.')
     } finally {
       isLoading.value = false
     }
@@ -61,8 +62,8 @@ export const useHouseholdStore = defineStore('household', () => {
 
     try {
       currentHousehold.value = await apiGetHousehold(id)
-    } catch {
-      error.value = 'Failed to load household details.'
+    } catch (nextError: unknown) {
+      error.value = await resolveErrorMessage(nextError, 'Failed to load household details.')
     } finally {
       isLoading.value = false
     }
@@ -77,8 +78,8 @@ export const useHouseholdStore = defineStore('household', () => {
       currentHousehold.value = household
       await loadHouseholds()
       return household
-    } catch {
-      error.value = 'Failed to create household.'
+    } catch (nextError: unknown) {
+      error.value = await resolveErrorMessage(nextError, 'Failed to create household.')
       return null
     } finally {
       isLoading.value = false
@@ -92,8 +93,8 @@ export const useHouseholdStore = defineStore('household', () => {
       await apiInviteMember(householdId, req)
       await loadHousehold(householdId)
       return true
-    } catch {
-      error.value = 'Failed to invite member.'
+    } catch (nextError: unknown) {
+      error.value = await resolveErrorMessage(nextError, 'Failed to invite member.')
       return false
     }
   }
@@ -105,8 +106,8 @@ export const useHouseholdStore = defineStore('household', () => {
       await apiAcceptInvite(householdId)
       await loadHouseholds()
       return true
-    } catch {
-      error.value = 'Failed to accept invite.'
+    } catch (nextError: unknown) {
+      error.value = await resolveErrorMessage(nextError, 'Failed to accept invite.')
       return false
     }
   }
@@ -120,8 +121,8 @@ export const useHouseholdStore = defineStore('household', () => {
       sharedAccounts.value = []
       await loadHouseholds()
       return true
-    } catch {
-      error.value = 'Failed to leave household.'
+    } catch (nextError: unknown) {
+      error.value = await resolveErrorMessage(nextError, 'Failed to leave household.')
       return false
     }
   }
@@ -131,8 +132,8 @@ export const useHouseholdStore = defineStore('household', () => {
 
     try {
       sharedAccounts.value = await apiListSharedAccounts(householdId)
-    } catch {
-      error.value = 'Failed to load shared accounts.'
+    } catch (nextError: unknown) {
+      error.value = await resolveErrorMessage(nextError, 'Failed to load shared accounts.')
     }
   }
 
@@ -143,8 +144,8 @@ export const useHouseholdStore = defineStore('household', () => {
       await apiShareAccount(householdId, { accountId })
       await loadSharedAccounts(householdId)
       return true
-    } catch {
-      error.value = 'Failed to share account.'
+    } catch (nextError: unknown) {
+      error.value = await resolveErrorMessage(nextError, 'Failed to share account.')
       return false
     }
   }
@@ -156,8 +157,8 @@ export const useHouseholdStore = defineStore('household', () => {
       await apiUnshareAccount(householdId, accountId)
       await loadSharedAccounts(householdId)
       return true
-    } catch {
-      error.value = 'Failed to unshare account.'
+    } catch (nextError: unknown) {
+      error.value = await resolveErrorMessage(nextError, 'Failed to unshare account.')
       return false
     }
   }
@@ -168,6 +169,16 @@ export const useHouseholdStore = defineStore('household', () => {
     sharedAccounts.value = []
     isLoading.value = false
     error.value = null
+  }
+
+  async function resolveErrorMessage(nextError: unknown, fallback: string): Promise<string> {
+    if (nextError instanceof HTTPError) {
+      const payload = await nextError.response.json<{ message?: string }>().catch(() => null)
+      if (payload?.message?.trim()) {
+        return payload.message.trim()
+      }
+    }
+    return fallback
   }
 
   return {

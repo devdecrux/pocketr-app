@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/sidebar'
 import {
   ArrowUpDown,
+  BookMarked,
   ChevronsUpDown,
   Home,
   LogOut,
@@ -49,6 +50,7 @@ const routes = [
   { name: 'Dashboard', path: '/dashboard', icon: Home, enabled: true },
   { name: 'Transactions', path: '/transactions', icon: ArrowUpDown, enabled: true },
   { name: 'Accounts', path: '/accounts', icon: WalletMinimal, enabled: true },
+  { name: 'Categories', path: '/categories', icon: BookMarked, enabled: true },
   { name: 'Subscriptions', path: '/subscriptions', icon: RotateCw, enabled: false },
 ]
 

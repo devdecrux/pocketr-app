@@ -17,10 +17,8 @@ class RegisterUserImpl(
     @Transactional
     override fun registerUser(userDto: RegisterUserDto) {
         val email = userDto.email.trim()
-        val username = if (email.contains("@")) email.substringBefore("@") else email
 
         val user = User(
-            usernameValue = username,
             passwordValue = requireNotNull(passwordEncoder.encode(userDto.password.trim())) {
                 "Password encoder returned null"
             },

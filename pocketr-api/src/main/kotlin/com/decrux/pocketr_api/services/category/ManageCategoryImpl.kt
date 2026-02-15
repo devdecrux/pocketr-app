@@ -23,7 +23,7 @@ class ManageCategoryImpl(
         val userId = requireNotNull(owner.userId) { "User ID must not be null" }
         val name = dto.name.trim()
 
-        if (categoryTagRepository.existsByOwnerUserIdAndName(userId, name)) {
+        if (categoryTagRepository.existsByOwnerUserIdAndNameIgnoreCase(userId, name)) {
             throw ResponseStatusException(HttpStatus.CONFLICT, "Category '$name' already exists")
         }
 
@@ -32,7 +32,11 @@ class ManageCategoryImpl(
             name = name,
         )
 
-        return categoryTagRepository.save(tag).toDto()
+        try {
+            return categoryTagRepository.save(tag).toDto()
+        } catch (_: DataIntegrityViolationException) {
+            throw ResponseStatusException(HttpStatus.CONFLICT, "Category '$name' already exists")
+        }
     }
 
     @Transactional(readOnly = true)
@@ -53,12 +57,18 @@ class ManageCategoryImpl(
         val userId = requireNotNull(owner.userId) { "User ID must not be null" }
         val newName = dto.name.trim()
 
-        if (newName != tag.name && categoryTagRepository.existsByOwnerUserIdAndName(userId, newName)) {
+        if (!newName.equals(tag.name, ignoreCase = true) &&
+            categoryTagRepository.existsByOwnerUserIdAndNameIgnoreCase(userId, newName)
+        ) {
             throw ResponseStatusException(HttpStatus.CONFLICT, "Category '$newName' already exists")
         }
 
         tag.name = newName
-        return categoryTagRepository.save(tag).toDto()
+        try {
+            return categoryTagRepository.save(tag).toDto()
+        } catch (_: DataIntegrityViolationException) {
+            throw ResponseStatusException(HttpStatus.CONFLICT, "Category '$newName' already exists")
+        }
     }
 
     @Transactional

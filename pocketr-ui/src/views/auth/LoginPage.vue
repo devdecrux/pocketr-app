@@ -37,7 +37,7 @@ async function login(): Promise<void> {
     await primeCsrfToken()
 
     const body = new URLSearchParams()
-    body.set('username', email.value.trim())
+    body.set('email', email.value.trim())
     body.set('password', password.value)
 
     await api.post('/api/v1/user/login', {

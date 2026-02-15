@@ -24,14 +24,12 @@ class ManageCategoryImplTest {
 
     private val ownerUser = User(
         userId = 1L,
-        usernameValue = "alice",
         passwordValue = "encoded",
         email = "alice@example.com",
     )
 
     private val otherUser = User(
         userId = 2L,
-        usernameValue = "bob",
         passwordValue = "encoded",
         email = "bob@example.com",
     )
@@ -49,7 +47,7 @@ class ManageCategoryImplTest {
         @Test
         @DisplayName("should create category with unique name")
         fun createCategoryWithUniqueName() {
-            `when`(categoryTagRepository.existsByOwnerUserIdAndName(1L, "Groceries")).thenReturn(false)
+            `when`(categoryTagRepository.existsByOwnerUserIdAndNameIgnoreCase(1L, "Groceries")).thenReturn(false)
             `when`(categoryTagRepository.save(any(CategoryTag::class.java))).thenAnswer { invocation ->
                 val tag = invocation.getArgument<CategoryTag>(0)
                 tag.id = UUID.randomUUID()
@@ -64,7 +62,7 @@ class ManageCategoryImplTest {
         @Test
         @DisplayName("should reject duplicate category name for same user")
         fun rejectDuplicateNameForSameUser() {
-            `when`(categoryTagRepository.existsByOwnerUserIdAndName(1L, "Groceries")).thenReturn(true)
+            `when`(categoryTagRepository.existsByOwnerUserIdAndNameIgnoreCase(1L, "Groceries")).thenReturn(true)
 
             val ex = assertThrows(ResponseStatusException::class.java) {
                 service.createCategory(CreateCategoryDto(name = "Groceries"), ownerUser)
@@ -74,10 +72,22 @@ class ManageCategoryImplTest {
         }
 
         @Test
+        @DisplayName("should reject duplicate category name case-insensitively")
+        fun rejectDuplicateNameCaseInsensitive() {
+            `when`(categoryTagRepository.existsByOwnerUserIdAndNameIgnoreCase(1L, "groceries")).thenReturn(true)
+
+            val ex = assertThrows(ResponseStatusException::class.java) {
+                service.createCategory(CreateCategoryDto(name = "groceries"), ownerUser)
+            }
+            assertEquals(409, ex.statusCode.value())
+            assertTrue(ex.reason!!.contains("already exists"))
+        }
+
+        @Test
         @DisplayName("should allow same category name for different users")
         fun allowSameNameForDifferentUsers() {
-            `when`(categoryTagRepository.existsByOwnerUserIdAndName(1L, "Groceries")).thenReturn(false)
-            `when`(categoryTagRepository.existsByOwnerUserIdAndName(2L, "Groceries")).thenReturn(false)
+            `when`(categoryTagRepository.existsByOwnerUserIdAndNameIgnoreCase(1L, "Groceries")).thenReturn(false)
+            `when`(categoryTagRepository.existsByOwnerUserIdAndNameIgnoreCase(2L, "Groceries")).thenReturn(false)
             `when`(categoryTagRepository.save(any(CategoryTag::class.java))).thenAnswer { invocation ->
                 val tag = invocation.getArgument<CategoryTag>(0)
                 tag.id = UUID.randomUUID()
@@ -93,7 +103,7 @@ class ManageCategoryImplTest {
         @Test
         @DisplayName("should trim whitespace from category name")
         fun trimWhitespaceFromName() {
-            `when`(categoryTagRepository.existsByOwnerUserIdAndName(1L, "Groceries")).thenReturn(false)
+            `when`(categoryTagRepository.existsByOwnerUserIdAndNameIgnoreCase(1L, "Groceries")).thenReturn(false)
             `when`(categoryTagRepository.save(any(CategoryTag::class.java))).thenAnswer { invocation ->
                 val tag = invocation.getArgument<CategoryTag>(0)
                 tag.id = UUID.randomUUID()
@@ -107,7 +117,7 @@ class ManageCategoryImplTest {
         @Test
         @DisplayName("should set owner to the authenticated user")
         fun setOwnerToAuthenticatedUser() {
-            `when`(categoryTagRepository.existsByOwnerUserIdAndName(1L, "Food")).thenReturn(false)
+            `when`(categoryTagRepository.existsByOwnerUserIdAndNameIgnoreCase(1L, "Food")).thenReturn(false)
             `when`(categoryTagRepository.save(any(CategoryTag::class.java))).thenAnswer { invocation ->
                 val tag = invocation.getArgument<CategoryTag>(0)
                 tag.id = UUID.randomUUID()
@@ -165,7 +175,7 @@ class ManageCategoryImplTest {
         @DisplayName("should rename category")
         fun renameCategory() {
             `when`(categoryTagRepository.findById(categoryId)).thenReturn(Optional.of(existingTag))
-            `when`(categoryTagRepository.existsByOwnerUserIdAndName(1L, "Food")).thenReturn(false)
+            `when`(categoryTagRepository.existsByOwnerUserIdAndNameIgnoreCase(1L, "Food")).thenReturn(false)
             `when`(categoryTagRepository.save(any(CategoryTag::class.java))).thenAnswer { it.getArgument<CategoryTag>(0) }
 
             val result = service.updateCategory(categoryId, UpdateCategoryDto(name = "Food"), ownerUser)
@@ -176,10 +186,22 @@ class ManageCategoryImplTest {
         @DisplayName("should reject rename to existing name for same user")
         fun rejectRenameToDuplicateName() {
             `when`(categoryTagRepository.findById(categoryId)).thenReturn(Optional.of(existingTag))
-            `when`(categoryTagRepository.existsByOwnerUserIdAndName(1L, "Electricity")).thenReturn(true)
+            `when`(categoryTagRepository.existsByOwnerUserIdAndNameIgnoreCase(1L, "Electricity")).thenReturn(true)
 
             val ex = assertThrows(ResponseStatusException::class.java) {
                 service.updateCategory(categoryId, UpdateCategoryDto(name = "Electricity"), ownerUser)
+            }
+            assertEquals(409, ex.statusCode.value())
+        }
+
+        @Test
+        @DisplayName("should reject rename to existing name case-insensitively")
+        fun rejectRenameToDuplicateNameCaseInsensitive() {
+            `when`(categoryTagRepository.findById(categoryId)).thenReturn(Optional.of(existingTag))
+            `when`(categoryTagRepository.existsByOwnerUserIdAndNameIgnoreCase(1L, "electricity")).thenReturn(true)
+
+            val ex = assertThrows(ResponseStatusException::class.java) {
+                service.updateCategory(categoryId, UpdateCategoryDto(name = "electricity"), ownerUser)
             }
             assertEquals(409, ex.statusCode.value())
         }
@@ -192,7 +214,7 @@ class ManageCategoryImplTest {
 
             val result = service.updateCategory(categoryId, UpdateCategoryDto(name = "Groceries"), ownerUser)
             assertEquals("Groceries", result.name)
-            // Should NOT check existsByOwnerUserIdAndName when name hasn't changed
+            // Should NOT check duplicate existence when name hasn't changed
         }
 
         @Test
@@ -222,7 +244,7 @@ class ManageCategoryImplTest {
         @DisplayName("should trim whitespace when renaming")
         fun trimWhitespaceOnRename() {
             `when`(categoryTagRepository.findById(categoryId)).thenReturn(Optional.of(existingTag))
-            `when`(categoryTagRepository.existsByOwnerUserIdAndName(1L, "Food")).thenReturn(false)
+            `when`(categoryTagRepository.existsByOwnerUserIdAndNameIgnoreCase(1L, "Food")).thenReturn(false)
             `when`(categoryTagRepository.save(any(CategoryTag::class.java))).thenAnswer { it.getArgument<CategoryTag>(0) }
 
             val result = service.updateCategory(categoryId, UpdateCategoryDto(name = "  Food  "), ownerUser)

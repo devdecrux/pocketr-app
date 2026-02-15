@@ -143,7 +143,7 @@ Controlled in `App.vue`.
 **Main feature views (implemented):**
 
 - `DashboardPage.vue`
-- `AccountsPage.vue` (table + create/rename/archive)
+- `AccountsPage.vue` (table + create/rename)
 - `TransactionsPage.vue` (table + expense/income/transfer creation)
 - `SettingsPage.vue` (avatar + household create/accept/leave UI)
 - `HouseholdSettingsPage.vue` (members/invite/share controls)
@@ -167,11 +167,9 @@ Controlled in `App.vue`.
 
 These exist in current code and should be reconciled intentionally:
 
-1. `GET /api/v1/accounts` frontend sends `mode/householdId`, backend currently supports `includeArchived`.
-2. Frontend `Account` type expects `ownerUserId`; backend `AccountDto` does not provide it.
-3. Frontend household summary expects `status`; backend summary DTO does not include it.
-4. Frontend invite payload uses `username`/`role`; backend invite expects `email` and currently sets role internally.
-5. Frontend calls `POST /households/{id}/leave`; backend endpoint is missing.
-6. Frontend monthly report expects `categoryId/categoryName`; backend uses `categoryTagId/categoryTagName`.
+1. `GET /api/v1/accounts` frontend sends `mode/householdId`, but backend currently ignores those params and returns owner accounts only.
+2. Frontend monthly report expects `categoryId/categoryName`; backend uses `categoryTagId/categoryTagName`.
+3. In household mode, category labels can appear duplicated in dashboard/reporting when different users have separate categories with the same name
+   (e.g. both users have `Groceries`). Categories are user-scoped, but household reporting is grouped by category ID.
 
 When touching one side of these contracts, update the other side in the same task or provide an explicit compatibility plan.

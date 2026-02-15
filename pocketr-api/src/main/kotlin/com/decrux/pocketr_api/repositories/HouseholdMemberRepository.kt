@@ -10,9 +10,17 @@ import java.util.UUID
 @Repository
 interface HouseholdMemberRepository : JpaRepository<HouseholdMember, HouseholdMemberId> {
 
+    fun findByUserUserId(userId: Long): List<HouseholdMember>
+
     fun findByUserUserIdAndStatus(userId: Long, status: MemberStatus): List<HouseholdMember>
 
+    fun existsByUserUserIdAndStatus(userId: Long, status: MemberStatus): Boolean
+
+    fun existsByUserUserIdAndStatusAndHouseholdIdNot(userId: Long, status: MemberStatus, householdId: UUID): Boolean
+
     fun findByHouseholdIdAndUserUserId(householdId: UUID, userId: Long): HouseholdMember?
+
+    fun findByHouseholdIdAndStatus(householdId: UUID, status: MemberStatus): List<HouseholdMember>
 
     fun findByHouseholdId(householdId: UUID): List<HouseholdMember>
 }

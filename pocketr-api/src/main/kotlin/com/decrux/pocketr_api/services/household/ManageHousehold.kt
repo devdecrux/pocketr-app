@@ -16,6 +16,8 @@ interface ManageHousehold {
 
     fun acceptInvite(householdId: UUID, user: User): HouseholdMemberDto
 
+    fun leaveHousehold(householdId: UUID, user: User)
+
     fun shareAccount(householdId: UUID, dto: ShareAccountDto, user: User): HouseholdAccountShareDto
 
     fun unshareAccount(householdId: UUID, accountId: UUID, user: User)

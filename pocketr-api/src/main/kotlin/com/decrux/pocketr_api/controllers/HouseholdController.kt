@@ -54,6 +54,15 @@ class HouseholdController(
         return manageHousehold.acceptInvite(id, user)
     }
 
+    @PostMapping("/{id}/leave")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    fun leaveHousehold(
+        @PathVariable id: UUID,
+        @AuthenticationPrincipal user: User,
+    ) {
+        manageHousehold.leaveHousehold(id, user)
+    }
+
     @PostMapping("/{id}/shares")
     @ResponseStatus(HttpStatus.CREATED)
     fun shareAccount(

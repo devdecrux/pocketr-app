@@ -12,6 +12,10 @@ interface HouseholdAccountShareRepository : JpaRepository<HouseholdAccountShare,
 
     fun findByHouseholdId(householdId: UUID): List<HouseholdAccountShare>
 
+    fun deleteByHouseholdId(householdId: UUID)
+
+    fun deleteByHouseholdIdAndAccountOwnerUserId(householdId: UUID, ownerUserId: Long)
+
     @Query("SELECT s FROM HouseholdAccountShare s JOIN FETCH s.account a JOIN FETCH a.owner WHERE s.household.id = :householdId")
     fun findByHouseholdIdWithAccountAndOwner(householdId: UUID): List<HouseholdAccountShare>
 

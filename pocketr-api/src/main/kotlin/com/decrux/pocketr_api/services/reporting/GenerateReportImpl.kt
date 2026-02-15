@@ -80,7 +80,6 @@ class GenerateReportImpl(
                 accountType = account.type.name,
                 currency = requireNotNull(account.currency?.code),
                 balanceMinor = balanceMinor,
-                isArchived = account.isArchived,
             )
         }
     }

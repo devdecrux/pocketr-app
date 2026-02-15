@@ -1,19 +1,14 @@
 package com.decrux.pocketr_api.controllers
 
 import com.decrux.pocketr_api.entities.db.auth.User
-import com.decrux.pocketr_api.entities.dtos.UserDto
 import com.decrux.pocketr_api.entities.dtos.RegisterUserDto
+import com.decrux.pocketr_api.entities.dtos.UserDto
 import com.decrux.pocketr_api.repositories.UserRepository
 import com.decrux.pocketr_api.services.user_avatar.UserAvatarService
 import com.decrux.pocketr_api.services.user_registration.RegisterUser
 import org.springframework.http.HttpStatus
 import org.springframework.security.core.annotation.AuthenticationPrincipal
-import org.springframework.web.bind.annotation.GetMapping
-import org.springframework.web.bind.annotation.PostMapping
-import org.springframework.web.bind.annotation.RequestBody
-import org.springframework.web.bind.annotation.RequestMapping
-import org.springframework.web.bind.annotation.RequestParam
-import org.springframework.web.bind.annotation.RestController
+import org.springframework.web.bind.annotation.*
 import org.springframework.web.multipart.MultipartFile
 import org.springframework.web.server.ResponseStatusException
 
@@ -66,7 +61,6 @@ class UsersController(
         return UserDto(
             id = userId,
             email = email,
-            username = username,
             firstName = firstName,
             lastName = lastName,
             avatar = userAvatarService.resolveAvatarDataUrl(avatarPath),

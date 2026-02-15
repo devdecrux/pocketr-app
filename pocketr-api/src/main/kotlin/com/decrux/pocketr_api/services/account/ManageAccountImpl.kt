@@ -42,13 +42,9 @@ class ManageAccountImpl(
     }
 
     @Transactional(readOnly = true)
-    override fun listAccounts(owner: User, includeArchived: Boolean): List<AccountDto> {
+    override fun listAccounts(owner: User): List<AccountDto> {
         val userId = requireNotNull(owner.userId) { "User ID must not be null" }
-        val accounts = if (includeArchived) {
-            accountRepository.findByOwnerUserId(userId)
-        } else {
-            accountRepository.findByOwnerUserIdAndIsArchivedFalse(userId)
-        }
+        val accounts = accountRepository.findByOwnerUserId(userId)
         return accounts.map { it.toDto() }
     }
 
@@ -62,18 +58,16 @@ class ManageAccountImpl(
         }
 
         dto.name?.let { account.name = it.trim() }
-        dto.isArchived?.let { account.isArchived = it }
-
         return accountRepository.save(account).toDto()
     }
 
     private companion object {
         fun Account.toDto() = AccountDto(
             id = requireNotNull(id) { "Account ID must not be null" },
+            ownerUserId = requireNotNull(owner?.userId) { "Owner user ID must not be null" },
             name = name,
             type = type.name,
             currency = requireNotNull(currency?.code) { "Currency must not be null" },
-            isArchived = isArchived,
             createdAt = createdAt,
         )
     }

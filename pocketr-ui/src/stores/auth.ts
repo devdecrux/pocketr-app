@@ -18,7 +18,7 @@ export const useAuthStore = defineStore('auth', () => {
     const lastName = user.value.lastName?.trim() ?? ''
     const fullName = `${firstName} ${lastName}`.trim()
 
-    return fullName || user.value.username
+    return fullName || user.value.email
   })
 
   function setUser(nextUser: AuthUser): void {

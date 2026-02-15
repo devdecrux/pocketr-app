@@ -8,7 +8,5 @@ import java.util.UUID
 @Repository
 interface AccountRepository : JpaRepository<Account, UUID> {
 
-    fun findByOwnerUserIdAndIsArchivedFalse(userId: Long): List<Account>
-
     fun findByOwnerUserId(userId: Long): List<Account>
 }
