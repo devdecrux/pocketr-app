@@ -36,7 +36,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import ThemeMenu from '@/components/ThemeMenu.vue'
 import { useRouter } from 'vue-router'
-import { initialsFromName } from '@/lib/utils/initials'
+import { initialsFromName } from '@/utils/initials'
 import { useAuthStore } from '@/stores/auth'
 import { api } from '@/api/http'
 

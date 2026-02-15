@@ -1,16 +1,16 @@
 package com.decrux.pocketr_api.repositories
 
-import com.decrux.pocketr_api.entities.db.auth.PocketrUser
+import com.decrux.pocketr_api.entities.db.auth.User
+import org.springframework.data.jpa.repository.EntityGraph
 import org.springframework.data.jpa.repository.JpaRepository
-import org.springframework.data.jpa.repository.Query
 import org.springframework.stereotype.Repository
 import java.util.Optional
 
 @Repository
-interface UserRepository : JpaRepository<PocketrUser, Long> {
+interface UserRepository : JpaRepository<User, Long> {
 
-    @Query("SELECT u FROM PocketrUser u JOIN FETCH u.roles WHERE u.email = :email")
-    fun findUserByEmail(email: String): PocketrUser?
+    @EntityGraph(attributePaths = ["roles"])
+    fun findUserByEmail(email: String): User?
 
-    fun findByEmail(email: String): Optional<PocketrUser>
+    fun findByEmail(email: String): Optional<User>
 }

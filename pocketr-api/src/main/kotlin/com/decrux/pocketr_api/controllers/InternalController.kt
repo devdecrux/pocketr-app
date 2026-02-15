@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.RestController
 @Profile("dev")
 @RestController
 @RequestMapping("/v1/internal")
-class InternalPocketrController {
+class InternalController {
 
     @GetMapping("/csrf-token")
     fun getCsrfToken() {

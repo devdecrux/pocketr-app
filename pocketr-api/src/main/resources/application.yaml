@@ -8,6 +8,10 @@ spring:
       static-locations: classpath:/static/frontend/
   datasource:
     driver-class-name: org.postgresql.Driver
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 5MB
   jpa:
     hibernate:
       ddl-auto: update

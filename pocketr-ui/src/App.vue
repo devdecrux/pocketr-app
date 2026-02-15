@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
-import AppSidebar from '@/components/AppSidebar.vue'
+import Sidebar from '@/components/Sidebar.vue'
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar'
 import { useColorMode } from '@vueuse/core'
 
@@ -16,7 +16,7 @@ useColorMode()
   <div class="min-h-screen">
     <RouterView v-if="isAuthLayout" />
     <SidebarProvider v-else>
-      <AppSidebar />
+      <Sidebar />
       <div class="flex flex-1 flex-col">
         <SidebarTrigger class="lg:hidden" />
         <main class="p-2">

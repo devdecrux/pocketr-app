@@ -7,3 +7,7 @@ spring:
   jpa:
     hibernate:
       ddl-auto: create-drop
+
+pocketr:
+  avatar:
+    storage-dir: storage/test-avatars

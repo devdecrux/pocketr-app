@@ -1,7 +1,7 @@
 package com.decrux.pocketr_api.services.user_registration
 
-import com.decrux.pocketr_api.entities.db.auth.PocketrUser
-import com.decrux.pocketr_api.entities.db.auth.PocketrUserRole
+import com.decrux.pocketr_api.entities.db.auth.User
+import com.decrux.pocketr_api.entities.db.auth.UserRole
 import com.decrux.pocketr_api.entities.dtos.RegisterUserDto
 import com.decrux.pocketr_api.repositories.UserRepository
 import org.springframework.security.crypto.password.PasswordEncoder
@@ -19,7 +19,7 @@ class RegisterUserImpl(
         val email = userDto.email.trim()
         val username = if (email.contains("@")) email.substringBefore("@") else email
 
-        val user = PocketrUser(
+        val user = User(
             usernameValue = username,
             passwordValue = requireNotNull(passwordEncoder.encode(userDto.password.trim())) {
                 "Password encoder returned null"
@@ -27,7 +27,7 @@ class RegisterUserImpl(
             email = email,
             firstName = userDto.firstName,
             lastName = userDto.lastName,
-            roles = mutableListOf(PocketrUserRole(role = ROLE_USER)),
+            roles = mutableListOf(UserRole(role = ROLE_USER)),
         )
         userRepository.saveAndFlush(user)
     }
