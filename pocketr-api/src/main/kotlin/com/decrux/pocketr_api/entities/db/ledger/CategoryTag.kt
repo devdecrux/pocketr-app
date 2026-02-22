@@ -19,6 +19,8 @@ class CategoryTag(
     var owner: User? = null,
     @Column(nullable = false)
     var name: String = "",
+    @Column(length = 7)
+    var color: String? = null,
     @Column(name = "created_at", nullable = false, updatable = false)
     var createdAt: Instant = Instant.now(),
 )

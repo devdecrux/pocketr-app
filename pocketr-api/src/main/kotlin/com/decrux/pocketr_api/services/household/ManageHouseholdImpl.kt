@@ -256,6 +256,11 @@ class ManageHouseholdImpl(
         return shareRepository.existsByHouseholdIdAndAccountId(householdId, accountId)
     }
 
+    @Transactional(readOnly = true)
+    override fun getSharedAccountIds(householdId: UUID): Set<UUID> {
+        return shareRepository.findSharedAccountIdsByHouseholdId(householdId)
+    }
+
     private fun requireActiveMembership(householdId: UUID, userId: Long): HouseholdMember {
         val member = memberRepository.findByHouseholdIdAndUserUserId(householdId, userId)
             ?: throw ResponseStatusException(HttpStatus.FORBIDDEN, "Not a member of this household")

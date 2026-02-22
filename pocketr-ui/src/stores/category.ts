@@ -26,11 +26,11 @@ export const useCategoryStore = defineStore('category', () => {
     }
   }
 
-  async function create(name: string): Promise<CategoryTag | null> {
+  async function create(name: string, color: string | null): Promise<CategoryTag | null> {
     error.value = null
 
     try {
-      const created = await apiCreateCategory({ name })
+      const created = await apiCreateCategory({ name, color })
       categories.value = [...categories.value, created]
       return created
     } catch (nextError: unknown) {
@@ -39,11 +39,15 @@ export const useCategoryStore = defineStore('category', () => {
     }
   }
 
-  async function rename(id: string, name: string): Promise<CategoryTag | null> {
+  async function rename(
+    id: string,
+    name: string,
+    color: string | null,
+  ): Promise<CategoryTag | null> {
     error.value = null
 
     try {
-      const updated = await apiUpdateCategory(id, { name })
+      const updated = await apiUpdateCategory(id, { name, color })
       categories.value = categories.value.map((category) =>
         category.id === id ? updated : category,
       )

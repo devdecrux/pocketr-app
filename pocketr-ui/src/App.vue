@@ -13,13 +13,13 @@ useColorMode()
 </script>
 
 <template>
-  <div class="min-h-screen">
+  <div class="h-dvh overflow-hidden">
     <RouterView v-if="isAuthLayout" />
-    <SidebarProvider v-else>
+    <SidebarProvider v-else class="h-full">
       <Sidebar />
-      <div class="flex flex-1 flex-col">
+      <div class="flex min-h-0 flex-1 flex-col">
         <SidebarTrigger class="lg:hidden" />
-        <main class="p-2">
+        <main class="min-h-0 flex-1 overflow-y-auto p-2">
           <RouterView />
         </main>
       </div>

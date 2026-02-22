@@ -5,29 +5,38 @@ import { useCategoryStore } from '@/stores/category'
 import type { CategoryTag } from '@/types/ledger'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
 
 const categoryStore = useCategoryStore()
 
+const PRESET_COLORS = [
+  '#ef4444',
+  '#f97316',
+  '#f59e0b',
+  '#84cc16',
+  '#22c55e',
+  '#14b8a6',
+  '#06b6d4',
+  '#3b82f6',
+  '#8b5cf6',
+  '#ec4899',
+  '#6b7280',
+  '#0ea5e9',
+]
+
 const createDialogOpen = ref(false)
 const createName = ref('')
+const createColor = ref<string | null>(null)
 const createError = ref('')
 const isCreating = ref(false)
 
 const renameDialogOpen = ref(false)
 const renameTarget = ref<CategoryTag | null>(null)
 const renameName = ref('')
+const renameColor = ref<string | null>(null)
 const renameError = ref('')
 const isRenaming = ref(false)
 
@@ -55,6 +64,7 @@ onMounted(async () => {
 function startRename(category: CategoryTag): void {
   renameTarget.value = category
   renameName.value = category.name
+  renameColor.value = category.color ?? null
   renameError.value = ''
   renameDialogOpen.value = true
 }
@@ -73,10 +83,11 @@ async function submitCreate(): Promise<void> {
   createError.value = ''
   isCreating.value = true
 
-  const created = await categoryStore.create(trimmedName)
+  const created = await categoryStore.create(trimmedName, createColor.value)
   if (created) {
     createDialogOpen.value = false
     createName.value = ''
+    createColor.value = null
   } else {
     createError.value = categoryStore.error ?? 'Failed to create category.'
   }
@@ -101,11 +112,12 @@ async function submitRename(): Promise<void> {
   renameError.value = ''
   isRenaming.value = true
 
-  const updated = await categoryStore.rename(target.id, trimmedName)
+  const updated = await categoryStore.rename(target.id, trimmedName, renameColor.value)
   if (updated) {
     renameDialogOpen.value = false
     renameTarget.value = null
     renameName.value = ''
+    renameColor.value = null
   } else {
     renameError.value = categoryStore.error ?? 'Failed to rename category.'
   }
@@ -147,13 +159,40 @@ async function deleteCategory(category: CategoryTag): Promise<void> {
               <DialogDescription> Add a category for transaction tagging. </DialogDescription>
             </DialogHeader>
 
-            <div class="grid gap-2 py-4">
-              <Label for="create-category-name">Name</Label>
-              <Input
-                id="create-category-name"
-                v-model="createName"
-                placeholder="e.g. Groceries, Utilities"
-              />
+            <div class="grid gap-4 py-4">
+              <div class="grid gap-2">
+                <Label for="create-category-name">Name</Label>
+                <Input
+                  id="create-category-name"
+                  v-model="createName"
+                  placeholder="e.g. Groceries, Utilities"
+                />
+              </div>
+              <div class="grid gap-2">
+                <Label>Color</Label>
+                <div class="flex flex-wrap gap-2">
+                  <button
+                    v-for="color in PRESET_COLORS"
+                    :key="color"
+                    type="button"
+                    class="h-6 w-6 rounded-full border-2 transition-transform hover:scale-110"
+                    :style="{ backgroundColor: color }"
+                    :class="
+                      createColor === color ? 'border-foreground scale-110' : 'border-transparent'
+                    "
+                    @click="createColor = color"
+                  />
+                  <button
+                    type="button"
+                    class="flex h-6 w-6 items-center justify-center rounded-full border-2 border-dashed text-[10px] text-muted-foreground transition-colors hover:border-foreground"
+                    :class="createColor === null ? 'border-foreground' : 'border-muted-foreground'"
+                    title="No color"
+                    @click="createColor = null"
+                  >
+                    ✕
+                  </button>
+                </div>
+              </div>
               <p v-if="createError" class="text-sm text-red-600">{{ createError }}</p>
             </div>
 
@@ -192,7 +231,16 @@ async function deleteCategory(category: CategoryTag): Promise<void> {
             </thead>
             <tbody>
               <tr v-for="category in sortedCategories" :key="category.id" class="border-t">
-                <td class="px-3 py-2">{{ category.name }}</td>
+                <td class="px-3 py-2">
+                  <div class="flex items-center gap-2">
+                    <span
+                      v-if="category.color"
+                      class="inline-block h-3.5 w-3.5 shrink-0 rounded-full border border-border"
+                      :style="{ backgroundColor: category.color }"
+                    />
+                    {{ category.name }}
+                  </div>
+                </td>
                 <td class="px-3 py-2 text-muted-foreground">
                   {{ new Date(category.createdAt).toLocaleDateString() }}
                 </td>
@@ -233,9 +281,36 @@ async function deleteCategory(category: CategoryTag): Promise<void> {
           <DialogDescription> Update the category name. </DialogDescription>
         </DialogHeader>
 
-        <div class="grid gap-2 py-4">
-          <Label for="rename-category-name">Name</Label>
-          <Input id="rename-category-name" v-model="renameName" />
+        <div class="grid gap-4 py-4">
+          <div class="grid gap-2">
+            <Label for="rename-category-name">Name</Label>
+            <Input id="rename-category-name" v-model="renameName" />
+          </div>
+          <div class="grid gap-2">
+            <Label>Color</Label>
+            <div class="flex flex-wrap gap-2">
+              <button
+                v-for="color in PRESET_COLORS"
+                :key="color"
+                type="button"
+                class="h-6 w-6 rounded-full border-2 transition-transform hover:scale-110"
+                :style="{ backgroundColor: color }"
+                :class="
+                  renameColor === color ? 'border-foreground scale-110' : 'border-transparent'
+                "
+                @click="renameColor = color"
+              />
+              <button
+                type="button"
+                class="flex h-6 w-6 items-center justify-center rounded-full border-2 border-dashed text-[10px] text-muted-foreground transition-colors hover:border-foreground"
+                :class="renameColor === null ? 'border-foreground' : 'border-muted-foreground'"
+                title="No color"
+                @click="renameColor = null"
+              >
+                ✕
+              </button>
+            </div>
+          </div>
           <p v-if="renameError" class="text-sm text-red-600">{{ renameError }}</p>
         </div>
 

@@ -30,15 +30,18 @@ export interface UpdateAccountRequest {
 export interface CategoryTag {
   id: string
   name: string
+  color?: string | null
   createdAt: string
 }
 
 export interface CreateCategoryRequest {
   name: string
+  color?: string | null
 }
 
 export interface UpdateCategoryRequest {
   name: string
+  color?: string | null
 }
 
 export type SplitSide = 'DEBIT' | 'CREDIT'
@@ -52,13 +55,21 @@ export interface LedgerSplit {
   memo?: string | null
 }
 
+export interface TxnCreator {
+  firstName: string | null
+  lastName: string | null
+  email: string
+  avatar: string | null
+}
+
 export interface LedgerTxn {
   id: string
-  createdByUserId: number
   householdId?: string | null
   txnDate: string
   description: string
   currency: string
+  txnKind: string
+  createdBy?: TxnCreator | null
   splits: LedgerSplit[]
   createdAt: string
   updatedAt: string
@@ -86,6 +97,16 @@ export interface TxnQuery {
   dateTo?: string
   accountId?: string
   categoryId?: string
+  page?: number
+  size?: number
+}
+
+export interface PagedResponse<T> {
+  content: T[]
+  page: number
+  size: number
+  totalElements: number
+  totalPages: number
 }
 
 export interface AccountBalance {

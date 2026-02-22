@@ -3,6 +3,7 @@ package com.decrux.pocketr_api.controllers
 import com.decrux.pocketr_api.entities.db.auth.User
 import com.decrux.pocketr_api.entities.dtos.BalanceDto
 import com.decrux.pocketr_api.entities.dtos.CreateTransactionDto
+import com.decrux.pocketr_api.entities.dtos.PagedTransactionsDto
 import com.decrux.pocketr_api.entities.dtos.TransactionDto
 import com.decrux.pocketr_api.services.ledger.ManageLedger
 import org.springframework.format.annotation.DateTimeFormat
@@ -36,8 +37,10 @@ class LedgerController(
         @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) dateTo: LocalDate?,
         @RequestParam accountId: UUID?,
         @RequestParam categoryId: UUID?,
-    ): List<TransactionDto> {
-        return manageLedger.listTransactions(user, mode, householdId, dateFrom, dateTo, accountId, categoryId)
+        @RequestParam(defaultValue = "0") page: Int,
+        @RequestParam(defaultValue = "15") size: Int,
+    ): PagedTransactionsDto {
+        return manageLedger.listTransactions(user, mode, householdId, dateFrom, dateTo, accountId, categoryId, page, size)
     }
 
     @GetMapping("/accounts/{id}/balance")

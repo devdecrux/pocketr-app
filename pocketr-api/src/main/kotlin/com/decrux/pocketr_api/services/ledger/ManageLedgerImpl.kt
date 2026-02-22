@@ -2,12 +2,12 @@ package com.decrux.pocketr_api.services.ledger
 
 import com.decrux.pocketr_api.entities.db.auth.User
 import com.decrux.pocketr_api.entities.db.ledger.*
-import com.decrux.pocketr_api.entities.dtos.BalanceDto
-import com.decrux.pocketr_api.entities.dtos.CreateTransactionDto
-import com.decrux.pocketr_api.entities.dtos.SplitDto
-import com.decrux.pocketr_api.entities.dtos.TransactionDto
+import com.decrux.pocketr_api.entities.dtos.*
 import com.decrux.pocketr_api.repositories.*
 import com.decrux.pocketr_api.services.household.ManageHousehold
+import com.decrux.pocketr_api.services.user_avatar.UserAvatarService
+import org.springframework.data.domain.PageRequest
+import org.springframework.data.domain.Sort
 import org.springframework.data.jpa.domain.Specification
 import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
@@ -24,6 +24,7 @@ class ManageLedgerImpl(
     private val currencyRepository: CurrencyRepository,
     private val categoryTagRepository: CategoryTagRepository,
     private val manageHousehold: ManageHousehold,
+    private val userAvatarService: UserAvatarService,
 ) : ManageLedger {
 
     @Transactional
@@ -173,7 +174,7 @@ class ManageLedgerImpl(
         txn.splits = splits.toMutableList()
 
         val savedTxn = ledgerTxnRepository.save(txn)
-        return savedTxn.toDto()
+        return savedTxn.toDto(userAvatarService)
     }
 
     @Transactional(readOnly = true)
@@ -185,7 +186,9 @@ class ManageLedgerImpl(
         dateTo: LocalDate?,
         accountId: UUID?,
         categoryId: UUID?,
-    ): List<TransactionDto> {
+        page: Int,
+        size: Int,
+    ): PagedTransactionsDto {
         val userId = requireNotNull(user.userId) { "User ID must not be null" }
         val isHouseholdMode = mode?.uppercase() == "HOUSEHOLD"
 
@@ -195,7 +198,11 @@ class ManageLedgerImpl(
             if (!manageHousehold.isActiveMember(hhId, userId)) {
                 throw ResponseStatusException(HttpStatus.FORBIDDEN, "Not an active member of this household")
             }
-            LedgerTxnSpecs.forHousehold(hhId)
+            val sharedAccountIds = manageHousehold.getSharedAccountIds(hhId)
+            if (sharedAccountIds.isEmpty()) {
+                return PagedTransactionsDto(content = emptyList(), page = page, size = size, totalElements = 0, totalPages = 0)
+            }
+            LedgerTxnSpecs.hasAnySharedAccount(sharedAccountIds)
         } else {
             LedgerTxnSpecs.forUser(userId)
         }
@@ -205,7 +212,20 @@ class ManageLedgerImpl(
         accountId?.let { spec = spec.and(LedgerTxnSpecs.hasAccount(it)) }
         categoryId?.let { spec = spec.and(LedgerTxnSpecs.hasCategory(it)) }
 
-        return ledgerTxnRepository.findAll(spec).map { it.toDto() }
+        val pageable = PageRequest.of(
+            page,
+            size,
+            Sort.by(Sort.Direction.DESC, "txnDate").and(Sort.by(Sort.Direction.DESC, "createdAt")),
+        )
+        val pageResult = ledgerTxnRepository.findAll(spec, pageable)
+
+        return PagedTransactionsDto(
+            content = pageResult.content.map { it.toDto(userAvatarService) },
+            page = pageResult.number,
+            size = pageResult.size,
+            totalElements = pageResult.totalElements,
+            totalPages = pageResult.totalPages,
+        )
     }
 
     @Transactional(readOnly = true)
@@ -248,7 +268,7 @@ class ManageLedgerImpl(
         val DEBIT_NORMAL_TYPES = setOf(AccountType.ASSET, AccountType.EXPENSE)
         val TRANSFER_TYPES = setOf(AccountType.ASSET, AccountType.LIABILITY, AccountType.EQUITY)
 
-        fun LedgerTxn.toDto(): TransactionDto {
+        fun LedgerTxn.toDto(avatarService: UserAvatarService): TransactionDto {
             val splitDtos = splits.map { it.toDto() }
             return TransactionDto(
                 id = requireNotNull(id) { "Transaction ID must not be null" },
@@ -257,6 +277,14 @@ class ManageLedgerImpl(
                 description = description,
                 householdId = householdId,
                 txnKind = deriveTxnKind(splits),
+                createdBy = createdBy?.let {
+                    TxnCreatorDto(
+                        firstName = it.firstName,
+                        lastName = it.lastName,
+                        email = it.email,
+                        avatar = avatarService.resolveAvatarDataUrl(it.avatarPath),
+                    )
+                },
                 splits = splitDtos,
                 createdAt = createdAt,
                 updatedAt = updatedAt,

@@ -22,4 +22,7 @@ interface HouseholdAccountShareRepository : JpaRepository<HouseholdAccountShare,
     fun findByHouseholdIdAndAccountId(householdId: UUID, accountId: UUID): HouseholdAccountShare?
 
     fun existsByHouseholdIdAndAccountId(householdId: UUID, accountId: UUID): Boolean
+
+    @Query("SELECT has.account.id FROM HouseholdAccountShare has WHERE has.household.id = :householdId")
+    fun findSharedAccountIdsByHouseholdId(householdId: UUID): Set<UUID>
 }

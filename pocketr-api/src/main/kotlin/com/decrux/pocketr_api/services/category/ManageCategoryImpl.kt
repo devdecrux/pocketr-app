@@ -30,6 +30,7 @@ class ManageCategoryImpl(
         val tag = CategoryTag(
             owner = owner,
             name = name,
+            color = dto.color?.takeIf { it.isNotBlank() },
         )
 
         try {
@@ -64,6 +65,7 @@ class ManageCategoryImpl(
         }
 
         tag.name = newName
+        tag.color = dto.color?.takeIf { it.isNotBlank() }
         try {
             return categoryTagRepository.save(tag).toDto()
         } catch (_: DataIntegrityViolationException) {
@@ -92,6 +94,7 @@ class ManageCategoryImpl(
         fun CategoryTag.toDto() = CategoryDto(
             id = requireNotNull(id) { "Category ID must not be null" },
             name = name,
+            color = color,
             createdAt = createdAt,
         )
     }

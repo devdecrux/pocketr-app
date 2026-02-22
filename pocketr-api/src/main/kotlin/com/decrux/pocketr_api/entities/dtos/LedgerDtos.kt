@@ -34,6 +34,13 @@ data class SplitDto(
     val memo: String?,
 )
 
+data class TxnCreatorDto(
+    val firstName: String?,
+    val lastName: String?,
+    val email: String,
+    val avatar: String?,
+)
+
 data class TransactionDto(
     val id: UUID,
     val txnDate: LocalDate,
@@ -41,9 +48,18 @@ data class TransactionDto(
     val description: String,
     val householdId: UUID?,
     val txnKind: String,
+    val createdBy: TxnCreatorDto?,
     val splits: List<SplitDto>,
     val createdAt: Instant,
     val updatedAt: Instant,
+)
+
+data class PagedTransactionsDto(
+    val content: List<TransactionDto>,
+    val page: Int,
+    val size: Int,
+    val totalElements: Long,
+    val totalPages: Int,
 )
 
 data class BalanceDto(

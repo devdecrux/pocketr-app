@@ -631,6 +631,28 @@ class HouseholdAccountShareIntegrationTest {
 
             assertTrue(service.isAccountShared(householdId, checkingId))
         }
+
+        @Test
+        @DisplayName("getSharedAccountIds returns account IDs from repository")
+        fun getSharedAccountIdsReturnsIds() {
+            val expectedIds = setOf(checkingId, savingsId)
+            `when`(shareRepository.findSharedAccountIdsByHouseholdId(householdId)).thenReturn(expectedIds)
+
+            val result = service.getSharedAccountIds(householdId)
+
+            assertEquals(expectedIds, result)
+            verify(shareRepository).findSharedAccountIdsByHouseholdId(householdId)
+        }
+
+        @Test
+        @DisplayName("getSharedAccountIds returns empty set when no accounts are shared")
+        fun getSharedAccountIdsReturnsEmptySet() {
+            `when`(shareRepository.findSharedAccountIdsByHouseholdId(householdId)).thenReturn(emptySet())
+
+            val result = service.getSharedAccountIds(householdId)
+
+            assertTrue(result.isEmpty())
+        }
     }
 
     @Nested

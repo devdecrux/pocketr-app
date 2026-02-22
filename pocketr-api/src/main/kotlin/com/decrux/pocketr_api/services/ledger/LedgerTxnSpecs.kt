@@ -31,7 +31,9 @@ object LedgerTxnSpecs {
         cb.equal(splits.get<Any>("categoryTag").get<UUID>("id"), categoryId)
     }
 
-    fun forHousehold(householdId: UUID): Specification<LedgerTxn> = Specification { root, _, cb ->
-        cb.equal(root.get<UUID>("householdId"), householdId)
+    fun hasAnySharedAccount(accountIds: Set<UUID>): Specification<LedgerTxn> = Specification { root, query, cb ->
+        query.distinct(true)
+        val splits = root.join<Any, Any>("splits")
+        splits.get<Any>("account").get<UUID>("id").`in`(accountIds)
     }
 }

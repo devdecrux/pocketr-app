@@ -8,17 +8,31 @@ export const useLedgerStore = defineStore('ledger', () => {
   const transactions = ref<LedgerTxn[]>([])
   const isLoading = ref(false)
   const error = ref<string | null>(null)
+  const currentPage = ref(0)
+  const pageSize = ref(15)
+  const totalPages = ref(0)
+  const totalElements = ref(0)
 
-  async function load(filters?: Omit<TxnQuery, 'mode' | 'householdId'>): Promise<void> {
+  async function load(
+    filters?: Omit<TxnQuery, 'mode' | 'householdId' | 'page' | 'size'>,
+    page = currentPage.value,
+    size = pageSize.value,
+  ): Promise<void> {
     const viewModeStore = useModeStore()
     isLoading.value = true
     error.value = null
     try {
-      transactions.value = await listTxns({
+      const result = await listTxns({
         mode: viewModeStore.modeParam,
         householdId: viewModeStore.householdId ?? undefined,
+        page,
+        size,
         ...filters,
       })
+      transactions.value = result.content
+      currentPage.value = result.page
+      totalPages.value = result.totalPages
+      totalElements.value = result.totalElements
     } catch {
       error.value = 'Failed to load transactions.'
     } finally {
@@ -30,6 +44,10 @@ export const useLedgerStore = defineStore('ledger', () => {
     transactions,
     isLoading,
     error,
+    currentPage,
+    pageSize,
+    totalPages,
+    totalElements,
     load,
   }
 })

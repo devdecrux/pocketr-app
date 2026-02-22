@@ -29,4 +29,6 @@ interface ManageHousehold {
     fun isActiveMember(householdId: UUID, userId: Long): Boolean
 
     fun isAccountShared(householdId: UUID, accountId: UUID): Boolean
+
+    fun getSharedAccountIds(householdId: UUID): Set<UUID>
 }

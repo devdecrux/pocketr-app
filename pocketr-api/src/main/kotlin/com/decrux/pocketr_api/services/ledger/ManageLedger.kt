@@ -3,6 +3,7 @@ package com.decrux.pocketr_api.services.ledger
 import com.decrux.pocketr_api.entities.db.auth.User
 import com.decrux.pocketr_api.entities.dtos.BalanceDto
 import com.decrux.pocketr_api.entities.dtos.CreateTransactionDto
+import com.decrux.pocketr_api.entities.dtos.PagedTransactionsDto
 import com.decrux.pocketr_api.entities.dtos.TransactionDto
 import java.time.LocalDate
 import java.util.UUID
@@ -19,7 +20,9 @@ interface ManageLedger {
         dateTo: LocalDate?,
         accountId: UUID?,
         categoryId: UUID?,
-    ): List<TransactionDto>
+        page: Int,
+        size: Int,
+    ): PagedTransactionsDto
 
     fun getAccountBalance(accountId: UUID, asOf: LocalDate, user: User, householdId: UUID?): BalanceDto
 }

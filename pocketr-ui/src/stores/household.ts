@@ -19,6 +19,7 @@ import type {
   HouseholdSummary,
   InviteMemberRequest,
 } from '@/types/household'
+import { useModeStore } from '@/stores/mode'
 
 export const useHouseholdStore = defineStore('household', () => {
   const households = ref<HouseholdSummary[]>([])
@@ -49,6 +50,19 @@ export const useHouseholdStore = defineStore('household', () => {
 
     try {
       households.value = await apiListHouseholds()
+
+      // If the persisted mode references a household the user is no longer an active member
+      // of (e.g. stale localStorage after a DB reset or household leave), reset to INDIVIDUAL
+      // so subsequent data loads don't get a 403.
+      const modeStore = useModeStore()
+      if (modeStore.isHousehold && modeStore.householdId) {
+        const isValid = households.value.some(
+          (h) => h.id === modeStore.householdId && h.status === 'ACTIVE',
+        )
+        if (!isValid) {
+          modeStore.switchToIndividual()
+        }
+      }
     } catch (nextError: unknown) {
       error.value = await resolveErrorMessage(nextError, 'Failed to load households.')
     } finally {

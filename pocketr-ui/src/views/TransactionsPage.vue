@@ -1,7 +1,13 @@
 <script setup lang="ts">
 import { HTTPError } from 'ky'
 import { computed, onMounted, ref, watch } from 'vue'
-import { createColumnHelper, FlexRender, getCoreRowModel, getExpandedRowModel, useVueTable } from '@tanstack/vue-table'
+import {
+  createColumnHelper,
+  FlexRender,
+  getCoreRowModel,
+  getExpandedRowModel,
+  useVueTable,
+} from '@tanstack/vue-table'
 import { createTxn } from '@/api/ledger'
 import { useAccountStore } from '@/stores/account'
 import { useCategoryStore } from '@/stores/category'
@@ -9,7 +15,7 @@ import { useCurrencyStore } from '@/stores/currency'
 import { useHouseholdStore } from '@/stores/household'
 import { useLedgerStore } from '@/stores/ledger'
 import { useModeStore } from '@/stores/mode'
-import type { AccountType, CreateTxnRequest, LedgerSplit, LedgerTxn } from '@/types/ledger'
+import type { CreateTxnRequest, LedgerSplit, LedgerTxn } from '@/types/ledger'
 import { formatMinor } from '@/utils/money'
 import AccountSelector from '@/components/AccountSelector.vue'
 import CategoryTagSelector from '@/components/CategoryTagSelector.vue'
@@ -17,11 +23,28 @@ import CurrencyAmountInput from '@/components/CurrencyAmountInput.vue'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { ChevronDown, ChevronRight, Plus } from 'lucide-vue-next'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { ArrowLeftRight, ChevronDown, ChevronLeft, ChevronRight, Plus } from 'lucide-vue-next'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { initialsFromName } from '@/utils/initials'
 
 const ledgerStore = useLedgerStore()
 const accountStore = useAccountStore()
@@ -103,22 +126,38 @@ const isCrossUserTransfer = computed(() => {
   return from.ownerUserId !== to.ownerUserId
 })
 
-// Derive txn kind from splits
+// Derive txn kind display label from the backend-provided txnKind field
 function deriveTxnKind(txn: LedgerTxn): string {
-  const accountTypes = new Set<AccountType>()
-  for (const split of txn.splits) {
-    const acc = accountStore.accountMap.get(split.accountId)
-    if (acc) accountTypes.add(acc.type)
+  switch (txn.txnKind) {
+    case 'EXPENSE':
+      return 'Expense'
+    case 'INCOME':
+      return 'Income'
+    default:
+      return 'Transfer'
   }
-  if (accountTypes.has('EXPENSE')) return 'Expense'
-  if (accountTypes.has('INCOME')) return 'Income'
-  return 'Transfer'
 }
 
 function txnKindVariant(kind: string) {
   if (kind === 'Expense') return 'destructive' as const
   if (kind === 'Income') return 'default' as const
   return 'secondary' as const
+}
+
+// Unique categories across all splits of a transaction
+function txnCategories(txn: LedgerTxn): { name: string; color?: string | null }[] {
+  const seen = new Set<string>()
+  const result: { name: string; color?: string | null }[] = []
+  for (const split of txn.splits) {
+    if (split.categoryTagId) {
+      const cat = categoryStore.categories.find((c) => c.id === split.categoryTagId)
+      if (cat && !seen.has(cat.name)) {
+        seen.add(cat.name)
+        result.push({ name: cat.name, color: cat.color })
+      }
+    }
+  }
+  return result
 }
 
 // Total amount for display
@@ -129,6 +168,17 @@ function txnDisplayAmount(txn: LedgerTxn): string {
   }, 0)
   const minorUnit = currencyStore.getMinorUnit(txn.currency)
   return formatMinor(total, txn.currency, minorUnit)
+}
+
+function txnAmountClass(txn: LedgerTxn): string {
+  switch (txn.txnKind) {
+    case 'EXPENSE':
+      return 'text-red-500'
+    case 'INCOME':
+      return 'text-green-500'
+    default:
+      return 'text-muted-foreground'
+  }
 }
 
 // Filtered transactions
@@ -163,14 +213,18 @@ const columns = [
     header: 'Type',
     cell: ({ row }) => deriveTxnKind(row.original),
   }),
-  columnHelper.accessor('currency', {
-    header: 'Currency',
-    cell: (info) => info.getValue(),
+  columnHelper.display({
+    id: 'categories',
+    header: 'Category',
   }),
   columnHelper.display({
     id: 'amount',
     header: 'Amount',
     cell: ({ row }) => txnDisplayAmount(row.original),
+  }),
+  columnHelper.display({
+    id: 'member',
+    header: 'Member',
   }),
 ]
 
@@ -184,15 +238,30 @@ const table = useVueTable({
   getRowCanExpand: () => true,
 })
 
+const PAGE_SIZE_OPTIONS = [5, 10, 15, 25, 50, 100]
+
 // Load data on mount and mode change
-async function loadData(): Promise<void> {
+async function loadData(resetPage = false): Promise<void> {
   const filters: Record<string, string | undefined> = {}
   if (filterDateFrom.value) filters.dateFrom = filterDateFrom.value
   if (filterDateTo.value) filters.dateTo = filterDateTo.value
   if (filterAccountId.value) filters.accountId = filterAccountId.value
   if (filterCategoryId.value) filters.categoryId = filterCategoryId.value
 
-  await ledgerStore.load(filters)
+  const page = resetPage ? 0 : ledgerStore.currentPage
+  if (resetPage) ledgerStore.currentPage = 0
+  await ledgerStore.load(filters, page, ledgerStore.pageSize)
+}
+
+async function goToPage(page: number): Promise<void> {
+  ledgerStore.currentPage = page
+  await loadData()
+}
+
+async function onPageSizeChange(val: string): Promise<void> {
+  ledgerStore.pageSize = Number(val)
+  ledgerStore.currentPage = 0
+  await loadData()
 }
 
 onMounted(async () => {
@@ -208,15 +277,14 @@ onMounted(async () => {
 watch(
   [() => modeStore.viewMode, filterDateFrom, filterDateTo, filterAccountId, filterCategoryId],
   () => {
-    void loadData()
+    void loadData(true)
   },
 )
 
 // Split display helper
 function splitLabel(split: LedgerSplit): string {
   const acc = accountStore.accountMap.get(split.accountId)
-  const name = acc?.name ?? split.accountId
-  return name
+  return acc?.name ?? split.accountId
 }
 
 function splitAmount(split: LedgerSplit, currency: string): string {
@@ -370,8 +438,8 @@ async function submitTransaction(): Promise<void> {
 </script>
 
 <template>
-  <section class="grid w-full gap-4">
-    <Card>
+  <section class="flex h-full flex-col gap-4">
+    <Card class="flex-1 min-h-0">
       <CardHeader class="flex flex-row items-center justify-between">
         <CardTitle class="text-2xl">Transactions</CardTitle>
         <Dialog v-model:open="dialogOpen">
@@ -544,7 +612,7 @@ async function submitTransaction(): Promise<void> {
         </Dialog>
       </CardHeader>
 
-      <CardContent>
+      <CardContent class="flex flex-1 flex-col min-h-0 pb-6">
         <!-- Filters -->
         <div class="mb-4 flex flex-wrap items-end gap-3">
           <div class="grid gap-1">
@@ -579,25 +647,31 @@ async function submitTransaction(): Promise<void> {
         </div>
 
         <!-- Loading state -->
-        <div v-if="ledgerStore.isLoading" class="py-8 text-center text-sm text-muted-foreground">
+        <div
+          v-if="ledgerStore.isLoading"
+          class="flex flex-1 items-center justify-center text-sm text-muted-foreground"
+        >
           Loading transactions...
-        </div>
-
-        <!-- Error state -->
-        <div v-else-if="ledgerStore.error" class="py-8 text-center text-sm text-red-600">
-          {{ ledgerStore.error }}
         </div>
 
         <!-- Empty state -->
         <div
           v-else-if="filteredTransactions.length === 0"
-          class="py-8 text-center text-sm text-muted-foreground"
+          class="flex flex-1 items-center justify-center text-sm text-muted-foreground"
         >
           No transactions found. Create your first transaction to get started.
         </div>
 
+        <!-- Error state (only reached when transactions exist but a reload failed) -->
+        <div
+          v-else-if="ledgerStore.error"
+          class="flex flex-1 items-center justify-center text-sm text-red-600"
+        >
+          {{ ledgerStore.error }}
+        </div>
+
         <!-- Transaction table -->
-        <div v-else class="overflow-x-auto">
+        <div v-else class="flex-1 min-h-0 overflow-auto">
           <table class="w-full text-sm">
             <thead>
               <tr
@@ -605,17 +679,18 @@ async function submitTransaction(): Promise<void> {
                 :key="headerGroup.id"
                 class="border-b border-border"
               >
-                <th
-                  v-for="header in headerGroup.headers"
-                  :key="header.id"
-                  class="px-3 py-2 text-left text-xs font-medium text-muted-foreground"
-                >
-                  <FlexRender
-                    v-if="!header.isPlaceholder"
-                    :render="header.column.columnDef.header"
-                    :props="header.getContext()"
-                  />
-                </th>
+                <template v-for="header in headerGroup.headers" :key="header.id">
+                  <th
+                    v-if="header.id !== 'member' || modeStore.isHousehold"
+                    class="px-3 py-2 text-right text-xs font-medium text-muted-foreground"
+                  >
+                    <FlexRender
+                      v-if="!header.isPlaceholder"
+                      :render="header.column.columnDef.header"
+                      :props="header.getContext()"
+                    />
+                  </th>
+                </template>
               </tr>
             </thead>
             <tbody>
@@ -624,27 +699,77 @@ async function submitTransaction(): Promise<void> {
                   class="cursor-pointer border-b border-border transition-colors hover:bg-muted/50"
                   @click="row.toggleExpanded()"
                 >
-                  <td class="w-8 px-3 py-2">
+                  <td class="w-8 px-3 py-2 text-right">
                     <component
                       :is="row.getIsExpanded() ? ChevronDown : ChevronRight"
                       class="size-4 text-muted-foreground"
                     />
                   </td>
-                  <td class="px-3 py-2 whitespace-nowrap">{{ row.original.txnDate }}</td>
-                  <td class="px-3 py-2">{{ row.original.description }}</td>
-                  <td class="px-3 py-2">
+                  <td class="px-3 py-2 text-right whitespace-nowrap">{{ row.original.txnDate }}</td>
+                  <td class="px-3 py-2 text-right">{{ row.original.description }}</td>
+                  <td class="px-3 py-2 text-right">
                     <Badge :variant="txnKindVariant(deriveTxnKind(row.original))" class="text-xs">
                       {{ deriveTxnKind(row.original) }}
                     </Badge>
                   </td>
-                  <td class="px-3 py-2">{{ row.original.currency }}</td>
-                  <td class="px-3 py-2 text-right whitespace-nowrap font-medium">
-                    {{ txnDisplayAmount(row.original) }}
+                  <td class="px-3 py-2 text-right">
+                    <span
+                      v-for="cat in txnCategories(row.original)"
+                      :key="cat.name"
+                      class="mr-1 inline-block rounded-md px-2 py-1 text-xs font-medium"
+                      :style="
+                        cat.color ? { backgroundColor: cat.color + '33', color: cat.color } : {}
+                      "
+                      :class="!cat.color ? 'bg-secondary text-secondary-foreground' : ''"
+                      >{{ cat.name }}</span
+                    >
+                  </td>
+                  <td
+                    class="px-3 py-2 text-right whitespace-nowrap font-medium"
+                    :class="txnAmountClass(row.original)"
+                  >
+                    <span class="inline-flex items-center justify-end gap-1">
+                      <ArrowLeftRight v-if="row.original.txnKind === 'TRANSFER'" class="size-3" />
+                      <template v-else>{{
+                        row.original.txnKind === 'EXPENSE' ? '-' : '+'
+                      }}</template>
+                      {{ txnDisplayAmount(row.original) }}
+                    </span>
+                  </td>
+                  <td v-if="modeStore.isHousehold" class="px-3 py-2 text-right">
+                    <div v-if="row.original.createdBy" class="flex items-center justify-end gap-2">
+                      <div class="grid text-right text-sm leading-tight">
+                        <span class="truncate text-xs font-semibold">
+                          {{
+                            [row.original.createdBy.firstName, row.original.createdBy.lastName]
+                              .filter(Boolean)
+                              .join(' ') || row.original.createdBy.email
+                          }}
+                        </span>
+                        <span class="truncate text-[10px] text-muted-foreground">
+                          {{ row.original.createdBy.email }}
+                        </span>
+                      </div>
+                      <Avatar class="h-8 w-8 shrink-0 rounded-lg border border-border">
+                        <AvatarImage
+                          v-if="row.original.createdBy.avatar"
+                          :src="row.original.createdBy.avatar"
+                        />
+                        <AvatarFallback class="rounded-lg text-xs">
+                          {{
+                            initialsFromName(
+                              row.original.createdBy.firstName,
+                              row.original.createdBy.lastName,
+                            )
+                          }}
+                        </AvatarFallback>
+                      </Avatar>
+                    </div>
                   </td>
                 </tr>
                 <!-- Expanded splits row -->
                 <tr v-if="row.getIsExpanded()">
-                  <td :colspan="6" class="bg-muted/30 px-3 py-3">
+                  <td :colspan="modeStore.isHousehold ? 7 : 6" class="bg-muted/30 px-3 py-3">
                     <div class="space-y-1 pl-6">
                       <div
                         v-for="split in row.original.splits"
@@ -656,15 +781,6 @@ async function submitTransaction(): Promise<void> {
                             {{ split.side }}
                           </Badge>
                           <span>{{ splitLabel(split) }}</span>
-                          <span
-                            v-if="split.categoryTagId"
-                            class="rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground"
-                          >
-                            {{
-                              categoryStore.categories.find((c) => c.id === split.categoryTagId)
-                                ?.name ?? ''
-                            }}
-                          </span>
                         </div>
                         <span class="font-mono">
                           {{ splitAmount(split, row.original.currency) }}
@@ -683,6 +799,60 @@ async function submitTransaction(): Promise<void> {
               </template>
             </tbody>
           </table>
+        </div>
+        <!-- Pagination controls -->
+        <div
+          v-if="!ledgerStore.isLoading && ledgerStore.totalPages > 0"
+          class="mt-4 flex items-center justify-between gap-4"
+        >
+          <div class="flex items-center gap-2">
+            <span class="text-xs text-muted-foreground">Rows per page</span>
+            <Select
+              :model-value="String(ledgerStore.pageSize)"
+              @update:model-value="onPageSizeChange"
+            >
+              <SelectTrigger class="h-8 w-20 text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem
+                  v-for="opt in PAGE_SIZE_OPTIONS"
+                  :key="opt"
+                  :value="String(opt)"
+                  class="text-xs"
+                >
+                  {{ opt }}
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div class="flex items-center gap-3">
+            <span class="text-xs text-muted-foreground">
+              Page {{ ledgerStore.currentPage + 1 }} of {{ ledgerStore.totalPages }} &middot;
+              {{ ledgerStore.totalElements }} total
+            </span>
+            <div class="flex gap-1">
+              <Button
+                variant="outline"
+                size="icon"
+                class="h-8 w-8"
+                :disabled="ledgerStore.currentPage === 0"
+                @click="goToPage(ledgerStore.currentPage - 1)"
+              >
+                <ChevronLeft class="size-4" />
+              </Button>
+              <Button
+                variant="outline"
+                size="icon"
+                class="h-8 w-8"
+                :disabled="ledgerStore.currentPage >= ledgerStore.totalPages - 1"
+                @click="goToPage(ledgerStore.currentPage + 1)"
+              >
+                <ChevronRight class="size-4" />
+              </Button>
+            </div>
+          </div>
         </div>
       </CardContent>
     </Card>
