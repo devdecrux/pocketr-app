@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, h, onMounted, ref } from 'vue'
+import { type ColumnDef, FlexRender, getCoreRowModel, useVueTable } from '@tanstack/vue-table'
 import { Pencil, Plus, Trash2 } from 'lucide-vue-next'
 import { useCategoryStore } from '@/stores/category'
 import type { CategoryTag } from '@/types/ledger'
@@ -138,6 +139,66 @@ async function deleteCategory(category: CategoryTag): Promise<void> {
   }
   deletingId.value = null
 }
+
+const columns: ColumnDef<CategoryTag>[] = [
+  {
+    accessorKey: 'name',
+    header: 'Name',
+    cell: ({ row }) => {
+      const cat = row.original
+      return h('div', { class: 'flex items-center justify-end gap-2' }, [
+        cat.color
+          ? h('span', {
+              class: 'inline-block h-3.5 w-3.5 shrink-0 rounded-full border border-border',
+              style: { backgroundColor: cat.color },
+            })
+          : null,
+        h('span', {}, cat.name),
+      ])
+    },
+  },
+  {
+    accessorKey: 'createdAt',
+    header: 'Created',
+    cell: ({ row }) => new Date(row.original.createdAt).toLocaleDateString(),
+  },
+  {
+    id: 'actions',
+    header: '',
+    cell: ({ row }) =>
+      h('div', { class: 'flex items-center justify-end gap-1' }, [
+        h(
+          Button,
+          {
+            variant: 'ghost',
+            size: 'icon',
+            class: 'size-8',
+            onClick: () => startRename(row.original),
+          },
+          () => h(Pencil, { class: 'size-4' }),
+        ),
+        h(
+          Button,
+          {
+            variant: 'ghost',
+            size: 'icon',
+            class: 'size-8 text-red-600 hover:text-red-700',
+            disabled: deletingId.value === row.original.id,
+            onClick: () => deleteCategory(row.original),
+          },
+          () => h(Trash2, { class: 'size-4' }),
+        ),
+      ]),
+  },
+]
+
+const table = useVueTable({
+  get data() {
+    return sortedCategories.value
+  },
+  columns,
+  getCoreRowModel: getCoreRowModel(),
+})
 </script>
 
 <template>
@@ -216,54 +277,44 @@ async function deleteCategory(category: CategoryTag): Promise<void> {
           {{ categoryStore.error }}
         </div>
 
-        <div v-else-if="sortedCategories.length === 0" class="text-sm text-muted-foreground">
-          No categories yet. Create your first one.
-        </div>
-
         <div v-else class="overflow-auto rounded-md border">
           <table class="w-full text-sm">
-            <thead class="bg-muted/30 text-left">
-              <tr>
-                <th class="px-3 py-2 font-medium">Name</th>
-                <th class="px-3 py-2 font-medium">Created</th>
-                <th class="w-24 px-3 py-2 font-medium text-right">Actions</th>
+            <thead>
+              <tr
+                v-for="headerGroup in table.getHeaderGroups()"
+                :key="headerGroup.id"
+                class="border-b bg-muted/50"
+              >
+                <th
+                  v-for="header in headerGroup.headers"
+                  :key="header.id"
+                  class="px-4 py-2 text-right font-medium text-muted-foreground"
+                >
+                  <FlexRender
+                    v-if="!header.isPlaceholder"
+                    :render="header.column.columnDef.header"
+                    :props="header.getContext()"
+                  />
+                </th>
               </tr>
             </thead>
             <tbody>
-              <tr v-for="category in sortedCategories" :key="category.id" class="border-t">
-                <td class="px-3 py-2">
-                  <div class="flex items-center gap-2">
-                    <span
-                      v-if="category.color"
-                      class="inline-block h-3.5 w-3.5 shrink-0 rounded-full border border-border"
-                      :style="{ backgroundColor: category.color }"
-                    />
-                    {{ category.name }}
-                  </div>
+              <tr
+                v-for="row in table.getRowModel().rows"
+                :key="row.id"
+                class="border-b last:border-0"
+              >
+                <td
+                  v-for="cell in row.getVisibleCells()"
+                  :key="cell.id"
+                  class="px-4 py-2 text-right"
+                >
+                  <FlexRender :render="cell.column.columnDef.cell" :props="cell.getContext()" />
                 </td>
-                <td class="px-3 py-2 text-muted-foreground">
-                  {{ new Date(category.createdAt).toLocaleDateString() }}
-                </td>
-                <td class="px-3 py-2">
-                  <div class="flex items-center justify-end gap-1">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      class="size-8"
-                      @click="startRename(category)"
-                    >
-                      <Pencil class="size-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      class="size-8 text-red-600 hover:text-red-700"
-                      :disabled="deletingId === category.id"
-                      @click="deleteCategory(category)"
-                    >
-                      <Trash2 class="size-4" />
-                    </Button>
-                  </div>
+              </tr>
+              <tr v-if="table.getRowModel().rows.length === 0">
+                <td :colspan="columns.length" class="px-4 py-8 text-center text-muted-foreground">
+                  No categories found.
                 </td>
               </tr>
             </tbody>

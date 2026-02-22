@@ -1,13 +1,7 @@
 <script setup lang="ts">
 import { HTTPError } from 'ky'
-import { computed, onMounted, ref, watch } from 'vue'
-import {
-  createColumnHelper,
-  FlexRender,
-  getCoreRowModel,
-  getExpandedRowModel,
-  useVueTable,
-} from '@tanstack/vue-table'
+import { computed, h, onMounted, ref, watch } from 'vue'
+import { createColumnHelper, FlexRender, getCoreRowModel, getExpandedRowModel, useVueTable } from '@tanstack/vue-table'
 import { createTxn } from '@/api/ledger'
 import { useAccountStore } from '@/stores/account'
 import { useCategoryStore } from '@/stores/category'
@@ -19,29 +13,16 @@ import type { CreateTxnRequest, LedgerSplit, LedgerTxn } from '@/types/ledger'
 import { formatMinor } from '@/utils/money'
 import AccountSelector from '@/components/AccountSelector.vue'
 import CategoryTagSelector from '@/components/CategoryTagSelector.vue'
+import DateRangePicker from '@/components/DateRangePicker.vue'
 import CurrencyAmountInput from '@/components/CurrencyAmountInput.vue'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { ArrowLeftRight, ChevronDown, ChevronLeft, ChevronRight, Plus } from 'lucide-vue-next'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { initialsFromName } from '@/utils/initials'
@@ -54,8 +35,8 @@ const modeStore = useModeStore()
 const householdStore = useHouseholdStore()
 
 // Filters
-const filterDateFrom = ref('')
-const filterDateTo = ref('')
+const filterDateFrom = ref<string | undefined>(undefined)
+const filterDateTo = ref<string | undefined>(undefined)
 const filterAccountId = ref('')
 const filterCategoryId = ref<string | null>(null)
 const filterSearch = ref('')
@@ -194,45 +175,113 @@ const filteredTransactions = computed(() => {
 // TanStack table
 const columnHelper = createColumnHelper<LedgerTxn>()
 
-const columns = [
-  columnHelper.display({
-    id: 'expand',
-    cell: ({ row }) => (row.getIsExpanded() ? 'v' : '>'),
-    size: 32,
-  }),
-  columnHelper.accessor('txnDate', {
-    header: 'Date',
-    cell: (info) => info.getValue(),
-  }),
-  columnHelper.accessor('description', {
-    header: 'Description',
-    cell: (info) => info.getValue(),
-  }),
-  columnHelper.display({
-    id: 'kind',
-    header: 'Type',
-    cell: ({ row }) => deriveTxnKind(row.original),
-  }),
-  columnHelper.display({
-    id: 'categories',
-    header: 'Category',
-  }),
-  columnHelper.display({
-    id: 'amount',
-    header: 'Amount',
-    cell: ({ row }) => txnDisplayAmount(row.original),
-  }),
-  columnHelper.display({
-    id: 'member',
-    header: 'Member',
-  }),
-]
+const columns = computed(() => {
+  const cols = [
+    columnHelper.display({
+      id: 'expand',
+      meta: { tdClass: 'w-8' },
+      cell: ({ row }) =>
+        h(row.getIsExpanded() ? ChevronDown : ChevronRight, {
+          class: 'size-4 text-muted-foreground',
+        }),
+    }),
+    columnHelper.accessor('txnDate', {
+      header: 'Date',
+      meta: { tdClass: 'whitespace-nowrap' },
+    }),
+    columnHelper.accessor('description', {
+      header: 'Description',
+    }),
+    columnHelper.display({
+      id: 'kind',
+      header: 'Type',
+      cell: ({ row }) =>
+        h(Badge, { variant: txnKindVariant(deriveTxnKind(row.original)), class: 'text-xs' }, () =>
+          deriveTxnKind(row.original),
+        ),
+    }),
+    columnHelper.display({
+      id: 'categories',
+      header: 'Category',
+      cell: ({ row }) => {
+        const cats = txnCategories(row.original)
+        if (!cats.length) return null
+        return h(
+          'div',
+          { class: 'flex flex-wrap justify-end gap-1' },
+          cats.map((cat) =>
+            h(
+              'span',
+              {
+                key: cat.name,
+                class: [
+                  'inline-block rounded-md px-2 py-1 text-xs font-medium',
+                  !cat.color ? 'bg-secondary text-secondary-foreground' : '',
+                ],
+                style: cat.color ? { backgroundColor: cat.color + '33', color: cat.color } : {},
+              },
+              cat.name,
+            ),
+          ),
+        )
+      },
+    }),
+    columnHelper.display({
+      id: 'amount',
+      header: 'Amount',
+      cell: ({ row }) =>
+        h(
+          'span',
+          {
+            class: `inline-flex items-center justify-end gap-1 whitespace-nowrap font-medium ${txnAmountClass(row.original)}`,
+          },
+          [
+            row.original.txnKind === 'TRANSFER'
+              ? h(ArrowLeftRight, { class: 'size-3' })
+              : h('span', {}, row.original.txnKind === 'EXPENSE' ? '-' : '+'),
+            txnDisplayAmount(row.original),
+          ],
+        ),
+    }),
+  ]
+
+  if (modeStore.isHousehold) {
+    cols.push(
+      columnHelper.display({
+        id: 'member',
+        header: 'Member',
+        cell: ({ row }) => {
+          const creator = row.original.createdBy
+          if (!creator) return null
+          const name =
+            [creator.firstName, creator.lastName].filter(Boolean).join(' ') || creator.email
+          return h('div', { class: 'flex items-center justify-end gap-2' }, [
+            h('div', { class: 'grid text-right text-sm leading-tight' }, [
+              h('span', { class: 'truncate text-xs font-semibold' }, name),
+              h('span', { class: 'truncate text-[10px] text-muted-foreground' }, creator.email),
+            ]),
+            h(Avatar, { class: 'h-8 w-8 shrink-0 rounded-lg border border-border' }, () => [
+              creator.avatar ? h(AvatarImage, { src: creator.avatar }) : null,
+              h(AvatarFallback, { class: 'rounded-lg text-xs' }, () =>
+                initialsFromName(creator.firstName, creator.lastName),
+              ),
+            ]),
+          ])
+        },
+      }),
+    )
+  }
+
+  return cols
+})
 
 const table = useVueTable({
   get data() {
     return filteredTransactions.value
   },
-  columns,
+  get columns() {
+    return columns.value
+  },
   getCoreRowModel: getCoreRowModel(),
   getExpandedRowModel: getExpandedRowModel(),
   getRowCanExpand: () => true,
@@ -616,12 +665,13 @@ async function submitTransaction(): Promise<void> {
         <!-- Filters -->
         <div class="mb-4 flex flex-wrap items-end gap-3">
           <div class="grid gap-1">
-            <Label class="text-xs">From</Label>
-            <Input v-model="filterDateFrom" type="date" class="h-8 w-36 text-xs" />
-          </div>
-          <div class="grid gap-1">
-            <Label class="text-xs">To</Label>
-            <Input v-model="filterDateTo" type="date" class="h-8 w-36 text-xs" />
+            <Label class="text-xs">Date range</Label>
+            <DateRangePicker
+              :from="filterDateFrom"
+              :to="filterDateTo"
+              @update:from="filterDateFrom = $event"
+              @update:to="filterDateTo = $event"
+            />
           </div>
           <div class="grid gap-1">
             <Label class="text-xs">Account</Label>
@@ -671,105 +721,45 @@ async function submitTransaction(): Promise<void> {
         </div>
 
         <!-- Transaction table -->
-        <div v-else class="flex-1 min-h-0 overflow-auto">
+        <div v-else class="flex-1 min-h-0 overflow-auto rounded-md border">
           <table class="w-full text-sm">
             <thead>
               <tr
                 v-for="headerGroup in table.getHeaderGroups()"
                 :key="headerGroup.id"
-                class="border-b border-border"
+                class="border-b bg-muted/50"
               >
-                <template v-for="header in headerGroup.headers" :key="header.id">
-                  <th
-                    v-if="header.id !== 'member' || modeStore.isHousehold"
-                    class="px-3 py-2 text-right text-xs font-medium text-muted-foreground"
-                  >
-                    <FlexRender
-                      v-if="!header.isPlaceholder"
-                      :render="header.column.columnDef.header"
-                      :props="header.getContext()"
-                    />
-                  </th>
-                </template>
+                <th
+                  v-for="header in headerGroup.headers"
+                  :key="header.id"
+                  class="px-4 py-2 text-right font-medium text-muted-foreground"
+                >
+                  <FlexRender
+                    v-if="!header.isPlaceholder"
+                    :render="header.column.columnDef.header"
+                    :props="header.getContext()"
+                  />
+                </th>
               </tr>
             </thead>
             <tbody>
               <template v-for="row in table.getRowModel().rows" :key="row.id">
                 <tr
-                  class="cursor-pointer border-b border-border transition-colors hover:bg-muted/50"
+                  class="cursor-pointer border-b last:border-0 transition-colors hover:bg-muted/50"
                   @click="row.toggleExpanded()"
                 >
-                  <td class="w-8 px-3 py-2 text-right">
-                    <component
-                      :is="row.getIsExpanded() ? ChevronDown : ChevronRight"
-                      class="size-4 text-muted-foreground"
-                    />
-                  </td>
-                  <td class="px-3 py-2 text-right whitespace-nowrap">{{ row.original.txnDate }}</td>
-                  <td class="px-3 py-2 text-right">{{ row.original.description }}</td>
-                  <td class="px-3 py-2 text-right">
-                    <Badge :variant="txnKindVariant(deriveTxnKind(row.original))" class="text-xs">
-                      {{ deriveTxnKind(row.original) }}
-                    </Badge>
-                  </td>
-                  <td class="px-3 py-2 text-right">
-                    <span
-                      v-for="cat in txnCategories(row.original)"
-                      :key="cat.name"
-                      class="mr-1 inline-block rounded-md px-2 py-1 text-xs font-medium"
-                      :style="
-                        cat.color ? { backgroundColor: cat.color + '33', color: cat.color } : {}
-                      "
-                      :class="!cat.color ? 'bg-secondary text-secondary-foreground' : ''"
-                      >{{ cat.name }}</span
-                    >
-                  </td>
                   <td
-                    class="px-3 py-2 text-right whitespace-nowrap font-medium"
-                    :class="txnAmountClass(row.original)"
+                    v-for="cell in row.getVisibleCells()"
+                    :key="cell.id"
+                    class="px-4 py-2 text-right"
+                    :class="(cell.column.columnDef.meta as any)?.tdClass"
                   >
-                    <span class="inline-flex items-center justify-end gap-1">
-                      <ArrowLeftRight v-if="row.original.txnKind === 'TRANSFER'" class="size-3" />
-                      <template v-else>{{
-                        row.original.txnKind === 'EXPENSE' ? '-' : '+'
-                      }}</template>
-                      {{ txnDisplayAmount(row.original) }}
-                    </span>
-                  </td>
-                  <td v-if="modeStore.isHousehold" class="px-3 py-2 text-right">
-                    <div v-if="row.original.createdBy" class="flex items-center justify-end gap-2">
-                      <div class="grid text-right text-sm leading-tight">
-                        <span class="truncate text-xs font-semibold">
-                          {{
-                            [row.original.createdBy.firstName, row.original.createdBy.lastName]
-                              .filter(Boolean)
-                              .join(' ') || row.original.createdBy.email
-                          }}
-                        </span>
-                        <span class="truncate text-[10px] text-muted-foreground">
-                          {{ row.original.createdBy.email }}
-                        </span>
-                      </div>
-                      <Avatar class="h-8 w-8 shrink-0 rounded-lg border border-border">
-                        <AvatarImage
-                          v-if="row.original.createdBy.avatar"
-                          :src="row.original.createdBy.avatar"
-                        />
-                        <AvatarFallback class="rounded-lg text-xs">
-                          {{
-                            initialsFromName(
-                              row.original.createdBy.firstName,
-                              row.original.createdBy.lastName,
-                            )
-                          }}
-                        </AvatarFallback>
-                      </Avatar>
-                    </div>
+                    <FlexRender :render="cell.column.columnDef.cell" :props="cell.getContext()" />
                   </td>
                 </tr>
                 <!-- Expanded splits row -->
                 <tr v-if="row.getIsExpanded()">
-                  <td :colspan="modeStore.isHousehold ? 7 : 6" class="bg-muted/30 px-3 py-3">
+                  <td :colspan="row.getVisibleCells().length" class="bg-muted/30 px-4 py-3">
                     <div class="space-y-1 pl-6">
                       <div
                         v-for="split in row.original.splits"

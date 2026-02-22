@@ -1,12 +1,6 @@
 <script setup lang="ts">
 import { computed, h, onMounted, ref, watch } from 'vue'
-import {
-  type ColumnDef,
-  FlexRender,
-  getCoreRowModel,
-  getFilteredRowModel,
-  useVueTable,
-} from '@tanstack/vue-table'
+import { type ColumnDef, FlexRender, getCoreRowModel, useVueTable } from '@tanstack/vue-table'
 import { Pencil, Plus } from 'lucide-vue-next'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -46,7 +40,6 @@ const modeStore = useModeStore()
 const householdStore = useHouseholdStore()
 
 const balances = ref<Map<string, number>>(new Map())
-const balancesLoading = ref(false)
 const typeFilter = ref<string>('ALL')
 const currencyFilter = ref<string>('ALL')
 const createDialogOpen = ref(false)
@@ -174,12 +167,10 @@ const table = useVueTable({
     return columns.value
   },
   getCoreRowModel: getCoreRowModel(),
-  getFilteredRowModel: getFilteredRowModel(),
 })
 
 // N+1 pattern: one API call per account. A batch balance endpoint should be preferred when available.
 async function loadBalances(): Promise<void> {
-  balancesLoading.value = true
   const promises = accountStore.activeAccounts.map(async (account) => {
     try {
       const result = await getAccountBalance(account.id)
@@ -189,7 +180,6 @@ async function loadBalances(): Promise<void> {
     }
   })
   await Promise.all(promises)
-  balancesLoading.value = false
 }
 
 async function loadAll(): Promise<void> {
@@ -389,7 +379,7 @@ function todayString(): string {
                 <th
                   v-for="header in headerGroup.headers"
                   :key="header.id"
-                  class="px-4 py-2 text-left font-medium text-muted-foreground"
+                  class="px-4 py-2 text-right font-medium text-muted-foreground"
                 >
                   <FlexRender
                     v-if="!header.isPlaceholder"
@@ -405,7 +395,11 @@ function todayString(): string {
                 :key="row.id"
                 class="border-b last:border-0"
               >
-                <td v-for="cell in row.getVisibleCells()" :key="cell.id" class="px-4 py-2">
+                <td
+                  v-for="cell in row.getVisibleCells()"
+                  :key="cell.id"
+                  class="px-4 py-2 text-right"
+                >
                   <FlexRender :render="cell.column.columnDef.cell" :props="cell.getContext()" />
                 </td>
               </tr>
