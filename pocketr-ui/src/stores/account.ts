@@ -48,6 +48,12 @@ export const useAccountStore = defineStore('account', () => {
     }
   }
 
+  function $reset(): void {
+    accounts.value = []
+    isLoading.value = false
+    error.value = null
+  }
+
   return {
     accounts,
     isLoading,
@@ -56,5 +62,6 @@ export const useAccountStore = defineStore('account', () => {
     accountMap,
     activeAccounts,
     load,
+    $reset,
   }
 })

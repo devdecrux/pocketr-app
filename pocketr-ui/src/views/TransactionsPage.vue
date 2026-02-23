@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { HTTPError } from 'ky'
 import { computed, h, onMounted, ref, watch } from 'vue'
-import { createColumnHelper, FlexRender, getCoreRowModel, getExpandedRowModel, useVueTable } from '@tanstack/vue-table'
+import { createColumnHelper, getCoreRowModel, getExpandedRowModel, useVueTable } from '@tanstack/vue-table'
 import { createTxn } from '@/api/ledger'
 import { useAccountStore } from '@/stores/account'
 import { useCategoryStore } from '@/stores/category'
@@ -22,10 +22,10 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { ArrowLeftRight, ChevronDown, ChevronLeft, ChevronRight, Plus } from 'lucide-vue-next'
+import { ArrowLeftRight, ChevronDown, ChevronRight, Plus } from 'lucide-vue-next'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { initialsFromName } from '@/utils/initials'
+import DataTable from '@/components/DataTable.vue'
 
 const ledgerStore = useLedgerStore()
 const accountStore = useAccountStore()
@@ -287,8 +287,6 @@ const table = useVueTable({
   getRowCanExpand: () => true,
 })
 
-const PAGE_SIZE_OPTIONS = [5, 10, 15, 25, 50, 100]
-
 // Load data on mount and mode change
 async function loadData(resetPage = false): Promise<void> {
   const filters: Record<string, string | undefined> = {}
@@ -307,8 +305,8 @@ async function goToPage(page: number): Promise<void> {
   await loadData()
 }
 
-async function onPageSizeChange(val: string): Promise<void> {
-  ledgerStore.pageSize = Number(val)
+async function changePageSize(size: number): Promise<void> {
+  ledgerStore.pageSize = size
   ledgerStore.currentPage = 0
   await loadData()
 }
@@ -721,129 +719,46 @@ async function submitTransaction(): Promise<void> {
         </div>
 
         <!-- Transaction table -->
-        <div v-else class="flex-1 min-h-0 overflow-auto rounded-md border">
-          <table class="w-full text-sm">
-            <thead>
-              <tr
-                v-for="headerGroup in table.getHeaderGroups()"
-                :key="headerGroup.id"
-                class="border-b bg-muted/50"
-              >
-                <th
-                  v-for="header in headerGroup.headers"
-                  :key="header.id"
-                  class="px-4 py-2 text-right font-medium text-muted-foreground"
-                >
-                  <FlexRender
-                    v-if="!header.isPlaceholder"
-                    :render="header.column.columnDef.header"
-                    :props="header.getContext()"
-                  />
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              <template v-for="row in table.getRowModel().rows" :key="row.id">
-                <tr
-                  class="cursor-pointer border-b last:border-0 transition-colors hover:bg-muted/50"
-                  @click="row.toggleExpanded()"
-                >
-                  <td
-                    v-for="cell in row.getVisibleCells()"
-                    :key="cell.id"
-                    class="px-4 py-2 text-right"
-                    :class="(cell.column.columnDef.meta as any)?.tdClass"
-                  >
-                    <FlexRender :render="cell.column.columnDef.cell" :props="cell.getContext()" />
-                  </td>
-                </tr>
-                <!-- Expanded splits row -->
-                <tr v-if="row.getIsExpanded()">
-                  <td :colspan="row.getVisibleCells().length" class="bg-muted/30 px-4 py-3">
-                    <div class="space-y-1 pl-6">
-                      <div
-                        v-for="split in row.original.splits"
-                        :key="split.id ?? split.accountId"
-                        class="flex items-center justify-between text-xs"
-                      >
-                        <div class="flex items-center gap-2">
-                          <Badge variant="outline" class="text-[10px]">
-                            {{ split.side }}
-                          </Badge>
-                          <span>{{ splitLabel(split) }}</span>
-                        </div>
-                        <span class="font-mono">
-                          {{ splitAmount(split, row.original.currency) }}
-                        </span>
-                      </div>
-                      <p
-                        v-for="split in row.original.splits.filter((s) => s.memo)"
-                        :key="`memo-${split.id}`"
-                        class="text-[10px] text-muted-foreground italic"
-                      >
-                        {{ split.memo }}
-                      </p>
-                    </div>
-                  </td>
-                </tr>
-              </template>
-            </tbody>
-          </table>
-        </div>
-        <!-- Pagination controls -->
-        <div
-          v-if="!ledgerStore.isLoading && ledgerStore.totalPages > 0"
-          class="mt-4 flex items-center justify-between gap-4"
+        <DataTable
+          v-else
+          :table="table"
+          sticky-header
+          clickable
+          class="flex-1 min-h-0"
+          empty-text="No transactions found. Create your first transaction to get started."
+          :pagination="{
+            page: ledgerStore.currentPage,
+            pageSize: ledgerStore.pageSize,
+            totalPages: ledgerStore.totalPages,
+            totalElements: ledgerStore.totalElements,
+          }"
+          @row-click="(row) => row.toggleExpanded()"
+          @update:page="goToPage"
+          @update:page-size="changePageSize"
         >
-          <div class="flex items-center gap-2">
-            <span class="text-xs text-muted-foreground">Rows per page</span>
-            <Select
-              :model-value="String(ledgerStore.pageSize)"
-              @update:model-value="onPageSizeChange"
-            >
-              <SelectTrigger class="h-8 w-20 text-xs">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem
-                  v-for="opt in PAGE_SIZE_OPTIONS"
-                  :key="opt"
-                  :value="String(opt)"
-                  class="text-xs"
-                >
-                  {{ opt }}
-                </SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div class="flex items-center gap-3">
-            <span class="text-xs text-muted-foreground">
-              Page {{ ledgerStore.currentPage + 1 }} of {{ ledgerStore.totalPages }} &middot;
-              {{ ledgerStore.totalElements }} total
-            </span>
-            <div class="flex gap-1">
-              <Button
-                variant="outline"
-                size="icon"
-                class="h-8 w-8"
-                :disabled="ledgerStore.currentPage === 0"
-                @click="goToPage(ledgerStore.currentPage - 1)"
+          <template #expanded="{ row }">
+            <div class="space-y-1 pl-6">
+              <div
+                v-for="split in row.original.splits"
+                :key="split.id ?? split.accountId"
+                class="flex items-center justify-between text-xs"
               >
-                <ChevronLeft class="size-4" />
-              </Button>
-              <Button
-                variant="outline"
-                size="icon"
-                class="h-8 w-8"
-                :disabled="ledgerStore.currentPage >= ledgerStore.totalPages - 1"
-                @click="goToPage(ledgerStore.currentPage + 1)"
+                <div class="flex items-center gap-2">
+                  <Badge variant="outline" class="text-[10px]">{{ split.side }}</Badge>
+                  <span>{{ splitLabel(split) }}</span>
+                </div>
+                <span class="font-mono">{{ splitAmount(split, row.original.currency) }}</span>
+              </div>
+              <p
+                v-for="split in row.original.splits.filter((s) => s.memo)"
+                :key="`memo-${split.id}`"
+                class="text-[10px] text-muted-foreground italic"
               >
-                <ChevronRight class="size-4" />
-              </Button>
+                {{ split.memo }}
+              </p>
             </div>
-          </div>
-        </div>
+          </template>
+        </DataTable>
       </CardContent>
     </Card>
   </section>

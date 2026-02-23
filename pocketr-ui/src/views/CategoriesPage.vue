@@ -1,15 +1,23 @@
 <script setup lang="ts">
 import { computed, h, onMounted, ref } from 'vue'
-import { type ColumnDef, FlexRender, getCoreRowModel, useVueTable } from '@tanstack/vue-table'
+import { type ColumnDef, getCoreRowModel, useVueTable } from '@tanstack/vue-table'
 import { Pencil, Plus, Trash2 } from 'lucide-vue-next'
 import { useCategoryStore } from '@/stores/category'
 import type { CategoryTag } from '@/types/ledger'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Skeleton } from '@/components/ui/skeleton'
+import DataTable from '@/components/DataTable.vue'
 
 const categoryStore = useCategoryStore()
 
@@ -165,6 +173,7 @@ const columns: ColumnDef<CategoryTag>[] = [
   {
     id: 'actions',
     header: '',
+    meta: { tdClass: 'py-0' },
     cell: ({ row }) =>
       h('div', { class: 'flex items-center justify-end gap-1' }, [
         h(
@@ -202,8 +211,8 @@ const table = useVueTable({
 </script>
 
 <template>
-  <section class="grid gap-4">
-    <Card>
+  <section class="flex h-full flex-col gap-4">
+    <Card class="flex-1 min-h-0">
       <CardHeader class="flex flex-row items-center justify-between">
         <CardTitle class="text-2xl">Categories</CardTitle>
 
@@ -266,60 +275,35 @@ const table = useVueTable({
         </Dialog>
       </CardHeader>
 
-      <CardContent>
-        <div v-if="categoryStore.isLoading" class="space-y-3">
-          <Skeleton class="h-10 w-full" />
-          <Skeleton class="h-10 w-full" />
-          <Skeleton class="h-10 w-full" />
+      <CardContent class="flex flex-1 flex-col min-h-0 pb-6">
+        <div
+          v-if="categoryStore.isLoading"
+          class="flex flex-1 items-center justify-center text-sm text-muted-foreground"
+        >
+          Loading categories...
         </div>
 
-        <div v-else-if="categoryStore.error" class="text-sm text-red-600">
+        <div
+          v-else-if="categoryStore.error"
+          class="flex flex-1 items-center justify-center text-sm text-red-600"
+        >
           {{ categoryStore.error }}
         </div>
 
-        <div v-else class="overflow-auto rounded-md border">
-          <table class="w-full text-sm">
-            <thead>
-              <tr
-                v-for="headerGroup in table.getHeaderGroups()"
-                :key="headerGroup.id"
-                class="border-b bg-muted/50"
-              >
-                <th
-                  v-for="header in headerGroup.headers"
-                  :key="header.id"
-                  class="px-4 py-2 text-right font-medium text-muted-foreground"
-                >
-                  <FlexRender
-                    v-if="!header.isPlaceholder"
-                    :render="header.column.columnDef.header"
-                    :props="header.getContext()"
-                  />
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr
-                v-for="row in table.getRowModel().rows"
-                :key="row.id"
-                class="border-b last:border-0"
-              >
-                <td
-                  v-for="cell in row.getVisibleCells()"
-                  :key="cell.id"
-                  class="px-4 py-2 text-right"
-                >
-                  <FlexRender :render="cell.column.columnDef.cell" :props="cell.getContext()" />
-                </td>
-              </tr>
-              <tr v-if="table.getRowModel().rows.length === 0">
-                <td :colspan="columns.length" class="px-4 py-8 text-center text-muted-foreground">
-                  No categories found.
-                </td>
-              </tr>
-            </tbody>
-          </table>
+        <div
+          v-else-if="sortedCategories.length === 0"
+          class="flex flex-1 items-center justify-center text-sm text-muted-foreground"
+        >
+          No categories found.
         </div>
+
+        <DataTable
+          v-else
+          :table="table"
+          sticky-header
+          class="flex-1 min-h-0"
+          empty-text="No categories found."
+        />
 
         <p v-if="deleteError" class="mt-3 text-sm text-red-600">{{ deleteError }}</p>
       </CardContent>

@@ -40,6 +40,16 @@ export const useLedgerStore = defineStore('ledger', () => {
     }
   }
 
+  function $reset(): void {
+    transactions.value = []
+    isLoading.value = false
+    error.value = null
+    currentPage.value = 0
+    pageSize.value = 15
+    totalPages.value = 0
+    totalElements.value = 0
+  }
+
   return {
     transactions,
     isLoading,
@@ -49,5 +59,6 @@ export const useLedgerStore = defineStore('ledger', () => {
     totalPages,
     totalElements,
     load,
+    $reset,
   }
 })

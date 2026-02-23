@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Moon, Sun } from 'lucide-vue-next'
 import { useColorMode } from '@vueuse/core'
@@ -21,6 +21,8 @@ import ThemeMenu from '@/components/ThemeMenu.vue'
 const authStore = useAuthStore()
 const route = useRoute()
 const router = useRouter()
+
+const isSessionExpired = computed(() => route.query.reason === 'session-expired')
 
 const email = ref('')
 const password = ref('')
@@ -76,6 +78,16 @@ async function login(): Promise<void> {
           <ThemeMenu />
         </DropdownMenuContent>
       </DropdownMenu>
+    </div>
+    <div
+      v-if="isSessionExpired"
+      class="absolute top-16 left-1/2 -translate-x-1/2 w-full max-w-sm px-4"
+    >
+      <div
+        class="rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-700 dark:bg-amber-950/50 dark:text-amber-300"
+      >
+        Your session has expired. Please log in again.
+      </div>
     </div>
     <Card
       class="min-w-sm max-w-sm border-[#9ccfad] bg-[#a8e0b7] text-[#2f463a] shadow-[0_10px_30px_rgba(0,0,0,0.18)] dark:border-border dark:bg-card dark:text-card-foreground"

@@ -44,6 +44,11 @@ export const useModeStore = defineStore('viewMode', () => {
     { deep: true },
   )
 
+  function $reset(): void {
+    viewMode.value = { kind: 'INDIVIDUAL' }
+    localStorage.removeItem(STORAGE_KEY)
+  }
+
   return {
     viewMode,
     isHousehold,
@@ -51,5 +56,6 @@ export const useModeStore = defineStore('viewMode', () => {
     modeParam,
     switchToIndividual,
     switchToHousehold,
+    $reset,
   }
 })

@@ -81,6 +81,12 @@ export const useCategoryStore = defineStore('category', () => {
     return fallback
   }
 
+  function $reset(): void {
+    categories.value = []
+    isLoading.value = false
+    error.value = null
+  }
+
   return {
     categories,
     isLoading,
@@ -89,5 +95,6 @@ export const useCategoryStore = defineStore('category', () => {
     create,
     rename,
     remove,
+    $reset,
   }
 })

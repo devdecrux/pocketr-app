@@ -1,13 +1,12 @@
 <script setup lang="ts">
 import { computed, h, onMounted, ref, watch } from 'vue'
-import { type ColumnDef, FlexRender, getCoreRowModel, useVueTable } from '@tanstack/vue-table'
+import { type ColumnDef, getCoreRowModel, useVueTable } from '@tanstack/vue-table'
 import { Pencil, Plus } from 'lucide-vue-next'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
-import { Skeleton } from '@/components/ui/skeleton'
 import {
   Select,
   SelectContent,
@@ -33,6 +32,7 @@ import { getAccountBalance } from '@/api/ledger'
 import { formatMinor } from '@/utils/money'
 import type { Account, AccountType, CreateAccountRequest } from '@/types/ledger'
 import CurrencyAmountInput from '@/components/CurrencyAmountInput.vue'
+import DataTable from '@/components/DataTable.vue'
 
 const accountStore = useAccountStore()
 const currencyStore = useCurrencyStore()
@@ -142,6 +142,7 @@ const columns = computed<ColumnDef<Account>[]>(() => {
   cols.push({
     id: 'actions',
     header: '',
+    meta: { tdClass: 'py-0' },
     cell: ({ row }) => {
       return h(
         Button,
@@ -250,8 +251,8 @@ function todayString(): string {
 </script>
 
 <template>
-  <section class="grid gap-4">
-    <Card>
+  <section class="flex h-full flex-col gap-4">
+    <Card class="flex-1 min-h-0">
       <CardHeader class="flex flex-row items-center justify-between">
         <CardTitle class="text-2xl">Accounts</CardTitle>
         <Dialog v-model:open="createDialogOpen">
@@ -332,7 +333,7 @@ function todayString(): string {
           </DialogContent>
         </Dialog>
       </CardHeader>
-      <CardContent>
+      <CardContent class="flex flex-1 flex-col min-h-0 pb-6">
         <div class="mb-4 flex flex-wrap items-center gap-3">
           <Select v-model="typeFilter">
             <SelectTrigger class="w-36">
@@ -358,59 +359,34 @@ function todayString(): string {
           </Select>
         </div>
 
-        <div v-if="accountStore.isLoading" class="space-y-3">
-          <Skeleton class="h-10 w-full" />
-          <Skeleton class="h-10 w-full" />
-          <Skeleton class="h-10 w-full" />
+        <div
+          v-if="accountStore.isLoading"
+          class="flex flex-1 items-center justify-center text-sm text-muted-foreground"
+        >
+          Loading accounts...
         </div>
 
-        <div v-else-if="accountStore.error" class="text-sm text-red-600">
+        <div
+          v-else-if="accountStore.error"
+          class="flex flex-1 items-center justify-center text-sm text-red-600"
+        >
           {{ accountStore.error }}
         </div>
 
-        <div v-else class="overflow-auto rounded-md border">
-          <table class="w-full text-sm">
-            <thead>
-              <tr
-                v-for="headerGroup in table.getHeaderGroups()"
-                :key="headerGroup.id"
-                class="border-b bg-muted/50"
-              >
-                <th
-                  v-for="header in headerGroup.headers"
-                  :key="header.id"
-                  class="px-4 py-2 text-right font-medium text-muted-foreground"
-                >
-                  <FlexRender
-                    v-if="!header.isPlaceholder"
-                    :render="header.column.columnDef.header"
-                    :props="header.getContext()"
-                  />
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr
-                v-for="row in table.getRowModel().rows"
-                :key="row.id"
-                class="border-b last:border-0"
-              >
-                <td
-                  v-for="cell in row.getVisibleCells()"
-                  :key="cell.id"
-                  class="px-4 py-2 text-right"
-                >
-                  <FlexRender :render="cell.column.columnDef.cell" :props="cell.getContext()" />
-                </td>
-              </tr>
-              <tr v-if="table.getRowModel().rows.length === 0">
-                <td :colspan="columns.length" class="px-4 py-8 text-center text-muted-foreground">
-                  No accounts found.
-                </td>
-              </tr>
-            </tbody>
-          </table>
+        <div
+          v-else-if="filteredAccounts.length === 0"
+          class="flex flex-1 items-center justify-center text-sm text-muted-foreground"
+        >
+          No accounts found.
         </div>
+
+        <DataTable
+          v-else
+          :table="table"
+          sticky-header
+          class="flex-1 min-h-0"
+          empty-text="No accounts found."
+        />
       </CardContent>
     </Card>
 

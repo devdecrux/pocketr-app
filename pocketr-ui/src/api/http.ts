@@ -1,4 +1,6 @@
 import ky from 'ky'
+import { getActivePinia } from 'pinia'
+import { useAuthStore } from '@/stores/auth'
 
 function getCookieValue(name: string): string | null {
   if (typeof document === 'undefined') {
@@ -24,6 +26,20 @@ export const api = ky.create({
         if (xsrfToken) {
           request.headers.set('X-XSRF-TOKEN', decodeURIComponent(xsrfToken))
         }
+      },
+    ],
+    afterResponse: [
+      (_request, _options, response) => {
+        if (response.status === 401) {
+          const pinia = getActivePinia()
+          if (pinia) {
+            const authStore = useAuthStore(pinia)
+            if (authStore.initialized && authStore.isAuthenticated) {
+              void authStore.handleSessionExpired()
+            }
+          }
+        }
+        return response
       },
     ],
   },
