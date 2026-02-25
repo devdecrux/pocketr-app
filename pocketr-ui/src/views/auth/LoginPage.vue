@@ -6,6 +6,7 @@ import { useColorMode } from '@vueuse/core'
 import { primeCsrfToken } from '@/api/csrf'
 import { api } from '@/api/http'
 import { useAuthStore } from '@/stores/auth'
+import { sanitizeInternalRedirect } from '@/utils/sanitizeRedirect'
 import type { AuthUser } from '@/types/auth'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -49,8 +50,7 @@ async function login(): Promise<void> {
     const user = await api.get('/api/v1/user').json<AuthUser>()
     authStore.setUser(user)
 
-    const requestedRedirect = route.query.redirect
-    const redirectTarget = typeof requestedRedirect === 'string' ? requestedRedirect : '/dashboard'
+    const redirectTarget = sanitizeInternalRedirect(route.query.redirect) ?? '/dashboard'
     await router.push(redirectTarget)
   } catch {
     isAlert.value = true

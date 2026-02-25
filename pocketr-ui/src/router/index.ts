@@ -1,4 +1,3 @@
-import type { RouteLocationNormalized } from 'vue-router'
 import { createRouter, createWebHistory } from 'vue-router'
 import AccountsPage from '@/views/AccountsPage.vue'
 import CategoriesPage from '@/views/CategoriesPage.vue'
@@ -9,7 +8,7 @@ import NotFoundPage from '@/views/NotFoundPage.vue'
 import RegistrationPage from '@/views/auth/RegistrationPage.vue'
 import SettingsPage from '@/views/SettingsPage.vue'
 import TransactionsPage from '@/views/TransactionsPage.vue'
-import { useAuthStore } from '@/stores/auth'
+import { authGuard } from '@/router/guards'
 
 const routes = [
   {
@@ -77,22 +76,6 @@ const router = createRouter({
   routes,
 })
 
-router.beforeEach(async (to: RouteLocationNormalized) => {
-  const authStore = useAuthStore()
-
-  if (!authStore.initialized) {
-    await authStore.hydrateFromSession()
-  }
-
-  if (to.meta.requiresAuth && !authStore.isAuthenticated) {
-    return { name: 'login', query: { redirect: to.fullPath } }
-  }
-
-  if (to.meta.guestOnly && authStore.isAuthenticated) {
-    return { name: 'dashboard' }
-  }
-
-  return true
-})
+router.beforeEach(authGuard)
 
 export default router

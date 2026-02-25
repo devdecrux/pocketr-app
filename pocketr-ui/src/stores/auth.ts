@@ -49,18 +49,8 @@ export const useAuthStore = defineStore('auth', () => {
   async function handleSessionExpired(): Promise<void> {
     if (!isAuthenticated.value) return
     clearUser()
-    const { useAccountStore } = await import('@/stores/account')
-    const { useCategoryStore } = await import('@/stores/category')
-    const { useCurrencyStore } = await import('@/stores/currency')
-    const { useLedgerStore } = await import('@/stores/ledger')
-    const { useHouseholdStore } = await import('@/stores/household')
-    const { useModeStore } = await import('@/stores/mode')
-    useAccountStore().$reset()
-    useCategoryStore().$reset()
-    useCurrencyStore().$reset()
-    useLedgerStore().$reset()
-    useHouseholdStore().$reset()
-    useModeStore().$reset()
+    const { resetAllDomainStores } = await import('@/utils/resetStores')
+    await resetAllDomainStores()
     await router.replace({ name: 'login', query: { reason: 'session-expired' } })
   }
 

@@ -1,10 +1,23 @@
-import { describe, expect, it } from 'vitest'
+import { createPinia } from 'pinia'
+import { describe, expect, it, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import App from '../App.vue'
 
+vi.mock('@vueuse/core', async () => {
+  const actual = await vi.importActual<typeof import('@vueuse/core')>('@vueuse/core')
+  return {
+    ...actual,
+    useColorMode: () => ({
+      value: 'light',
+    }),
+  }
+})
+
 describe('App', () => {
   it('renders auth layout without sidebar on login route', async () => {
+    const pinia = createPinia()
+
     const router = createRouter({
       history: createMemoryHistory(),
       routes: [
@@ -21,7 +34,7 @@ describe('App', () => {
 
     const wrapper = mount(App, {
       global: {
-        plugins: [router],
+        plugins: [pinia, router],
       },
     })
 

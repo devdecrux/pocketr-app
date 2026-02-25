@@ -9,6 +9,7 @@ import com.decrux.pocketr_api.entities.dtos.BalanceTimeseriesPointDto
 import com.decrux.pocketr_api.entities.dtos.MonthlyExpenseDto
 import com.decrux.pocketr_api.repositories.AccountRepository
 import com.decrux.pocketr_api.repositories.LedgerSplitRepository
+import com.decrux.pocketr_api.services.household.ManageHousehold
 import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -21,6 +22,7 @@ import java.util.UUID
 class GenerateReportImpl(
     private val ledgerSplitRepository: LedgerSplitRepository,
     private val accountRepository: AccountRepository,
+    private val manageHousehold: ManageHousehold,
 ) : GenerateReport {
 
     @Transactional(readOnly = true)
@@ -42,6 +44,10 @@ class GenerateReportImpl(
             MODE_HOUSEHOLD -> {
                 val hId = householdId
                     ?: throw ResponseStatusException(HttpStatus.BAD_REQUEST, "householdId is required for household mode")
+                val userId = requireNotNull(user.userId) { "User ID must not be null" }
+                if (!manageHousehold.isActiveMember(hId, userId)) {
+                    throw ResponseStatusException(HttpStatus.FORBIDDEN, "Not an active member of this household")
+                }
                 ledgerSplitRepository.monthlyExpensesByHousehold(hId, monthStart, monthEnd, SplitSide.DEBIT, SplitSide.CREDIT)
             }
 

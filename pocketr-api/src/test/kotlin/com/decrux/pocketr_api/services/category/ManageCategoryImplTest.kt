@@ -5,6 +5,7 @@ import com.decrux.pocketr_api.entities.db.ledger.CategoryTag
 import com.decrux.pocketr_api.entities.dtos.CreateCategoryDto
 import com.decrux.pocketr_api.entities.dtos.UpdateCategoryDto
 import com.decrux.pocketr_api.repositories.CategoryTagRepository
+import com.decrux.pocketr_api.services.OwnershipGuard
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
@@ -37,7 +38,7 @@ class ManageCategoryImplTest {
     @BeforeEach
     fun setUp() {
         categoryTagRepository = mock(CategoryTagRepository::class.java)
-        service = ManageCategoryImpl(categoryTagRepository)
+        service = ManageCategoryImpl(categoryTagRepository, OwnershipGuard())
     }
 
     @Nested

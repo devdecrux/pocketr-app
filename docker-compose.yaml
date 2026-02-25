@@ -1,15 +1,16 @@
 name: pocketr
 
 services:
+  # Copy .env.example to .env before first run
   db:
     image: postgres:18.0-alpine3.22
     container_name: pocketr-db
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     restart: unless-stopped
     environment:
-      POSTGRES_USER: pocketr_user
-      POSTGRES_PASSWORD: pocketr_password
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
       POSTGRES_DB: pocketr_db
     volumes:
       - db-data:/var/lib/postgresql/data
@@ -20,7 +21,7 @@ services:
     image: traefik:v3.6.2
     container_name: pocketr-traefik
     ports:
-      - "80:80"
+      - "127.0.0.1:80:80"
     restart: unless-stopped
     volumes:
       - ./config/traefik/traefik.yml:/etc/traefik/traefik.yml:ro

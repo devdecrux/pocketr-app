@@ -8,6 +8,9 @@ import com.decrux.pocketr_api.entities.dtos.CreateAccountDto
 import com.decrux.pocketr_api.entities.dtos.UpdateAccountDto
 import com.decrux.pocketr_api.repositories.AccountRepository
 import com.decrux.pocketr_api.repositories.CurrencyRepository
+import com.decrux.pocketr_api.repositories.HouseholdAccountShareRepository
+import com.decrux.pocketr_api.services.OwnershipGuard
+import com.decrux.pocketr_api.services.household.ManageHousehold
 import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -20,6 +23,9 @@ class ManageAccountImpl(
     private val accountRepository: AccountRepository,
     private val currencyRepository: CurrencyRepository,
     private val openingBalanceService: OpeningBalanceService,
+    private val manageHousehold: ManageHousehold,
+    private val householdAccountShareRepository: HouseholdAccountShareRepository,
+    private val ownershipGuard: OwnershipGuard,
 ) : ManageAccount {
 
     @Transactional
@@ -81,14 +87,51 @@ class ManageAccountImpl(
         return accounts.map { it.toDto() }
     }
 
+    @Transactional(readOnly = true)
+    override fun listAccounts(user: User, mode: String, householdId: UUID?): List<AccountDto> {
+        val userId = requireNotNull(user.userId) { "User ID must not be null" }
+
+        if (mode == "INDIVIDUAL") {
+            return listAccounts(user)
+        }
+
+        if (mode != "HOUSEHOLD") {
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid mode: $mode")
+        }
+
+        val hhId = householdId
+            ?: throw ResponseStatusException(HttpStatus.BAD_REQUEST, "householdId is required for HOUSEHOLD mode")
+
+        if (!manageHousehold.isActiveMember(hhId, userId)) {
+            throw ResponseStatusException(HttpStatus.FORBIDDEN, "Not an active member of this household")
+        }
+
+        val ownedAccounts = accountRepository.findByOwnerUserId(userId)
+        val sharedAccountIds = householdAccountShareRepository.findSharedAccountIdsByHouseholdId(hhId)
+        val sharedAccounts = if (sharedAccountIds.isNotEmpty()) {
+            accountRepository.findAllById(sharedAccountIds)
+        } else {
+            emptyList()
+        }
+
+        val seen = mutableSetOf<UUID>()
+        val merged = mutableListOf<Account>()
+        for (account in ownedAccounts + sharedAccounts) {
+            val accountId = requireNotNull(account.id)
+            if (seen.add(accountId)) {
+                merged.add(account)
+            }
+        }
+
+        return merged.map { it.toDto() }
+    }
+
     @Transactional
     override fun updateAccount(id: UUID, dto: UpdateAccountDto, owner: User): AccountDto {
         val account = accountRepository.findById(id)
             .orElseThrow { ResponseStatusException(HttpStatus.NOT_FOUND, "Account not found") }
 
-        if (account.owner?.userId != owner.userId) {
-            throw ResponseStatusException(HttpStatus.FORBIDDEN, "Not the owner of this account")
-        }
+        ownershipGuard.requireOwner(account.owner?.userId, requireNotNull(owner.userId), "Not the owner of this account")
 
         dto.name?.let { account.name = it.trim() }
         return accountRepository.save(account).toDto()

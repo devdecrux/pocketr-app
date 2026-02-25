@@ -6,6 +6,7 @@ import com.decrux.pocketr_api.entities.dtos.CategoryDto
 import com.decrux.pocketr_api.entities.dtos.CreateCategoryDto
 import com.decrux.pocketr_api.entities.dtos.UpdateCategoryDto
 import com.decrux.pocketr_api.repositories.CategoryTagRepository
+import com.decrux.pocketr_api.services.OwnershipGuard
 import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
@@ -16,6 +17,7 @@ import java.util.UUID
 @Service
 class ManageCategoryImpl(
     private val categoryTagRepository: CategoryTagRepository,
+    private val ownershipGuard: OwnershipGuard,
 ) : ManageCategory {
 
     @Transactional
@@ -51,9 +53,7 @@ class ManageCategoryImpl(
         val tag = categoryTagRepository.findById(id)
             .orElseThrow { ResponseStatusException(HttpStatus.NOT_FOUND, "Category not found") }
 
-        if (tag.owner?.userId != owner.userId) {
-            throw ResponseStatusException(HttpStatus.FORBIDDEN, "Not the owner of this category")
-        }
+        ownershipGuard.requireOwner(tag.owner?.userId, requireNotNull(owner.userId), "Not the owner of this category")
 
         val userId = requireNotNull(owner.userId) { "User ID must not be null" }
         val newName = dto.name.trim()
@@ -78,9 +78,7 @@ class ManageCategoryImpl(
         val tag = categoryTagRepository.findById(id)
             .orElseThrow { ResponseStatusException(HttpStatus.NOT_FOUND, "Category not found") }
 
-        if (tag.owner?.userId != owner.userId) {
-            throw ResponseStatusException(HttpStatus.FORBIDDEN, "Not the owner of this category")
-        }
+        ownershipGuard.requireOwner(tag.owner?.userId, requireNotNull(owner.userId), "Not the owner of this category")
 
         try {
             categoryTagRepository.delete(tag)

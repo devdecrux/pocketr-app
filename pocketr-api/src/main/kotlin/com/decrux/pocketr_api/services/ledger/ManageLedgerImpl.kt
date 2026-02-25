@@ -3,16 +3,17 @@ package com.decrux.pocketr_api.services.ledger
 import com.decrux.pocketr_api.entities.db.auth.User
 import com.decrux.pocketr_api.entities.db.ledger.*
 import com.decrux.pocketr_api.entities.dtos.*
+import com.decrux.pocketr_api.exceptions.DomainBadRequestException
+import com.decrux.pocketr_api.exceptions.DomainForbiddenException
+import com.decrux.pocketr_api.exceptions.DomainNotFoundException
 import com.decrux.pocketr_api.repositories.*
 import com.decrux.pocketr_api.services.household.ManageHousehold
 import com.decrux.pocketr_api.services.user_avatar.UserAvatarService
 import org.springframework.data.domain.PageRequest
 import org.springframework.data.domain.Sort
 import org.springframework.data.jpa.domain.Specification
-import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
-import org.springframework.web.server.ResponseStatusException
 import java.time.LocalDate
 import java.util.UUID
 
@@ -25,6 +26,8 @@ class ManageLedgerImpl(
     private val categoryTagRepository: CategoryTagRepository,
     private val manageHousehold: ManageHousehold,
     private val userAvatarService: UserAvatarService,
+    private val transactionValidator: LedgerTransactionValidator,
+    private val transactionPolicy: LedgerTransactionPolicy,
 ) : ManageLedger {
 
     @Transactional
@@ -32,40 +35,12 @@ class ManageLedgerImpl(
         val userId = requireNotNull(creator.userId) { "User ID must not be null" }
         val isHouseholdMode = dto.mode?.uppercase() == "HOUSEHOLD"
 
-        // 1. Require at least 2 splits
-        if (dto.splits.size < 2) {
-            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Transaction must have at least 2 splits")
-        }
-
-        // 2. Validate all amounts > 0
-        dto.splits.forEach { split ->
-            if (split.amountMinor <= 0) {
-                throw ResponseStatusException(HttpStatus.BAD_REQUEST, "All split amounts must be greater than 0")
-            }
-        }
-
-        // 3. Validate split sides
-        dto.splits.forEach { split ->
-            try {
-                SplitSide.valueOf(split.side)
-            } catch (_: IllegalArgumentException) {
-                throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid split side: ${split.side}")
-            }
-        }
-
-        // 4. Double-entry: sum(DEBIT) == sum(CREDIT)
-        val sumDebits = dto.splits.filter { it.side == "DEBIT" }.sumOf { it.amountMinor }
-        val sumCredits = dto.splits.filter { it.side == "CREDIT" }.sumOf { it.amountMinor }
-        if (sumDebits != sumCredits) {
-            throw ResponseStatusException(
-                HttpStatus.BAD_REQUEST,
-                "Double-entry violation: sum of debits ($sumDebits) must equal sum of credits ($sumCredits)",
-            )
-        }
+        // 1-4. Validate splits (count, amounts, sides, double-entry balance)
+        transactionValidator.validateSplits(dto.splits)
 
         // 5. Validate currency exists
         val currency = currencyRepository.findById(dto.currency)
-            .orElseThrow { ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid currency: ${dto.currency}") }
+            .orElseThrow { DomainBadRequestException("Invalid currency: ${dto.currency}") }
 
         // 6. Load and validate all accounts
         val accountIds = dto.splits.map { it.accountId }.distinct()
@@ -73,62 +48,15 @@ class ManageLedgerImpl(
         if (accounts.size != accountIds.size) {
             val foundIds = accounts.map { it.id }.toSet()
             val missingIds = accountIds.filter { it !in foundIds }
-            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Accounts not found: $missingIds")
+            throw DomainBadRequestException("Accounts not found: $missingIds")
         }
         val accountMap = accounts.associateBy { requireNotNull(it.id) }
 
-        // 7. Currency consistency: all split accounts must match transaction currency
-        accounts.forEach { account ->
-            if (account.currency?.code != dto.currency) {
-                throw ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "Account '${account.name}' has currency ${account.currency?.code} but transaction currency is ${dto.currency}",
-                )
-            }
-        }
+        // 7. Currency consistency
+        transactionValidator.validateCurrencyConsistency(accounts, dto.currency)
 
         // 8. Permission check: individual vs household mode
-        val ownedAccounts = accounts.filter { it.owner?.userId == userId }
-        val nonOwnedAccounts = accounts.filter { it.owner?.userId != userId }
-
-        if (nonOwnedAccounts.isNotEmpty()) {
-            // Cross-user transaction requires household mode
-            if (!isHouseholdMode) {
-                throw ResponseStatusException(
-                    HttpStatus.FORBIDDEN,
-                    "Cannot post to accounts not owned by current user in individual mode",
-                )
-            }
-
-            val householdId = dto.householdId
-                ?: throw ResponseStatusException(HttpStatus.BAD_REQUEST, "householdId is required for household mode")
-
-            // Verify creator is active member of household
-            if (!manageHousehold.isActiveMember(householdId, userId)) {
-                throw ResponseStatusException(HttpStatus.FORBIDDEN, "Not an active member of this household")
-            }
-
-            // Verify all non-owned accounts are shared into the household
-            nonOwnedAccounts.forEach { account ->
-                val accountId = requireNotNull(account.id)
-                if (!manageHousehold.isAccountShared(householdId, accountId)) {
-                    throw ResponseStatusException(
-                        HttpStatus.FORBIDDEN,
-                        "Account '${account.name}' is not shared into household",
-                    )
-                }
-            }
-
-            // Cross-user transfer rule: all accounts must be ASSET only (v1)
-            accounts.forEach { account ->
-                if (account.type != AccountType.ASSET) {
-                    throw ResponseStatusException(
-                        HttpStatus.BAD_REQUEST,
-                        "Cross-user transfers only allow ASSET accounts (v1), but '${account.name}' is ${account.type}",
-                    )
-                }
-            }
-        }
+        transactionPolicy.checkAccountAccess(accounts, userId, isHouseholdMode, dto.householdId)
 
         // 9. Validate category tags
         val categoryTagIds = dto.splits.mapNotNull { it.categoryTagId }.distinct()
@@ -137,12 +65,11 @@ class ManageLedgerImpl(
             if (tags.size != categoryTagIds.size) {
                 val foundIds = tags.map { it.id }.toSet()
                 val missingIds = categoryTagIds.filter { it !in foundIds }
-                throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Category tags not found: $missingIds")
+                throw DomainBadRequestException("Category tags not found: $missingIds")
             }
             tags.forEach { tag ->
                 if (tag.owner?.userId != userId) {
-                    throw ResponseStatusException(
-                        HttpStatus.FORBIDDEN,
+                    throw DomainForbiddenException(
                         "Category tag '${tag.name}' is not owned by current user",
                     )
                 }
@@ -194,9 +121,9 @@ class ManageLedgerImpl(
 
         var spec: Specification<LedgerTxn> = if (isHouseholdMode) {
             val hhId = householdId
-                ?: throw ResponseStatusException(HttpStatus.BAD_REQUEST, "householdId is required for household mode")
+                ?: throw DomainBadRequestException("householdId is required for household mode")
             if (!manageHousehold.isActiveMember(hhId, userId)) {
-                throw ResponseStatusException(HttpStatus.FORBIDDEN, "Not an active member of this household")
+                throw DomainForbiddenException("Not an active member of this household")
             }
             val sharedAccountIds = manageHousehold.getSharedAccountIds(hhId)
             if (sharedAccountIds.isEmpty()) {
@@ -233,18 +160,18 @@ class ManageLedgerImpl(
         val userId = requireNotNull(user.userId) { "User ID must not be null" }
 
         val account = accountRepository.findById(accountId)
-            .orElseThrow { ResponseStatusException(HttpStatus.NOT_FOUND, "Account not found") }
+            .orElseThrow { DomainNotFoundException("Account not found") }
 
         // In household mode, allow viewing shared accounts; otherwise require ownership
         if (householdId != null) {
             if (!manageHousehold.isActiveMember(householdId, userId)) {
-                throw ResponseStatusException(HttpStatus.FORBIDDEN, "Not an active member of this household")
+                throw DomainForbiddenException("Not an active member of this household")
             }
             if (!manageHousehold.isAccountShared(householdId, accountId)) {
-                throw ResponseStatusException(HttpStatus.FORBIDDEN, "Account is not shared into this household")
+                throw DomainForbiddenException("Account is not shared into this household")
             }
         } else if (account.owner?.userId != userId) {
-            throw ResponseStatusException(HttpStatus.FORBIDDEN, "Not the owner of this account")
+            throw DomainForbiddenException("Not the owner of this account")
         }
 
         val isDebitNormal = account.type in setOf(AccountType.ASSET, AccountType.EXPENSE)

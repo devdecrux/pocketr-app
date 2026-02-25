@@ -9,6 +9,7 @@ import com.decrux.pocketr_api.entities.dtos.CreateHouseholdDto
 import com.decrux.pocketr_api.entities.dtos.InviteMemberDto
 import com.decrux.pocketr_api.entities.dtos.ShareAccountDto
 import com.decrux.pocketr_api.repositories.*
+import com.decrux.pocketr_api.services.OwnershipGuard
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
@@ -134,6 +135,7 @@ class HouseholdAccountShareIntegrationTest {
             shareRepository,
             accountRepository,
             userRepository,
+            OwnershipGuard(),
         )
 
         `when`(memberRepository.findByUserUserIdAndStatus(1L, MemberStatus.INVITED)).thenReturn(emptyList())

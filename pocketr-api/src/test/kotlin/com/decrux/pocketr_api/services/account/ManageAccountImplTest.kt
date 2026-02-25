@@ -8,12 +8,16 @@ import com.decrux.pocketr_api.entities.dtos.CreateAccountDto
 import com.decrux.pocketr_api.entities.dtos.UpdateAccountDto
 import com.decrux.pocketr_api.repositories.AccountRepository
 import com.decrux.pocketr_api.repositories.CurrencyRepository
+import com.decrux.pocketr_api.repositories.HouseholdAccountShareRepository
+import com.decrux.pocketr_api.services.OwnershipGuard
+import com.decrux.pocketr_api.services.household.ManageHousehold
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.mockito.ArgumentMatchers.any
+import org.mockito.ArgumentMatchers.anyLong
 import org.mockito.Mockito.*
 import org.springframework.web.server.ResponseStatusException
 import java.time.LocalDate
@@ -26,6 +30,8 @@ class ManageAccountImplTest {
     private lateinit var accountRepository: AccountRepository
     private lateinit var currencyRepository: CurrencyRepository
     private lateinit var openingBalanceService: CapturingOpeningBalanceService
+    private lateinit var manageHousehold: ManageHousehold
+    private lateinit var householdAccountShareRepository: HouseholdAccountShareRepository
     private lateinit var service: ManageAccountImpl
 
     private val eur = Currency(code = "EUR", minorUnit = 2, name = "Euro")
@@ -48,7 +54,12 @@ class ManageAccountImplTest {
         accountRepository = mock(AccountRepository::class.java)
         currencyRepository = mock(CurrencyRepository::class.java)
         openingBalanceService = CapturingOpeningBalanceService()
-        service = ManageAccountImpl(accountRepository, currencyRepository, openingBalanceService)
+        manageHousehold = mock(ManageHousehold::class.java)
+        householdAccountShareRepository = mock(HouseholdAccountShareRepository::class.java)
+        service = ManageAccountImpl(
+            accountRepository, currencyRepository, openingBalanceService,
+            manageHousehold, householdAccountShareRepository, OwnershipGuard(),
+        )
 
         `when`(currencyRepository.findById("EUR")).thenReturn(Optional.of(eur))
         `when`(currencyRepository.findById("USD")).thenReturn(Optional.of(usd))
@@ -339,6 +350,109 @@ class ManageAccountImplTest {
             val result = service.updateAccount(accountId, UpdateAccountDto(), ownerUser)
             assertEquals("Checking", result.name)
             assertEquals("ASSET", result.type)
+        }
+    }
+
+    @Nested
+    @DisplayName("listAccounts with mode")
+    inner class ListAccountsWithMode {
+
+        private val householdId = UUID.randomUUID()
+
+        @Test
+        @DisplayName("INDIVIDUAL mode returns only owner accounts")
+        fun individualModeReturnsOwnerAccounts() {
+            val accounts = listOf(
+                Account(id = UUID.randomUUID(), owner = ownerUser, name = "Checking", type = AccountType.ASSET, currency = eur),
+            )
+            `when`(accountRepository.findByOwnerUserId(1L)).thenReturn(accounts)
+
+            val result = service.listAccounts(ownerUser, "INDIVIDUAL", null)
+            assertEquals(1, result.size)
+            assertEquals("Checking", result[0].name)
+            verify(accountRepository).findByOwnerUserId(1L)
+            verifyNoInteractions(manageHousehold)
+            verifyNoInteractions(householdAccountShareRepository)
+        }
+
+        @Test
+        @DisplayName("HOUSEHOLD mode returns owned + shared accounts")
+        fun householdModeReturnsOwnedAndSharedAccounts() {
+            val ownedAccount = Account(id = UUID.randomUUID(), owner = ownerUser, name = "My Checking", type = AccountType.ASSET, currency = eur)
+            val sharedAccount = Account(id = UUID.randomUUID(), owner = otherUser, name = "Bob Savings", type = AccountType.ASSET, currency = eur)
+
+            `when`(manageHousehold.isActiveMember(householdId, 1L)).thenReturn(true)
+            `when`(accountRepository.findByOwnerUserId(1L)).thenReturn(listOf(ownedAccount))
+            `when`(householdAccountShareRepository.findSharedAccountIdsByHouseholdId(householdId))
+                .thenReturn(setOf(sharedAccount.id!!))
+            doReturn(listOf(sharedAccount)).`when`(accountRepository).findAllById(any())
+
+            val result = service.listAccounts(ownerUser, "HOUSEHOLD", householdId)
+            assertEquals(2, result.size)
+            val names = result.map { it.name }.toSet()
+            assertTrue(names.contains("My Checking"))
+            assertTrue(names.contains("Bob Savings"))
+        }
+
+        @Test
+        @DisplayName("HOUSEHOLD mode deduplicates when owned account is also shared")
+        fun householdModeDeduplicates() {
+            val sharedOwnedAccount = Account(id = UUID.randomUUID(), owner = ownerUser, name = "Shared Checking", type = AccountType.ASSET, currency = eur)
+
+            `when`(manageHousehold.isActiveMember(householdId, 1L)).thenReturn(true)
+            `when`(accountRepository.findByOwnerUserId(1L)).thenReturn(listOf(sharedOwnedAccount))
+            `when`(householdAccountShareRepository.findSharedAccountIdsByHouseholdId(householdId))
+                .thenReturn(setOf(sharedOwnedAccount.id!!))
+            doReturn(listOf(sharedOwnedAccount)).`when`(accountRepository).findAllById(any())
+
+            val result = service.listAccounts(ownerUser, "HOUSEHOLD", householdId)
+            assertEquals(1, result.size)
+            assertEquals("Shared Checking", result[0].name)
+        }
+
+        @Test
+        @DisplayName("HOUSEHOLD mode with no shared accounts returns only owned")
+        fun householdModeNoSharedAccounts() {
+            val ownedAccount = Account(id = UUID.randomUUID(), owner = ownerUser, name = "Checking", type = AccountType.ASSET, currency = eur)
+
+            `when`(manageHousehold.isActiveMember(householdId, 1L)).thenReturn(true)
+            `when`(accountRepository.findByOwnerUserId(1L)).thenReturn(listOf(ownedAccount))
+            `when`(householdAccountShareRepository.findSharedAccountIdsByHouseholdId(householdId))
+                .thenReturn(emptySet())
+
+            val result = service.listAccounts(ownerUser, "HOUSEHOLD", householdId)
+            assertEquals(1, result.size)
+            assertEquals("Checking", result[0].name)
+        }
+
+        @Test
+        @DisplayName("HOUSEHOLD mode rejects non-member with 403")
+        fun householdModeRejectsNonMember() {
+            `when`(manageHousehold.isActiveMember(householdId, 1L)).thenReturn(false)
+
+            val ex = assertThrows(ResponseStatusException::class.java) {
+                service.listAccounts(ownerUser, "HOUSEHOLD", householdId)
+            }
+            assertEquals(403, ex.statusCode.value())
+            verify(accountRepository, never()).findByOwnerUserId(anyLong())
+        }
+
+        @Test
+        @DisplayName("HOUSEHOLD mode without householdId returns 400")
+        fun householdModeWithoutHouseholdId() {
+            val ex = assertThrows(ResponseStatusException::class.java) {
+                service.listAccounts(ownerUser, "HOUSEHOLD", null)
+            }
+            assertEquals(400, ex.statusCode.value())
+        }
+
+        @Test
+        @DisplayName("Invalid mode returns 400")
+        fun invalidModeReturns400() {
+            val ex = assertThrows(ResponseStatusException::class.java) {
+                service.listAccounts(ownerUser, "INVALID", null)
+            }
+            assertEquals(400, ex.statusCode.value())
         }
     }
 

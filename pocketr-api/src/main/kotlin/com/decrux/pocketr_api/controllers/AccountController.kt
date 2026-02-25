@@ -28,8 +28,10 @@ class AccountController(
     @GetMapping
     fun listAccounts(
         @AuthenticationPrincipal user: User,
+        @RequestParam(defaultValue = "INDIVIDUAL") mode: String,
+        @RequestParam(required = false) householdId: UUID?,
     ): List<AccountDto> {
-        return manageAccount.listAccounts(user)
+        return manageAccount.listAccounts(user, mode, householdId)
     }
 
     @PatchMapping("/{id}")

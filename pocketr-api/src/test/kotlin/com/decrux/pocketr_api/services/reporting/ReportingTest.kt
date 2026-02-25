@@ -7,6 +7,7 @@ import com.decrux.pocketr_api.entities.db.ledger.Currency
 import com.decrux.pocketr_api.entities.db.ledger.SplitSide
 import com.decrux.pocketr_api.repositories.AccountRepository
 import com.decrux.pocketr_api.repositories.LedgerSplitRepository
+import com.decrux.pocketr_api.services.household.ManageHousehold
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
@@ -33,6 +34,7 @@ class ReportingTest {
 
     private lateinit var ledgerSplitRepository: LedgerSplitRepository
     private lateinit var accountRepository: AccountRepository
+    private lateinit var manageHousehold: ManageHousehold
     private lateinit var service: GenerateReportImpl
 
     private val eur = Currency(code = "EUR", minorUnit = 2, name = "Euro")
@@ -60,7 +62,8 @@ class ReportingTest {
     fun setUp() {
         ledgerSplitRepository = mock(LedgerSplitRepository::class.java)
         accountRepository = mock(AccountRepository::class.java)
-        service = GenerateReportImpl(ledgerSplitRepository, accountRepository)
+        manageHousehold = mock(ManageHousehold::class.java)
+        service = GenerateReportImpl(ledgerSplitRepository, accountRepository, manageHousehold)
     }
 
     @Nested
@@ -181,6 +184,7 @@ class ReportingTest {
         @DisplayName("expense totals in household mode use household query")
         fun expenseTotalsHouseholdMode() {
             val householdId = UUID.randomUUID()
+            `when`(manageHousehold.isActiveMember(householdId, 1L)).thenReturn(true)
             `when`(ledgerSplitRepository.monthlyExpensesByHousehold(householdId, janStart, janEnd, SplitSide.DEBIT, SplitSide.CREDIT)).thenReturn(
                 listOf(
                     arrayOf(groceriesId, "Groceries", foodTagId, "Food", "EUR", 5000L),
@@ -203,6 +207,34 @@ class ReportingTest {
             }
             assertEquals(400, ex.statusCode.value())
             assertTrue(ex.reason!!.contains("householdId is required"))
+        }
+
+        @Test
+        @DisplayName("household mode returns 403 for non-member")
+        fun householdModeReturns403ForNonMember() {
+            val householdId = UUID.randomUUID()
+            `when`(manageHousehold.isActiveMember(householdId, 1L)).thenReturn(false)
+
+            val ex = assertThrows(ResponseStatusException::class.java) {
+                service.getMonthlyExpenses(userA, jan2026, "HOUSEHOLD", householdId)
+            }
+            assertEquals(403, ex.statusCode.value())
+            assertTrue(ex.reason!!.contains("Not an active member"))
+        }
+
+        @Test
+        @DisplayName("household mode succeeds for active member")
+        fun householdModeSucceedsForActiveMember() {
+            val householdId = UUID.randomUUID()
+            `when`(manageHousehold.isActiveMember(householdId, 1L)).thenReturn(true)
+            `when`(ledgerSplitRepository.monthlyExpensesByHousehold(householdId, janStart, janEnd, SplitSide.DEBIT, SplitSide.CREDIT)).thenReturn(
+                listOf(arrayOf(groceriesId, "Groceries", foodTagId, "Food", "EUR", 7000L)),
+            )
+
+            val result = service.getMonthlyExpenses(userA, jan2026, "HOUSEHOLD", householdId)
+
+            assertEquals(1, result.size)
+            assertEquals(7000L, result[0].netMinor)
         }
 
         @Test

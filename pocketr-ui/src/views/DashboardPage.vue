@@ -82,7 +82,11 @@ async function loadBalances(): Promise<void> {
   balancesLoading.value = true
   const promises = topAccounts.value.map(async (account) => {
     try {
-      const result = await getAccountBalance(account.id)
+      const result = await getAccountBalance(
+        account.id,
+        undefined,
+        modeStore.householdId ?? undefined,
+      )
       balances.value.set(account.id, result.balanceMinor)
     } catch {
       // skip

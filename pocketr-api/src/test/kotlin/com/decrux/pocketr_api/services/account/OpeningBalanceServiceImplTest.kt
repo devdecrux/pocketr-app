@@ -6,9 +6,12 @@ import com.decrux.pocketr_api.entities.db.ledger.AccountType
 import com.decrux.pocketr_api.entities.db.ledger.Currency
 import com.decrux.pocketr_api.entities.dtos.BalanceDto
 import com.decrux.pocketr_api.entities.dtos.CreateTransactionDto
+import com.decrux.pocketr_api.entities.dtos.PagedTransactionsDto
 import com.decrux.pocketr_api.entities.dtos.TransactionDto
+import com.decrux.pocketr_api.exceptions.DomainBadRequestException
 import com.decrux.pocketr_api.repositories.AccountRepository
 import com.decrux.pocketr_api.repositories.UserRepository
+import com.decrux.pocketr_api.services.OwnershipGuard
 import com.decrux.pocketr_api.services.ledger.ManageLedger
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertThrows
@@ -32,6 +35,7 @@ class OpeningBalanceServiceImplTest {
         accountRepository = accountRepository,
         userRepository = userRepository,
         manageLedger = manageLedger,
+        ownershipGuard = OwnershipGuard(),
     )
 
     private val owner = User(
@@ -140,11 +144,36 @@ class OpeningBalanceServiceImplTest {
             currency = eur,
         )
 
-        val ex = assertThrows(ResponseStatusException::class.java) {
+        val ex = assertThrows(DomainBadRequestException::class.java) {
             service.createForNewAssetAccount(owner, liability, 1000, LocalDate.parse("2026-02-15"))
         }
 
-        assertEquals(400, ex.statusCode.value())
+        assertEquals(400, ex.status.value())
+        verifyNoInteractions(userRepository)
+        assertEquals(0, manageLedger.calls.size)
+    }
+
+    @Test
+    @DisplayName("rejects opening balance when caller does not own account")
+    fun rejectsNonOwner() {
+        val anotherUser = User(
+            userId = 2L,
+            passwordValue = "encoded",
+            email = "another@example.com",
+        )
+        val assetAccount = Account(
+            id = UUID.randomUUID(),
+            owner = anotherUser,
+            name = "Checking",
+            type = AccountType.ASSET,
+            currency = eur,
+        )
+
+        val ex = assertThrows(ResponseStatusException::class.java) {
+            service.createForNewAssetAccount(owner, assetAccount, 1000, LocalDate.parse("2026-02-15"))
+        }
+
+        assertEquals(403, ex.statusCode.value())
         verifyNoInteractions(userRepository)
         assertEquals(0, manageLedger.calls.size)
     }
@@ -166,6 +195,7 @@ class OpeningBalanceServiceImplTest {
                 description = dto.description,
                 householdId = dto.householdId,
                 txnKind = "TRANSFER",
+                createdBy = null,
                 splits = emptyList(),
                 createdAt = java.time.Instant.now(),
                 updatedAt = java.time.Instant.now(),
@@ -180,7 +210,9 @@ class OpeningBalanceServiceImplTest {
             dateTo: LocalDate?,
             accountId: UUID?,
             categoryId: UUID?,
-        ): List<TransactionDto> = emptyList()
+            page: Int,
+            size: Int,
+        ): PagedTransactionsDto = PagedTransactionsDto(content = emptyList(), page = 0, size = 50, totalElements = 0, totalPages = 0)
 
         override fun getAccountBalance(
             accountId: UUID,

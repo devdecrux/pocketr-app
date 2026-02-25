@@ -4,8 +4,10 @@ import com.decrux.pocketr_api.entities.db.auth.User
 import com.decrux.pocketr_api.entities.db.ledger.*
 import com.decrux.pocketr_api.entities.dtos.CreateSplitDto
 import com.decrux.pocketr_api.entities.dtos.CreateTransactionDto
+import com.decrux.pocketr_api.exceptions.DomainHttpException
 import com.decrux.pocketr_api.repositories.*
 import com.decrux.pocketr_api.services.household.ManageHousehold
+import com.decrux.pocketr_api.services.user_avatar.UserAvatarService
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
@@ -13,7 +15,6 @@ import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.mockito.ArgumentMatchers.any
 import org.mockito.Mockito.*
-import org.springframework.web.server.ResponseStatusException
 import java.time.LocalDate
 import java.util.Optional
 import java.util.UUID
@@ -36,6 +37,9 @@ class LedgerTransactionValidationTest {
     private lateinit var currencyRepository: CurrencyRepository
     private lateinit var categoryTagRepository: CategoryTagRepository
     private lateinit var manageHousehold: ManageHousehold
+    private lateinit var userAvatarService: UserAvatarService
+    private lateinit var transactionValidator: LedgerTransactionValidator
+    private lateinit var transactionPolicy: LedgerTransactionPolicy
     private lateinit var service: ManageLedgerImpl
 
     private val eur = Currency(code = "EUR", minorUnit = 2, name = "Euro")
@@ -74,11 +78,15 @@ class LedgerTransactionValidationTest {
         currencyRepository = mock(CurrencyRepository::class.java)
         categoryTagRepository = mock(CategoryTagRepository::class.java)
         manageHousehold = mock(ManageHousehold::class.java)
+        userAvatarService = mock(UserAvatarService::class.java)
+        transactionValidator = LedgerTransactionValidator()
+        transactionPolicy = LedgerTransactionPolicy(manageHousehold)
 
         service = ManageLedgerImpl(
             ledgerTxnRepository, ledgerSplitRepository,
             accountRepository, currencyRepository, categoryTagRepository,
-            manageHousehold,
+            manageHousehold, userAvatarService,
+            transactionValidator, transactionPolicy,
         )
 
         `when`(currencyRepository.findById("EUR")).thenReturn(Optional.of(eur))
@@ -120,11 +128,11 @@ class LedgerTransactionValidationTest {
                 splits = listOf(CreateSplitDto(accountId = checkingId, side = "DEBIT", amountMinor = 1000)),
             )
 
-            val ex = assertThrows(ResponseStatusException::class.java) {
+            val ex = assertThrows(DomainHttpException::class.java) {
                 service.createTransaction(dto, userA)
             }
-            assertEquals(400, ex.statusCode.value())
-            assertTrue(ex.reason!!.contains("at least 2 splits"))
+            assertEquals(400, ex.status.value())
+            assertTrue(ex.message!!.contains("at least 2 splits"))
         }
 
         @Test
@@ -135,10 +143,10 @@ class LedgerTransactionValidationTest {
                 splits = emptyList(),
             )
 
-            val ex = assertThrows(ResponseStatusException::class.java) {
+            val ex = assertThrows(DomainHttpException::class.java) {
                 service.createTransaction(dto, userA)
             }
-            assertEquals(400, ex.statusCode.value())
+            assertEquals(400, ex.status.value())
         }
 
         @Test
@@ -152,11 +160,11 @@ class LedgerTransactionValidationTest {
                 ),
             )
 
-            val ex = assertThrows(ResponseStatusException::class.java) {
+            val ex = assertThrows(DomainHttpException::class.java) {
                 service.createTransaction(dto, userA)
             }
-            assertEquals(400, ex.statusCode.value())
-            assertTrue(ex.reason!!.contains("Double-entry violation"))
+            assertEquals(400, ex.status.value())
+            assertTrue(ex.message!!.contains("Double-entry violation"))
         }
 
         @Test
@@ -170,11 +178,11 @@ class LedgerTransactionValidationTest {
                 ),
             )
 
-            val ex = assertThrows(ResponseStatusException::class.java) {
+            val ex = assertThrows(DomainHttpException::class.java) {
                 service.createTransaction(dto, userA)
             }
-            assertEquals(400, ex.statusCode.value())
-            assertTrue(ex.reason!!.contains("greater than 0"))
+            assertEquals(400, ex.status.value())
+            assertTrue(ex.message!!.contains("greater than 0"))
         }
 
         @Test
@@ -188,11 +196,11 @@ class LedgerTransactionValidationTest {
                 ),
             )
 
-            val ex = assertThrows(ResponseStatusException::class.java) {
+            val ex = assertThrows(DomainHttpException::class.java) {
                 service.createTransaction(dto, userA)
             }
-            assertEquals(400, ex.statusCode.value())
-            assertTrue(ex.reason!!.contains("greater than 0"))
+            assertEquals(400, ex.status.value())
+            assertTrue(ex.message!!.contains("greater than 0"))
         }
 
         @Test
@@ -206,11 +214,11 @@ class LedgerTransactionValidationTest {
                 ),
             )
 
-            val ex = assertThrows(ResponseStatusException::class.java) {
+            val ex = assertThrows(DomainHttpException::class.java) {
                 service.createTransaction(dto, userA)
             }
-            assertEquals(400, ex.statusCode.value())
-            assertTrue(ex.reason!!.contains("Invalid split side"))
+            assertEquals(400, ex.status.value())
+            assertTrue(ex.message!!.contains("Invalid split side"))
         }
     }
 
@@ -230,11 +238,11 @@ class LedgerTransactionValidationTest {
                 ),
             )
 
-            val ex = assertThrows(ResponseStatusException::class.java) {
+            val ex = assertThrows(DomainHttpException::class.java) {
                 service.createTransaction(dto, userA)
             }
-            assertEquals(400, ex.statusCode.value())
-            assertTrue(ex.reason!!.contains("currency"))
+            assertEquals(400, ex.status.value())
+            assertTrue(ex.message!!.contains("currency"))
         }
 
         @Test
@@ -249,11 +257,11 @@ class LedgerTransactionValidationTest {
                 ),
             )
 
-            val ex = assertThrows(ResponseStatusException::class.java) {
+            val ex = assertThrows(DomainHttpException::class.java) {
                 service.createTransaction(dto, userA)
             }
-            assertEquals(400, ex.statusCode.value())
-            assertTrue(ex.reason!!.contains("Invalid currency"))
+            assertEquals(400, ex.status.value())
+            assertTrue(ex.message!!.contains("Invalid currency"))
         }
     }
 
@@ -273,11 +281,11 @@ class LedgerTransactionValidationTest {
                 ),
             )
 
-            val ex = assertThrows(ResponseStatusException::class.java) {
+            val ex = assertThrows(DomainHttpException::class.java) {
                 service.createTransaction(dto, userA)
             }
-            assertEquals(403, ex.statusCode.value())
-            assertTrue(ex.reason!!.contains("not owned by current user"))
+            assertEquals(403, ex.status.value())
+            assertTrue(ex.message!!.contains("not owned by current user"))
         }
 
         @Test
@@ -308,11 +316,11 @@ class LedgerTransactionValidationTest {
                 ),
             )
 
-            val ex = assertThrows(ResponseStatusException::class.java) {
+            val ex = assertThrows(DomainHttpException::class.java) {
                 service.createTransaction(dto, userA)
             }
-            assertEquals(403, ex.statusCode.value())
-            assertTrue(ex.reason!!.contains("not owned by current user"))
+            assertEquals(403, ex.status.value())
+            assertTrue(ex.message!!.contains("not owned by current user"))
         }
 
         @Test
@@ -330,11 +338,11 @@ class LedgerTransactionValidationTest {
                 ),
             )
 
-            val ex = assertThrows(ResponseStatusException::class.java) {
+            val ex = assertThrows(DomainHttpException::class.java) {
                 service.createTransaction(dto, userA)
             }
-            assertEquals(400, ex.statusCode.value())
-            assertTrue(ex.reason!!.contains("Category tags not found"))
+            assertEquals(400, ex.status.value())
+            assertTrue(ex.message!!.contains("Category tags not found"))
         }
 
         @Test
@@ -351,11 +359,11 @@ class LedgerTransactionValidationTest {
                 ),
             )
 
-            val ex = assertThrows(ResponseStatusException::class.java) {
+            val ex = assertThrows(DomainHttpException::class.java) {
                 service.createTransaction(dto, userA)
             }
-            assertEquals(400, ex.statusCode.value())
-            assertTrue(ex.reason!!.contains("Accounts not found"))
+            assertEquals(400, ex.status.value())
+            assertTrue(ex.message!!.contains("Accounts not found"))
         }
     }
 
@@ -593,10 +601,10 @@ class LedgerTransactionValidationTest {
         fun rejectBalanceForNonOwnedAccount() {
             `when`(accountRepository.findById(checkingId)).thenReturn(Optional.of(checking))
 
-            val ex = assertThrows(ResponseStatusException::class.java) {
+            val ex = assertThrows(DomainHttpException::class.java) {
                 service.getAccountBalance(checkingId, LocalDate.now(), userB, null)
             }
-            assertEquals(403, ex.statusCode.value())
+            assertEquals(403, ex.status.value())
         }
 
         @Test
@@ -605,10 +613,10 @@ class LedgerTransactionValidationTest {
             val missingId = UUID.randomUUID()
             `when`(accountRepository.findById(missingId)).thenReturn(Optional.empty())
 
-            val ex = assertThrows(ResponseStatusException::class.java) {
+            val ex = assertThrows(DomainHttpException::class.java) {
                 service.getAccountBalance(missingId, LocalDate.now(), userA, null)
             }
-            assertEquals(404, ex.statusCode.value())
+            assertEquals(404, ex.status.value())
         }
     }
 }

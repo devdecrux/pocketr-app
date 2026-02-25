@@ -4,6 +4,7 @@ import com.decrux.pocketr_api.entities.db.auth.User
 import com.decrux.pocketr_api.entities.db.household.*
 import com.decrux.pocketr_api.entities.dtos.*
 import com.decrux.pocketr_api.repositories.*
+import com.decrux.pocketr_api.services.OwnershipGuard
 import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -18,6 +19,7 @@ class ManageHouseholdImpl(
     private val shareRepository: HouseholdAccountShareRepository,
     private val accountRepository: AccountRepository,
     private val userRepository: UserRepository,
+    private val ownershipGuard: OwnershipGuard,
 ) : ManageHousehold {
 
     @Transactional
@@ -187,9 +189,7 @@ class ManageHouseholdImpl(
         val account = accountRepository.findById(dto.accountId)
             .orElseThrow { ResponseStatusException(HttpStatus.NOT_FOUND, "Account not found") }
 
-        if (account.owner?.userId != userId) {
-            throw ResponseStatusException(HttpStatus.FORBIDDEN, "Only the account owner can share an account")
-        }
+        ownershipGuard.requireOwner(account.owner?.userId, userId, "Only the account owner can share an account")
 
         if (shareRepository.existsByHouseholdIdAndAccountId(householdId, dto.accountId)) {
             throw ResponseStatusException(HttpStatus.CONFLICT, "Account is already shared into this household")
@@ -212,9 +212,7 @@ class ManageHouseholdImpl(
         val share = shareRepository.findByHouseholdIdAndAccountId(householdId, accountId)
             ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "Account is not shared into this household")
 
-        if (share.account?.owner?.userId != userId) {
-            throw ResponseStatusException(HttpStatus.FORBIDDEN, "Only the account owner can unshare an account")
-        }
+        ownershipGuard.requireOwner(share.account?.owner?.userId, userId, "Only the account owner can unshare an account")
 
         shareRepository.delete(share)
     }

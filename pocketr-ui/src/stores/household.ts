@@ -27,6 +27,8 @@ export const useHouseholdStore = defineStore('household', () => {
   const sharedAccounts = ref<HouseholdAccountShare[]>([])
   const isLoading = ref(false)
   const error = ref<string | null>(null)
+  const modeValidated = ref(false)
+  let ensureModeValidationPromise: Promise<void> | null = null
 
   const activeHouseholds = computed(() => households.value.filter((h) => h.status === 'ACTIVE'))
 
@@ -63,11 +65,26 @@ export const useHouseholdStore = defineStore('household', () => {
           modeStore.switchToIndividual()
         }
       }
+      modeValidated.value = true
     } catch (nextError: unknown) {
       error.value = await resolveErrorMessage(nextError, 'Failed to load households.')
     } finally {
       isLoading.value = false
     }
+  }
+
+  async function ensureModeValidated(): Promise<void> {
+    if (modeValidated.value) {
+      return
+    }
+
+    if (!ensureModeValidationPromise) {
+      ensureModeValidationPromise = loadHouseholds().finally(() => {
+        ensureModeValidationPromise = null
+      })
+    }
+
+    await ensureModeValidationPromise
   }
 
   async function loadHousehold(id: string): Promise<void> {
@@ -183,6 +200,8 @@ export const useHouseholdStore = defineStore('household', () => {
     sharedAccounts.value = []
     isLoading.value = false
     error.value = null
+    modeValidated.value = false
+    ensureModeValidationPromise = null
   }
 
   async function resolveErrorMessage(nextError: unknown, fallback: string): Promise<string> {
@@ -207,6 +226,7 @@ export const useHouseholdStore = defineStore('household', () => {
     currentMembership,
     isOwnerOrAdmin,
     loadHouseholds,
+    ensureModeValidated,
     loadHousehold,
     createHousehold,
     inviteMember,

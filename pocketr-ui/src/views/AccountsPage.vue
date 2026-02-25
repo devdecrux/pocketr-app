@@ -174,7 +174,11 @@ const table = useVueTable({
 async function loadBalances(): Promise<void> {
   const promises = accountStore.activeAccounts.map(async (account) => {
     try {
-      const result = await getAccountBalance(account.id)
+      const result = await getAccountBalance(
+        account.id,
+        undefined,
+        modeStore.householdId ?? undefined,
+      )
       balances.value.set(account.id, result.balanceMinor)
     } catch {
       // skip failed balance loads

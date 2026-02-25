@@ -1,175 +1,145 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+Purpose: give Claude Code a compact, high-signal map of this repo so changes are safe, fast, and non-regressive.
 
-## Project Overview
+## 1. Non-Negotiables
 
-Pocketr is a budgeting application using a double-entry ledger and household overlay model.
-It consists of two co-located but independently built projects (not a workspace monorepo):
+1. Preserve existing behavior unless the task explicitly fixes a bug/security issue.
+2. Make small, reversible patches. Do not mix unrelated changes.
+3. Run targeted tests for touched areas first, then broader gates before finishing.
+4. Keep backend/frontend contracts consistent (query params, DTO field names, auth/session behavior).
+5. Treat security-sensitive code paths as high-risk: auth, household access checks, redirects, infra exposure.
 
-- **pocketr-api/** — Kotlin/Spring Boot 4 backend (Gradle, Java 25, PostgreSQL)
-- **pocketr-ui/** — Vue 3/TypeScript frontend (Vite, Tailwind CSS 4, shadcn-vue)
+## 2. Repo Map
 
-Core budgeting domains are now implemented in backend and partially integrated in frontend:
+- `pocketr-api`: Spring Boot 4 + Kotlin + JPA backend.
+- `pocketr-ui`: Vue 3 + Vite + Pinia frontend.
+- `config/traefik`: Traefik static/dynamic config.
+- `docker-compose.yaml`: local infra (Postgres + Traefik).
+- `Dockerfile`: multi-stage build (frontend built into backend static resources).
+- `docs/pocketr_app_full_review_2026-02-24.md`: full technical review and findings.
+- `docs/pocketr_app_claude_execution_playbook_2026-02-24.md`: phase/card workflow for implementation.
 
-- currencies
-- accounts
-- categories
-- ledger transactions/splits
-- balances and reporting endpoints
-- households (membership/invites/account sharing)
-- mode switch UI (individual vs household)
+## 3. Quick Start / Core Commands
 
-Do not assume frontend/backend contracts are fully aligned yet. Verify endpoint/DTO expectations before coding.
-
-## Development Setup
-
-Start infrastructure first, then run backend and frontend:
+Infra dependencies:
 
 ```bash
-# Start PostgreSQL + Traefik reverse proxy
 docker compose up -d db traefik-reverse-proxy
-
-# Backend (runs on :8081 with dev profile)
-cd pocketr-api && ./gradlew bootRun --args='--spring.profiles.active=dev'
-
-# Frontend (runs on :5173)
-cd pocketr-ui && npm run dev
+docker compose down
 ```
 
-Access via Traefik at `http://localhost` — routes `/api` to backend, `/frontend` to Vite dev server.
-
-## Build & Test Commands
-
-### Backend (pocketr-api/)
+Backend:
 
 ```bash
-./gradlew build
-./gradlew bootRun --args='--spring.profiles.active=dev'
+cd pocketr-api
 ./gradlew test
+./gradlew bootRun
+```
+
+Frontend:
+
+```bash
+cd pocketr-ui
+npm run test:unit
+npm run build
+npm run dev
 ```
 
 Notes:
+- Backend toolchain: Java 25 / Kotlin 2.3.x.
+- Frontend engine: Node `^20.19.0 || >=22.12.0`.
 
-- Tests are mostly unit-style service tests with Mockito.
-- `ApiApplicationTests` is currently disabled.
-- Tests still assume a reachable PostgreSQL config.
+## 4. Architecture Snapshot
 
-### Frontend (pocketr-ui/)
+Backend (`pocketr-api`):
+- Controllers in `controllers/*Controller.kt`.
+- Business logic in `services/**`.
+- Persistence in `repositories/**`.
+- Security config in `config/security/**` with session auth + CSRF cookie/header flow.
 
-```bash
-npm run dev
-npm run build          # runs type-check + build-only
-npm run type-check
-npm run lint           # oxlint + eslint (with --fix)
-npm run format
-npm run test:unit
-npm run test:e2e
-```
+Frontend (`pocketr-ui`):
+- Router: `src/router/index.ts` with auth guard + guest-only routes.
+- Global session handling: `src/api/http.ts` (401 hook) + `src/stores/auth.ts`.
+- View mode state (`INDIVIDUAL` vs `HOUSEHOLD`): `src/stores/mode.ts` (persisted in localStorage).
+- Domain stores: account/category/currency/household/ledger.
 
-## Architecture
+Infra:
+- Traefik routes `/api` -> backend `:8081`, `/frontend` -> frontend `:5173`.
+- Current routing relies on `host.docker.internal` in dynamic config.
 
-### Backend (Kotlin/Spring Boot)
+## 5. High-Risk Hotspots (Read Before Editing)
 
-**Base package:** `com.decrux.pocketr_api`
+1. Reporting authorization:
+   - `GenerateReportImpl` household monthly report path lacks explicit membership guard.
+2. Login redirect handling:
+   - `src/views/auth/LoginPage.vue` uses `route.query.redirect` directly.
+3. Household account/balance flows:
+   - Frontend sends mode/household context in some calls; backend support is inconsistent.
+4. Ledger transaction service complexity:
+   - `ManageLedgerImpl.createTransaction` is large and mixes validation/auth/persistence.
+5. Store coupling:
+   - `auth` store resets many stores directly; some stores pull other stores internally.
+6. Infra exposure:
+   - Traefik dashboard enabled on HTTP.
+   - Postgres creds are hardcoded in compose and port `5432` is exposed.
 
-**Layered architecture:** Controller → Service → Repository
+If your task touches any hotspot, run stricter verification and avoid broad refactors in the same patch.
 
-- `controllers/` — REST controllers under `/v1/` (context path is `/api`)
-- `services/` — Business logic, organized by domain (e.g., `user_registration/`, `user_avatar/`). Services use interface + impl pattern (e.g.,
-  `RegisterUser` interface, `RegisterUserImpl`).
-- `repositories/` — Spring Data JPA repositories
-- `entities/db/` — JPA entities
-- `entities/dtos/` — Request/response data classes
-- `config/security/` — Spring Security + CSRF/session auth
+## 6. Testing Reality (Important)
 
-**Auth:** Session-based (not JWT). Custom handlers return HTTP status codes instead of redirects (SPA pattern). CSRF via `XSRF-TOKEN` cookie with a
-custom `SpaCsrfTokenRequestHandler` that supports both XOR-encoded and plain tokens. Max 1 session per user, 5-minute timeout.
+Backend tests exist and are meaningful:
+- `services/reporting/ReportingTest.kt`
+- `services/ledger/LedgerTransactionValidationTest.kt`
+- `services/ledger/HouseholdTransactionVisibilityTest.kt`
+- account/category/household service tests
 
-**Public endpoints:** `/v1/user/register`, `/v1/user/login`, `/v1/internal/csrf-token` (dev only), frontend static files.
+Frontend unit test coverage is minimal (`src/__tests__/App.spec.ts`).
 
-**Spring profiles:** `dev` (local PostgreSQL, port 8081), `prod` (env vars: DB_URL, DB_USERNAME, DB_PASSWORD), `test` (create-drop DDL).
+Frontend E2E (`e2e/vue.spec.ts`) is template-level and not a reliable regression suite yet.
 
-**Database:** PostgreSQL 18, Hibernate `ddl-auto: update` (no migration tooling yet).
+Practical rule:
+1. Add/adjust tests when you change behavior.
+2. Use targeted backend suites for focused fixes.
+3. Always run `npm run test:unit && npm run build` after frontend changes.
 
-### Backend Domains (current)
+## 7. Alpha Database Policy
 
-- `controllers/AccountController.kt` — create/list/update account
-- `controllers/CategoryController.kt` — category CRUD
-- `controllers/CurrencyController.kt` — list currencies
-- `controllers/LedgerController.kt` — create/list transactions, account balance
-- `controllers/ReportingController.kt` — monthly expenses, account balances, timeseries
-- `controllers/HouseholdController.kt` — create/list household, invite/accept, share/unshare, list household/shared accounts
+Current state:
+- `pocketr-api/src/main/resources/application.yaml` uses `spring.jpa.hibernate.ddl-auto: update`.
 
-Ledger invariants are enforced in service layer (`ManageLedgerImpl`):
+Policy for this alpha phase:
+1. Breaking schema changes are allowed.
+2. Flyway/Liquibase is not required yet.
+3. If schema changes are introduced, document reset expectations in PR/task notes.
+4. Keep dev/test startup reliable after schema changes (tests must still pass).
 
-- at least 2 splits
-- positive split amounts
-- valid split sides
-- debits must equal credits
-- transaction currency must match all split account currencies
-- non-owned account posting requires household mode + shared-account checks
-- cross-user posting is currently restricted to ASSET-only transfers
+## 8. Change Workflow (Recommended)
 
-### Frontend (Vue 3/TypeScript)
+1. Confirm scope and identify touched backend/frontend contracts.
+2. Apply one logical fix/refactor at a time.
+3. Run targeted tests.
+4. Run broader project gates:
+   - `cd pocketr-api && ./gradlew test`
+   - `cd pocketr-ui && npm run test:unit && npm run build`
+5. Summarize:
+   - files changed
+   - behavior changes
+   - test results
+   - residual risks
 
-**Key conventions:**
+## 9. Token-Efficient Working Style
 
-- Composition API with `<script setup lang="ts">` exclusively
-- Pinia stores use setup function style (`defineStore` with Composition API)
-- `@` path alias resolves to `./src`
-- Base path is `/frontend/` (for Traefik routing)
+1. Prefer `rg -n` and narrow reads; avoid dumping whole files unless needed.
+2. Reuse identifiers (`SEC-01`, `BUG-01`, etc.) from docs instead of repeating long context.
+3. Keep progress updates short and structured.
+4. For reviews, report blockers first with exact file/line references.
 
-**Routing:** Vue Router with `requiresAuth` and `guestOnly` meta flags. Router guard lazily hydrates auth from session on first navigation.
+## 10. Source of Truth Docs
 
-**State management:** Pinia setup stores by domain:
+For full prioritized findings and implementation sequencing:
+- `docs/pocketr_app_full_review_2026-02-24.md`
+- `docs/pocketr_app_claude_execution_playbook_2026-02-24.md`
 
-- `auth`
-- `mode` (individual vs household)
-- `account`
-- `category`
-- `currency`
-- `ledger`
-- `household`
+Use this `CLAUDE.md` as the fast-start layer; use the docs above for deep execution detail.
 
-**HTTP client:** `ky` instance in `src/api/http.ts` — auto-attaches CSRF token from cookie on every request, includes credentials.
-
-**UI components:** shadcn-vue (new-york style) with reka-ui headless primitives in `src/components/ui/`. Use `cn()` from `src/lib/utils.ts` for class
-merging.
-
-**Dual layout system:** Routes with `meta: { layout: 'auth' }` render without sidebar; authenticated routes get the `SidebarProvider` wrapper.
-Controlled in `App.vue`.
-
-**Main feature views (implemented):**
-
-- `DashboardPage.vue`
-- `AccountsPage.vue` (table + create/rename)
-- `TransactionsPage.vue` (table + expense/income/transfer creation)
-- `SettingsPage.vue` (avatar + household create/accept/leave UI)
-- `HouseholdSettingsPage.vue` (members/invite/share controls)
-
-### Infrastructure
-
-**Dockerfile:** Multi-stage — Node builds frontend → JDK embeds frontend in Spring static resources and builds fat JAR → JRE runtime image.
-
-**Traefik:** Routes `/api/*` → backend:8081, `/frontend/*` → Vite:5173. Root `/` redirects to `/frontend/`.
-
-## Conventions
-
-- Backend endpoints are versioned under `/v1/` with context path `/api` (full path: `/api/v1/...`)
-- Frontend calls API at `/api/v1/...` (proxied by Vite in dev, Traefik in local, embedded in prod)
-- Money values are integer minor units (`amountMinor`), never floating point persisted values
-- DTOs are Kotlin data classes; entities are JPA classes with `allOpen` plugin for Hibernate
-- Auth handlers in `config/security/` follow the naming pattern `Custom*Handler`
-- Frontend formatting: no semicolons, single quotes, 100 char print width (Prettier config)
-
-## Known Frontend/Backend Mismatches (Important)
-
-These exist in current code and should be reconciled intentionally:
-
-1. `GET /api/v1/accounts` frontend sends `mode/householdId`, but backend currently ignores those params and returns owner accounts only.
-2. Frontend monthly report expects `categoryId/categoryName`; backend uses `categoryTagId/categoryTagName`.
-3. In household mode, category labels can appear duplicated in dashboard/reporting when different users have separate categories with the same name
-   (e.g. both users have `Groceries`). Categories are user-scoped, but household reporting is grouped by category ID.
-
-When touching one side of these contracts, update the other side in the same task or provide an explicit compatibility plan.

@@ -4,8 +4,8 @@ spring:
       on-profile: dev
   datasource:
     url: jdbc:postgresql://localhost:5432/pocketr_db
-    username: pocketr_user
-    password: pocketr_password
+    username: ${DB_USER:pocketr_user}
+    password: ${DB_PASSWORD:pocketr_password}
 
 server:
   port: 8081

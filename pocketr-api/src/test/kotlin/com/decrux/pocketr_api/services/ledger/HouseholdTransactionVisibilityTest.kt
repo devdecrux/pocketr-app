@@ -2,8 +2,10 @@ package com.decrux.pocketr_api.services.ledger
 
 import com.decrux.pocketr_api.entities.db.auth.User
 import com.decrux.pocketr_api.entities.db.ledger.*
+import com.decrux.pocketr_api.exceptions.DomainHttpException
 import com.decrux.pocketr_api.repositories.*
 import com.decrux.pocketr_api.services.household.ManageHousehold
+import com.decrux.pocketr_api.services.user_avatar.UserAvatarService
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
@@ -11,8 +13,9 @@ import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.mockito.ArgumentMatchers.any
 import org.mockito.Mockito.*
+import org.springframework.data.domain.PageImpl
+import org.springframework.data.domain.Pageable
 import org.springframework.data.jpa.domain.Specification
-import org.springframework.web.server.ResponseStatusException
 import java.time.Instant
 import java.time.LocalDate
 import java.util.UUID
@@ -33,6 +36,9 @@ class HouseholdTransactionVisibilityTest {
     private lateinit var currencyRepository: CurrencyRepository
     private lateinit var categoryTagRepository: CategoryTagRepository
     private lateinit var manageHousehold: ManageHousehold
+    private lateinit var userAvatarService: UserAvatarService
+    private lateinit var transactionValidator: LedgerTransactionValidator
+    private lateinit var transactionPolicy: LedgerTransactionPolicy
     private lateinit var service: ManageLedgerImpl
 
     private val eur = Currency(code = "EUR", minorUnit = 2, name = "Euro")
@@ -77,11 +83,15 @@ class HouseholdTransactionVisibilityTest {
         currencyRepository = mock(CurrencyRepository::class.java)
         categoryTagRepository = mock(CategoryTagRepository::class.java)
         manageHousehold = mock(ManageHousehold::class.java)
+        userAvatarService = mock(UserAvatarService::class.java)
+        transactionValidator = LedgerTransactionValidator()
+        transactionPolicy = LedgerTransactionPolicy(manageHousehold)
 
         service = ManageLedgerImpl(
             ledgerTxnRepository, ledgerSplitRepository,
             accountRepository, currencyRepository, categoryTagRepository,
-            manageHousehold,
+            manageHousehold, userAvatarService,
+            transactionValidator, transactionPolicy,
         )
     }
 
@@ -124,9 +134,15 @@ class HouseholdTransactionVisibilityTest {
     }
 
     @Suppress("UNCHECKED_CAST")
+    private fun <T : Any> anySpec(): Specification<T> =
+        any(Specification::class.java) as? Specification<T> ?: Specification<T> { _, _, _ -> null }
+
+    private fun anyPageable(): Pageable =
+        any(Pageable::class.java) ?: Pageable.unpaged()
+
     private fun stubFindAll(vararg txns: LedgerTxn) {
-        `when`(ledgerTxnRepository.findAll(any(Specification::class.java) as Specification<LedgerTxn>))
-            .thenReturn(txns.toList())
+        `when`(ledgerTxnRepository.findAll(anySpec<LedgerTxn>(), anyPageable()))
+            .thenReturn(PageImpl(txns.toList()))
     }
 
     @Nested
@@ -146,12 +162,12 @@ class HouseholdTransactionVisibilityTest {
 
             val result = service.listTransactions(
                 user = alice, mode = "HOUSEHOLD", householdId = householdId,
-                dateFrom = null, dateTo = null, accountId = null, categoryId = null,
+                dateFrom = null, dateTo = null, accountId = null, categoryId = null, page = 0, size = 50,
             )
 
-            assertEquals(2, result.size)
-            assertEquals("Alice grocery", result[0].description)
-            assertEquals("Bob to Alice transfer", result[1].description)
+            assertEquals(2, result.content.size)
+            assertEquals("Alice grocery", result.content[0].description)
+            assertEquals("Bob to Alice transfer", result.content[1].description)
 
             verify(manageHousehold).isActiveMember(householdId, alice.userId!!)
             verify(manageHousehold).getSharedAccountIds(householdId)
@@ -173,14 +189,14 @@ class HouseholdTransactionVisibilityTest {
 
             val result = service.listTransactions(
                 user = bob, mode = "HOUSEHOLD", householdId = householdId,
-                dateFrom = null, dateTo = null, accountId = null, categoryId = null,
+                dateFrom = null, dateTo = null, accountId = null, categoryId = null, page = 0, size = 50,
             )
 
-            assertEquals(1, result.size)
-            assertEquals("Pre-household expense", result[0].description)
+            assertEquals(1, result.content.size)
+            assertEquals("Pre-household expense", result.content[0].description)
             // The spec is hasAnySharedAccount which matches on splits→account, not householdId
             // so historical txns are included. Verify householdId on the DTO is null.
-            assertNull(result[0].householdId)
+            assertNull(result.content[0].householdId)
         }
 
         @Test
@@ -191,13 +207,13 @@ class HouseholdTransactionVisibilityTest {
 
             val result = service.listTransactions(
                 user = alice, mode = "HOUSEHOLD", householdId = householdId,
-                dateFrom = null, dateTo = null, accountId = null, categoryId = null,
+                dateFrom = null, dateTo = null, accountId = null, categoryId = null, page = 0, size = 50,
             )
 
-            assertTrue(result.isEmpty())
+            assertTrue(result.content.isEmpty())
             // findAll should NOT be called — early return
             @Suppress("UNCHECKED_CAST")
-            verify(ledgerTxnRepository, never()).findAll(any(Specification::class.java) as Specification<LedgerTxn>)
+            verify(ledgerTxnRepository, never()).findAll(anySpec<LedgerTxn>(), anyPageable())
         }
 
         @Test
@@ -205,30 +221,30 @@ class HouseholdTransactionVisibilityTest {
         fun forbiddenForNonMember() {
             `when`(manageHousehold.isActiveMember(householdId, outsider.userId!!)).thenReturn(false)
 
-            val ex = assertThrows(ResponseStatusException::class.java) {
+            val ex = assertThrows(DomainHttpException::class.java) {
                 service.listTransactions(
                     user = outsider, mode = "HOUSEHOLD", householdId = householdId,
-                    dateFrom = null, dateTo = null, accountId = null, categoryId = null,
+                    dateFrom = null, dateTo = null, accountId = null, categoryId = null, page = 0, size = 50,
                 )
             }
 
-            assertEquals(403, ex.statusCode.value())
-            assertTrue(ex.reason!!.contains("Not an active member"))
-            verify(manageHousehold, never()).getSharedAccountIds(any())
+            assertEquals(403, ex.status.value())
+            assertTrue(ex.message!!.contains("Not an active member"))
+            verify(manageHousehold, never()).getSharedAccountIds(any() ?: UUID.randomUUID())
         }
 
         @Test
         @DisplayName("should throw 400 when householdId is missing in household mode")
         fun badRequestWhenHouseholdIdMissing() {
-            val ex = assertThrows(ResponseStatusException::class.java) {
+            val ex = assertThrows(DomainHttpException::class.java) {
                 service.listTransactions(
                     user = alice, mode = "HOUSEHOLD", householdId = null,
-                    dateFrom = null, dateTo = null, accountId = null, categoryId = null,
+                    dateFrom = null, dateTo = null, accountId = null, categoryId = null, page = 0, size = 50,
                 )
             }
 
-            assertEquals(400, ex.statusCode.value())
-            assertTrue(ex.reason!!.contains("householdId is required"))
+            assertEquals(400, ex.status.value())
+            assertTrue(ex.message!!.contains("householdId is required"))
         }
 
         @Test
@@ -242,7 +258,7 @@ class HouseholdTransactionVisibilityTest {
             // "household" lowercase should work the same as "HOUSEHOLD"
             val result = service.listTransactions(
                 user = alice, mode = "household", householdId = householdId,
-                dateFrom = null, dateTo = null, accountId = null, categoryId = null,
+                dateFrom = null, dateTo = null, accountId = null, categoryId = null, page = 0, size = 50,
             )
 
             assertNotNull(result)
@@ -262,13 +278,13 @@ class HouseholdTransactionVisibilityTest {
             val result = service.listTransactions(
                 user = alice, mode = "HOUSEHOLD", householdId = householdId,
                 dateFrom = LocalDate.of(2026, 2, 1), dateTo = null,
-                accountId = null, categoryId = null,
+                accountId = null, categoryId = null, page = 0, size = 50,
             )
 
-            assertEquals(1, result.size)
+            assertEquals(1, result.content.size)
             // Verify findAll was called (spec was composed with dateFrom)
             @Suppress("UNCHECKED_CAST")
-            verify(ledgerTxnRepository).findAll(any(Specification::class.java) as Specification<LedgerTxn>)
+            verify(ledgerTxnRepository).findAll(anySpec<LedgerTxn>(), anyPageable())
         }
 
         @Test
@@ -282,11 +298,11 @@ class HouseholdTransactionVisibilityTest {
             service.listTransactions(
                 user = alice, mode = "HOUSEHOLD", householdId = householdId,
                 dateFrom = null, dateTo = LocalDate.of(2026, 2, 28),
-                accountId = null, categoryId = null,
+                accountId = null, categoryId = null, page = 0, size = 50,
             )
 
             @Suppress("UNCHECKED_CAST")
-            verify(ledgerTxnRepository).findAll(any(Specification::class.java) as Specification<LedgerTxn>)
+            verify(ledgerTxnRepository).findAll(anySpec<LedgerTxn>(), anyPageable())
         }
 
         @Test
@@ -300,11 +316,11 @@ class HouseholdTransactionVisibilityTest {
             service.listTransactions(
                 user = alice, mode = "HOUSEHOLD", householdId = householdId,
                 dateFrom = null, dateTo = null,
-                accountId = aliceCheckingId, categoryId = null,
+                accountId = aliceCheckingId, categoryId = null, page = 0, size = 50,
             )
 
             @Suppress("UNCHECKED_CAST")
-            verify(ledgerTxnRepository).findAll(any(Specification::class.java) as Specification<LedgerTxn>)
+            verify(ledgerTxnRepository).findAll(anySpec<LedgerTxn>(), anyPageable())
         }
 
         @Test
@@ -319,11 +335,11 @@ class HouseholdTransactionVisibilityTest {
             service.listTransactions(
                 user = alice, mode = "HOUSEHOLD", householdId = householdId,
                 dateFrom = null, dateTo = null,
-                accountId = null, categoryId = categoryId,
+                accountId = null, categoryId = categoryId, page = 0, size = 50,
             )
 
             @Suppress("UNCHECKED_CAST")
-            verify(ledgerTxnRepository).findAll(any(Specification::class.java) as Specification<LedgerTxn>)
+            verify(ledgerTxnRepository).findAll(anySpec<LedgerTxn>(), anyPageable())
         }
 
         @Test
@@ -339,11 +355,11 @@ class HouseholdTransactionVisibilityTest {
                 dateFrom = LocalDate.of(2026, 1, 1),
                 dateTo = LocalDate.of(2026, 2, 28),
                 accountId = aliceCheckingId,
-                categoryId = UUID.randomUUID(),
+                categoryId = UUID.randomUUID(), page = 0, size = 50,
             )
 
             @Suppress("UNCHECKED_CAST")
-            verify(ledgerTxnRepository).findAll(any(Specification::class.java) as Specification<LedgerTxn>)
+            verify(ledgerTxnRepository).findAll(anySpec<LedgerTxn>(), anyPageable())
         }
 
         @Test
@@ -362,11 +378,11 @@ class HouseholdTransactionVisibilityTest {
 
             val result = service.listTransactions(
                 user = alice, mode = "HOUSEHOLD", householdId = householdId,
-                dateFrom = null, dateTo = null, accountId = null, categoryId = null,
+                dateFrom = null, dateTo = null, accountId = null, categoryId = null, page = 0, size = 50,
             )
 
-            assertEquals(1, result.size)
-            val dto = result[0]
+            assertEquals(1, result.content.size)
+            val dto = result.content[0]
             assertEquals(txn.id, dto.id)
             assertEquals(LocalDate.of(2026, 2, 10), dto.txnDate)
             assertEquals("EUR", dto.currency)
@@ -398,7 +414,7 @@ class HouseholdTransactionVisibilityTest {
 
             service.listTransactions(
                 user = alice, mode = "HOUSEHOLD", householdId = householdId,
-                dateFrom = null, dateTo = null, accountId = null, categoryId = null,
+                dateFrom = null, dateTo = null, accountId = null, categoryId = null, page = 0, size = 50,
             )
 
             // In household mode, getSharedAccountIds is called (not forUser-based filtering)
@@ -418,14 +434,14 @@ class HouseholdTransactionVisibilityTest {
 
             val result = service.listTransactions(
                 user = alice, mode = null, householdId = null,
-                dateFrom = null, dateTo = null, accountId = null, categoryId = null,
+                dateFrom = null, dateTo = null, accountId = null, categoryId = null, page = 0, size = 50,
             )
 
-            assertEquals(1, result.size)
-            assertEquals("Alice's bill", result[0].description)
+            assertEquals(1, result.content.size)
+            assertEquals("Alice's bill", result.content[0].description)
             // manageHousehold should never be touched in individual mode
-            verify(manageHousehold, never()).isActiveMember(any(), anyLong())
-            verify(manageHousehold, never()).getSharedAccountIds(any())
+            verify(manageHousehold, never()).isActiveMember(any() ?: UUID.randomUUID(), anyLong())
+            verify(manageHousehold, never()).getSharedAccountIds(any() ?: UUID.randomUUID())
         }
 
         @Test
@@ -436,12 +452,12 @@ class HouseholdTransactionVisibilityTest {
 
             val result = service.listTransactions(
                 user = alice, mode = "INDIVIDUAL", householdId = null,
-                dateFrom = null, dateTo = null, accountId = null, categoryId = null,
+                dateFrom = null, dateTo = null, accountId = null, categoryId = null, page = 0, size = 50,
             )
 
-            assertEquals(1, result.size)
-            verify(manageHousehold, never()).isActiveMember(any(), anyLong())
-            verify(manageHousehold, never()).getSharedAccountIds(any())
+            assertEquals(1, result.content.size)
+            verify(manageHousehold, never()).isActiveMember(any() ?: UUID.randomUUID(), anyLong())
+            verify(manageHousehold, never()).getSharedAccountIds(any() ?: UUID.randomUUID())
         }
 
         @Test
@@ -452,11 +468,11 @@ class HouseholdTransactionVisibilityTest {
             service.listTransactions(
                 user = alice, mode = null, householdId = null,
                 dateFrom = LocalDate.of(2026, 2, 1), dateTo = null,
-                accountId = null, categoryId = null,
+                accountId = null, categoryId = null, page = 0, size = 50,
             )
 
             @Suppress("UNCHECKED_CAST")
-            verify(ledgerTxnRepository).findAll(any(Specification::class.java) as Specification<LedgerTxn>)
+            verify(ledgerTxnRepository).findAll(anySpec<LedgerTxn>(), anyPageable())
         }
 
         @Test
@@ -467,11 +483,11 @@ class HouseholdTransactionVisibilityTest {
             service.listTransactions(
                 user = alice, mode = null, householdId = null,
                 dateFrom = null, dateTo = LocalDate.of(2026, 2, 28),
-                accountId = null, categoryId = null,
+                accountId = null, categoryId = null, page = 0, size = 50,
             )
 
             @Suppress("UNCHECKED_CAST")
-            verify(ledgerTxnRepository).findAll(any(Specification::class.java) as Specification<LedgerTxn>)
+            verify(ledgerTxnRepository).findAll(anySpec<LedgerTxn>(), anyPageable())
         }
 
         @Test
@@ -482,11 +498,11 @@ class HouseholdTransactionVisibilityTest {
             service.listTransactions(
                 user = alice, mode = null, householdId = null,
                 dateFrom = null, dateTo = null,
-                accountId = aliceCheckingId, categoryId = null,
+                accountId = aliceCheckingId, categoryId = null, page = 0, size = 50,
             )
 
             @Suppress("UNCHECKED_CAST")
-            verify(ledgerTxnRepository).findAll(any(Specification::class.java) as Specification<LedgerTxn>)
+            verify(ledgerTxnRepository).findAll(anySpec<LedgerTxn>(), anyPageable())
         }
 
         @Test
@@ -498,11 +514,11 @@ class HouseholdTransactionVisibilityTest {
             service.listTransactions(
                 user = alice, mode = null, householdId = null,
                 dateFrom = null, dateTo = null,
-                accountId = null, categoryId = categoryId,
+                accountId = null, categoryId = categoryId, page = 0, size = 50,
             )
 
             @Suppress("UNCHECKED_CAST")
-            verify(ledgerTxnRepository).findAll(any(Specification::class.java) as Specification<LedgerTxn>)
+            verify(ledgerTxnRepository).findAll(anySpec<LedgerTxn>(), anyPageable())
         }
 
         @Test
@@ -512,10 +528,10 @@ class HouseholdTransactionVisibilityTest {
 
             val result = service.listTransactions(
                 user = alice, mode = null, householdId = null,
-                dateFrom = null, dateTo = null, accountId = null, categoryId = null,
+                dateFrom = null, dateTo = null, accountId = null, categoryId = null, page = 0, size = 50,
             )
 
-            assertTrue(result.isEmpty())
+            assertTrue(result.content.isEmpty())
         }
     }
 
@@ -535,7 +551,7 @@ class HouseholdTransactionVisibilityTest {
 
             service.listTransactions(
                 user = alice, mode = "HOUSEHOLD", householdId = householdId,
-                dateFrom = null, dateTo = null, accountId = null, categoryId = null,
+                dateFrom = null, dateTo = null, accountId = null, categoryId = null, page = 0, size = 50,
             )
 
             verify(manageHousehold).getSharedAccountIds(householdId)
@@ -579,10 +595,10 @@ class HouseholdTransactionVisibilityTest {
 
             val result = service.listTransactions(
                 user = alice, mode = "HOUSEHOLD", householdId = householdId,
-                dateFrom = null, dateTo = null, accountId = null, categoryId = null,
+                dateFrom = null, dateTo = null, accountId = null, categoryId = null, page = 0, size = 50,
             )
 
-            assertEquals("EXPENSE", result[0].txnKind)
+            assertEquals("EXPENSE", result.content[0].txnKind)
         }
 
         @Test
@@ -597,10 +613,10 @@ class HouseholdTransactionVisibilityTest {
 
             val result = service.listTransactions(
                 user = alice, mode = "HOUSEHOLD", householdId = householdId,
-                dateFrom = null, dateTo = null, accountId = null, categoryId = null,
+                dateFrom = null, dateTo = null, accountId = null, categoryId = null, page = 0, size = 50,
             )
 
-            assertEquals("TRANSFER", result[0].txnKind)
+            assertEquals("TRANSFER", result.content[0].txnKind)
         }
     }
 }

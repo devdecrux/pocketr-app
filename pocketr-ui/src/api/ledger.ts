@@ -25,8 +25,13 @@ export function listTxns(params: TxnQuery): Promise<PagedResponse<LedgerTxn>> {
   return api.get(`${BASE}/transactions`, { searchParams }).json<PagedResponse<LedgerTxn>>()
 }
 
-export function getAccountBalance(accountId: string, asOf?: string): Promise<AccountBalance> {
+export function getAccountBalance(
+  accountId: string,
+  asOf?: string,
+  householdId?: string,
+): Promise<AccountBalance> {
   const searchParams: Record<string, string> = {}
   if (asOf) searchParams.asOf = asOf
+  if (householdId) searchParams.householdId = householdId
   return api.get(`${BASE}/accounts/${accountId}/balance`, { searchParams }).json<AccountBalance>()
 }

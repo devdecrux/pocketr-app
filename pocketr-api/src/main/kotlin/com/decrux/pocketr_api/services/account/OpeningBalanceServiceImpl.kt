@@ -6,13 +6,14 @@ import com.decrux.pocketr_api.entities.db.ledger.AccountType
 import com.decrux.pocketr_api.entities.db.ledger.Currency
 import com.decrux.pocketr_api.entities.dtos.CreateSplitDto
 import com.decrux.pocketr_api.entities.dtos.CreateTransactionDto
+import com.decrux.pocketr_api.exceptions.DomainBadRequestException
+import com.decrux.pocketr_api.exceptions.DomainNotFoundException
 import com.decrux.pocketr_api.repositories.AccountRepository
 import com.decrux.pocketr_api.repositories.UserRepository
+import com.decrux.pocketr_api.services.OwnershipGuard
 import com.decrux.pocketr_api.services.ledger.ManageLedger
-import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
-import org.springframework.web.server.ResponseStatusException
 import java.time.LocalDate
 
 @Service
@@ -20,6 +21,7 @@ class OpeningBalanceServiceImpl(
     private val accountRepository: AccountRepository,
     private val userRepository: UserRepository,
     private val manageLedger: ManageLedger,
+    private val ownershipGuard: OwnershipGuard,
 ) : OpeningBalanceService {
 
     @Transactional
@@ -35,16 +37,14 @@ class OpeningBalanceServiceImpl(
         val currencyCode = currency.code
 
         if (assetAccount.type != AccountType.ASSET) {
-            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Opening balance is supported only for ASSET accounts")
+            throw DomainBadRequestException("Opening balance is supported only for ASSET accounts")
         }
-        if (assetAccount.owner?.userId != ownerId) {
-            throw ResponseStatusException(HttpStatus.FORBIDDEN, "Not the owner of this account")
-        }
+        ownershipGuard.requireOwner(assetAccount.owner?.userId, ownerId, "Not the owner of this account")
         if (openingBalanceMinor == 0L) {
-            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "openingBalanceMinor must not be zero")
+            throw DomainBadRequestException("openingBalanceMinor must not be zero")
         }
         if (openingBalanceMinor == Long.MIN_VALUE) {
-            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "openingBalanceMinor is out of supported range")
+            throw DomainBadRequestException("openingBalanceMinor is out of supported range")
         }
 
         val openingEquity = getOrCreateOpeningEquityAccount(owner, currencyCode, currency)
@@ -83,7 +83,7 @@ class OpeningBalanceServiceImpl(
 
         // Serialize Opening Equity creation per user without introducing broad account-name constraints.
         userRepository.findByUserIdForUpdate(ownerId)
-            .orElseThrow { ResponseStatusException(HttpStatus.NOT_FOUND, "User not found") }
+            .orElseThrow { DomainNotFoundException("User not found") }
 
         accountRepository.findByOwnerUserIdAndTypeAndCurrencyCodeAndName(
             userId = ownerId,

@@ -1,7 +1,12 @@
 <script setup lang="ts">
 import { HTTPError } from 'ky'
 import { computed, h, onMounted, ref, watch } from 'vue'
-import { createColumnHelper, getCoreRowModel, getExpandedRowModel, useVueTable } from '@tanstack/vue-table'
+import {
+  createColumnHelper,
+  getCoreRowModel,
+  getExpandedRowModel,
+  useVueTable,
+} from '@tanstack/vue-table'
 import { createTxn } from '@/api/ledger'
 import { useAccountStore } from '@/stores/account'
 import { useCategoryStore } from '@/stores/category'
@@ -9,7 +14,8 @@ import { useCurrencyStore } from '@/stores/currency'
 import { useHouseholdStore } from '@/stores/household'
 import { useLedgerStore } from '@/stores/ledger'
 import { useModeStore } from '@/stores/mode'
-import type { CreateTxnRequest, LedgerSplit, LedgerTxn } from '@/types/ledger'
+import type { LedgerSplit, LedgerTxn } from '@/types/ledger'
+import { expenseStrategy, incomeStrategy, transferStrategy } from '@/utils/txnStrategies'
 import { formatMinor } from '@/utils/money'
 import AccountSelector from '@/components/AccountSelector.vue'
 import CategoryTagSelector from '@/components/CategoryTagSelector.vue'
@@ -18,7 +24,15 @@ import CurrencyAmountInput from '@/components/CurrencyAmountInput.vue'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -106,6 +120,57 @@ const isCrossUserTransfer = computed(() => {
   if (!from || !to) return false
   return from.ownerUserId !== to.ownerUserId
 })
+
+// --- Transaction tab strategies (dispatch table) ---
+function getStrategyResult(): {
+  error: string | null
+  request?: ReturnType<typeof expenseStrategy.buildRequest>
+} {
+  const ctx = { mode: modeStore.modeParam, householdId: modeStore.householdId }
+
+  if (activeTab.value === 'expense') {
+    const fields = {
+      date: expenseDate.value,
+      payFrom: expensePayFrom.value,
+      account: expenseAccount.value,
+      amount: expenseAmount.value,
+      currency: expenseCurrency.value,
+      description: expenseDescription.value,
+      categoryTagId: expenseCategory.value,
+      memo: expenseMemo.value,
+    }
+    const error = expenseStrategy.validate(fields)
+    return error ? { error } : { error: null, request: expenseStrategy.buildRequest(ctx, fields) }
+  }
+
+  if (activeTab.value === 'income') {
+    const fields = {
+      date: incomeDate.value,
+      deposit: incomeDeposit.value,
+      account: incomeAccount.value,
+      amount: incomeAmount.value,
+      currency: incomeCurrency.value,
+      description: incomeDescription.value,
+    }
+    const error = incomeStrategy.validate(fields)
+    return error ? { error } : { error: null, request: incomeStrategy.buildRequest(ctx, fields) }
+  }
+
+  if (activeTab.value === 'transfer') {
+    const fields = {
+      date: transferDate.value,
+      from: transferFrom.value,
+      to: transferTo.value,
+      amount: transferAmount.value,
+      currency: transferCurrency.value,
+      description: transferDescription.value,
+    }
+    const error = transferStrategy.validate(fields)
+    return error ? { error } : { error: null, request: transferStrategy.buildRequest(ctx, fields) }
+  }
+
+  return { error: 'Unknown tab.' }
+}
 
 // Derive txn kind display label from the backend-provided txnKind field
 function deriveTxnKind(txn: LedgerTxn): string {
@@ -369,100 +434,11 @@ function resetForms(): void {
 async function submitTransaction(): Promise<void> {
   submitError.value = ''
 
-  let request: CreateTxnRequest | null = null
-
-  if (activeTab.value === 'expense') {
-    if (
-      !expensePayFrom.value ||
-      !expenseAccount.value ||
-      expenseAmount.value <= 0 ||
-      !expenseDescription.value.trim()
-    ) {
-      submitError.value = 'Please fill in all required fields and enter a positive amount.'
-      return
-    }
-    request = {
-      mode: modeStore.modeParam,
-      householdId: modeStore.householdId,
-      txnDate: expenseDate.value,
-      currency: expenseCurrency.value,
-      description: expenseDescription.value.trim(),
-      splits: [
-        {
-          accountId: expensePayFrom.value,
-          side: 'CREDIT',
-          amountMinor: expenseAmount.value,
-        },
-        {
-          accountId: expenseAccount.value,
-          side: 'DEBIT',
-          amountMinor: expenseAmount.value,
-          categoryTagId: expenseCategory.value,
-          memo: expenseMemo.value.trim() || null,
-        },
-      ],
-    }
-  } else if (activeTab.value === 'income') {
-    if (
-      !incomeDeposit.value ||
-      !incomeAccount.value ||
-      incomeAmount.value <= 0 ||
-      !incomeDescription.value.trim()
-    ) {
-      submitError.value = 'Please fill in all required fields and enter a positive amount.'
-      return
-    }
-    request = {
-      mode: modeStore.modeParam,
-      householdId: modeStore.householdId,
-      txnDate: incomeDate.value,
-      currency: incomeCurrency.value,
-      description: incomeDescription.value.trim(),
-      splits: [
-        {
-          accountId: incomeDeposit.value,
-          side: 'DEBIT',
-          amountMinor: incomeAmount.value,
-        },
-        {
-          accountId: incomeAccount.value,
-          side: 'CREDIT',
-          amountMinor: incomeAmount.value,
-        },
-      ],
-    }
-  } else if (activeTab.value === 'transfer') {
-    if (
-      !transferFrom.value ||
-      !transferTo.value ||
-      transferAmount.value <= 0 ||
-      !transferDescription.value.trim()
-    ) {
-      submitError.value = 'Please fill in all required fields and enter a positive amount.'
-      return
-    }
-    request = {
-      mode: modeStore.modeParam,
-      householdId: modeStore.householdId,
-      txnDate: transferDate.value,
-      currency: transferCurrency.value,
-      description: transferDescription.value.trim(),
-      splits: [
-        {
-          accountId: transferFrom.value,
-          side: 'CREDIT',
-          amountMinor: transferAmount.value,
-        },
-        {
-          accountId: transferTo.value,
-          side: 'DEBIT',
-          amountMinor: transferAmount.value,
-        },
-      ],
-    }
+  const { error: validationError, request } = getStrategyResult()
+  if (validationError || !request) {
+    submitError.value = validationError ?? ''
+    return
   }
-
-  if (!request) return
 
   isSubmitting.value = true
 
