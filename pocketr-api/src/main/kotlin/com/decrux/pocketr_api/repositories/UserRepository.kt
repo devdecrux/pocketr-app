@@ -14,7 +14,8 @@ import java.util.Optional
 interface UserRepository : JpaRepository<User, Long> {
 
     @EntityGraph(attributePaths = ["roles"])
-    fun findUserByEmail(email: String): User?
+    @Query("select u from User u where u.email = :email")
+    fun findUserByEmail(@Param("email") email: String): User?
 
     fun findByEmail(email: String): Optional<User>
 

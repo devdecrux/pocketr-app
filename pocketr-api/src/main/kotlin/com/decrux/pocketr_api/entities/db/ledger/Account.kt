@@ -9,6 +9,12 @@ import java.util.UUID
 @Table(
     name = "account",
     indexes = [Index(name = "idx_account_owner", columnList = "owner_user_id")],
+    uniqueConstraints = [
+        UniqueConstraint(
+            name = "uk_account_owner_type_currency_name",
+            columnNames = ["owner_user_id", "type", "currency", "name"],
+        ),
+    ],
 )
 class Account(
     @Id

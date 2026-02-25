@@ -19,7 +19,7 @@ class User(
     var lastName: String? = null,
     @Column(name = "avatar_path")
     var avatarPath: String? = null,
-    @OneToMany(cascade = [CascadeType.ALL], fetch = FetchType.EAGER)
+    @OneToMany(cascade = [CascadeType.ALL], fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id")
     var roles: MutableList<UserRole> = mutableListOf(),
 ) : UserDetails {

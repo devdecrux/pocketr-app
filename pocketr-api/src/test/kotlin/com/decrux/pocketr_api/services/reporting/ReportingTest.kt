@@ -9,7 +9,9 @@ import com.decrux.pocketr_api.exceptions.DomainBadRequestException
 import com.decrux.pocketr_api.exceptions.DomainForbiddenException
 import com.decrux.pocketr_api.exceptions.DomainNotFoundException
 import com.decrux.pocketr_api.repositories.AccountRepository
+import com.decrux.pocketr_api.repositories.DailyNetProjection
 import com.decrux.pocketr_api.repositories.LedgerSplitRepository
+import com.decrux.pocketr_api.repositories.MonthlyExpenseProjection
 import com.decrux.pocketr_api.services.household.ManageHousehold
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.BeforeEach
@@ -146,8 +148,8 @@ class ReportingTest {
             // January: Groceries/Food: 8500, Utilities/Electricity: 4500
             `when`(ledgerSplitRepository.monthlyExpensesByUser(1L, janStart, janEnd, SplitSide.DEBIT, SplitSide.CREDIT)).thenReturn(
                 listOf(
-                    arrayOf(groceriesId, "Groceries", foodTagId, "Food", "EUR", 8500L),
-                    arrayOf(utilitiesId, "Utilities", electricityTagId, "Electricity", "EUR", 4500L),
+                    MonthlyExpenseProjection(groceriesId, "Groceries", foodTagId, "Food", "EUR", 8500L),
+                    MonthlyExpenseProjection(utilitiesId, "Utilities", electricityTagId, "Electricity", "EUR", 4500L),
                 ),
             )
 
@@ -168,11 +170,11 @@ class ReportingTest {
         fun differentMonthsReturnDifferentTotals() {
             // January has expenses
             `when`(ledgerSplitRepository.monthlyExpensesByUser(1L, janStart, janEnd, SplitSide.DEBIT, SplitSide.CREDIT)).thenReturn(
-                listOf(arrayOf(groceriesId, "Groceries", foodTagId, "Food", "EUR", 8500L)),
+                listOf(MonthlyExpenseProjection(groceriesId, "Groceries", foodTagId, "Food", "EUR", 8500L)),
             )
             // February has different expenses
             `when`(ledgerSplitRepository.monthlyExpensesByUser(1L, febStart, febEnd, SplitSide.DEBIT, SplitSide.CREDIT)).thenReturn(
-                listOf(arrayOf(groceriesId, "Groceries", foodTagId, "Food", "EUR", 6000L)),
+                listOf(MonthlyExpenseProjection(groceriesId, "Groceries", foodTagId, "Food", "EUR", 6000L)),
             )
 
             val janResult = service.getMonthlyExpenses(userA, jan2026, "INDIVIDUAL", null)
@@ -189,8 +191,8 @@ class ReportingTest {
             `when`(manageHousehold.isActiveMember(householdId, 1L)).thenReturn(true)
             `when`(ledgerSplitRepository.monthlyExpensesByHousehold(householdId, janStart, janEnd, SplitSide.DEBIT, SplitSide.CREDIT)).thenReturn(
                 listOf(
-                    arrayOf(groceriesId, "Groceries", foodTagId, "Food", "EUR", 5000L),
-                    arrayOf(utilitiesId, "Utilities", electricityTagId, "Electricity", "EUR", 3000L),
+                    MonthlyExpenseProjection(groceriesId, "Groceries", foodTagId, "Food", "EUR", 5000L),
+                    MonthlyExpenseProjection(utilitiesId, "Utilities", electricityTagId, "Electricity", "EUR", 3000L),
                 ),
             )
 
@@ -230,7 +232,7 @@ class ReportingTest {
             val householdId = UUID.randomUUID()
             `when`(manageHousehold.isActiveMember(householdId, 1L)).thenReturn(true)
             `when`(ledgerSplitRepository.monthlyExpensesByHousehold(householdId, janStart, janEnd, SplitSide.DEBIT, SplitSide.CREDIT)).thenReturn(
-                listOf(arrayOf(groceriesId, "Groceries", foodTagId, "Food", "EUR", 7000L)),
+                listOf(MonthlyExpenseProjection(groceriesId, "Groceries", foodTagId, "Food", "EUR", 7000L)),
             )
 
             val result = service.getMonthlyExpenses(userA, jan2026, "HOUSEHOLD", householdId)
@@ -255,10 +257,10 @@ class ReportingTest {
             val beveragesTagId = UUID.randomUUID()
             `when`(ledgerSplitRepository.monthlyExpensesByUser(1L, janStart, janEnd, SplitSide.DEBIT, SplitSide.CREDIT)).thenReturn(
                 listOf(
-                    arrayOf(groceriesId, "Groceries", foodTagId, "Food", "EUR", 15000L),
-                    arrayOf(groceriesId, "Groceries", beveragesTagId, "Beverages", "EUR", 8000L),
-                    arrayOf(utilitiesId, "Utilities", electricityTagId, "Electricity", "EUR", 4500L),
-                    arrayOf(utilitiesId, "Utilities", null, null, "EUR", 2000L),
+                    MonthlyExpenseProjection(groceriesId, "Groceries", foodTagId, "Food", "EUR", 15000L),
+                    MonthlyExpenseProjection(groceriesId, "Groceries", beveragesTagId, "Beverages", "EUR", 8000L),
+                    MonthlyExpenseProjection(utilitiesId, "Utilities", electricityTagId, "Electricity", "EUR", 4500L),
+                    MonthlyExpenseProjection(utilitiesId, "Utilities", null, null, "EUR", 2000L),
                 ),
             )
 
@@ -307,8 +309,8 @@ class ReportingTest {
                 )
             ).thenReturn(
                 listOf(
-                    arrayOf(LocalDate.of(2026, 2, 1), 200000L),  // salary
-                    arrayOf(LocalDate.of(2026, 2, 3), -5000L),   // expense
+                    DailyNetProjection(LocalDate.of(2026, 2, 1), 200000L),  // salary
+                    DailyNetProjection(LocalDate.of(2026, 2, 3), -5000L),   // expense
                 ),
             )
 
@@ -368,7 +370,7 @@ class ReportingTest {
                     mortgageId, dateFrom, dateTo, SplitSide.CREDIT, SplitSide.DEBIT,
                 )
             ).thenReturn(
-                listOf(arrayOf(LocalDate.of(2026, 2, 1), -50000L)),  // payment reduces liability
+                listOf(DailyNetProjection(LocalDate.of(2026, 2, 1), -50000L)),  // payment reduces liability
             )
 
             val result = service.getBalanceTimeseries(mortgageId, dateFrom, dateTo, userA)

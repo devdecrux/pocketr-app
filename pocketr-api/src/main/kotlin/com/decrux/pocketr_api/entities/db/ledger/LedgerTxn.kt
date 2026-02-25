@@ -1,13 +1,22 @@
 package com.decrux.pocketr_api.entities.db.ledger
 
 import com.decrux.pocketr_api.entities.db.auth.User
+import com.decrux.pocketr_api.entities.db.household.Household
 import jakarta.persistence.*
 import java.time.Instant
 import java.time.LocalDate
 import java.util.UUID
 
 @Entity
-@Table(name = "ledger_txn")
+@Table(
+    name = "ledger_txn",
+    indexes = [
+        Index(name = "idx_ledger_txn_date", columnList = "txn_date"),
+        Index(name = "idx_ledger_txn_household", columnList = "household_id"),
+        Index(name = "idx_ledger_txn_creator", columnList = "created_by_user_id"),
+        Index(name = "idx_ledger_txn_household_date", columnList = "household_id, txn_date"),
+    ],
+)
 class LedgerTxn(
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
@@ -17,6 +26,14 @@ class LedgerTxn(
     var createdBy: User? = null,
     @Column(name = "household_id")
     var householdId: UUID? = null,
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(
+        name = "household_id",
+        insertable = false,
+        updatable = false,
+        foreignKey = ForeignKey(name = "fk_ledger_txn_household"),
+    )
+    var household: Household? = null,
     @Column(name = "txn_date", nullable = false)
     var txnDate: LocalDate = LocalDate.now(),
     @Column(nullable = false)
@@ -32,4 +49,15 @@ class LedgerTxn(
     var createdAt: Instant = Instant.now(),
     @Column(name = "updated_at", nullable = false)
     var updatedAt: Instant = Instant.now(),
-)
+) {
+
+    @PrePersist
+    fun onCreate() {
+        updatedAt = Instant.now()
+    }
+
+    @PreUpdate
+    fun onUpdate() {
+        updatedAt = Instant.now()
+    }
+}

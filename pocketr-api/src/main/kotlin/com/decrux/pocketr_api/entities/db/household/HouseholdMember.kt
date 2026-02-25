@@ -7,7 +7,11 @@ import java.time.Instant
 @Entity
 @Table(
     name = "household_member",
-    indexes = [Index(name = "idx_member_user", columnList = "user_id")],
+    indexes = [
+        Index(name = "idx_member_household", columnList = "household_id"),
+        Index(name = "idx_member_household_status", columnList = "household_id, status"),
+        Index(name = "idx_member_user_status", columnList = "user_id, status"),
+    ],
 )
 @IdClass(HouseholdMemberId::class)
 class HouseholdMember(

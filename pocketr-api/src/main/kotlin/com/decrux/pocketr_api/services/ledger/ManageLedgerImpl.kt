@@ -190,11 +190,7 @@ class ManageLedgerImpl(
             asOf,
             SplitSide.DEBIT,
             SplitSide.CREDIT,
-        ).associate { row ->
-            val accountId = row[0] as UUID
-            val rawBalance = (row[1] as Number).toLong()
-            accountId to rawBalance
-        }
+        ).associate { it.accountId to it.rawBalance }
 
         val accountById = accounts.associateBy { requireNotNull(it.id) }
         return uniqueAccountIds.map { accountId ->

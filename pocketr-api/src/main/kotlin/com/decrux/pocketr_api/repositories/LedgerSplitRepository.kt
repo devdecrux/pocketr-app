@@ -24,9 +24,11 @@ interface LedgerSplitRepository : JpaRepository<LedgerSplit, UUID> {
 
     @Query(
         """
-        SELECT ls.account.id,
-               COALESCE(SUM(CASE WHEN ls.side = :debit THEN ls.amountMinor ELSE 0 END), 0)
-             - COALESCE(SUM(CASE WHEN ls.side = :credit THEN ls.amountMinor ELSE 0 END), 0)
+        SELECT NEW com.decrux.pocketr_api.repositories.AccountRawBalanceProjection(
+            ls.account.id,
+            COALESCE(SUM(CASE WHEN ls.side = :debit THEN ls.amountMinor ELSE 0 END), 0)
+          - COALESCE(SUM(CASE WHEN ls.side = :credit THEN ls.amountMinor ELSE 0 END), 0)
+        )
         FROM LedgerSplit ls
         WHERE ls.account.id IN :accountIds
           AND ls.transaction.txnDate <= :asOf
@@ -38,13 +40,19 @@ interface LedgerSplitRepository : JpaRepository<LedgerSplit, UUID> {
         asOf: LocalDate,
         debit: SplitSide,
         credit: SplitSide,
-    ): List<Array<Any>>
+    ): List<AccountRawBalanceProjection>
 
     @Query(
         """
-        SELECT a.id, a.name, ct.id, ct.name, a.currency.code,
-               SUM(CASE WHEN ls.side = :debit THEN ls.amountMinor ELSE 0 END)
-             - SUM(CASE WHEN ls.side = :credit THEN ls.amountMinor ELSE 0 END)
+        SELECT NEW com.decrux.pocketr_api.repositories.MonthlyExpenseProjection(
+            a.id,
+            a.name,
+            ct.id,
+            ct.name,
+            a.currency.code,
+            COALESCE(SUM(CASE WHEN ls.side = :debit THEN ls.amountMinor ELSE 0 END), 0)
+          - COALESCE(SUM(CASE WHEN ls.side = :credit THEN ls.amountMinor ELSE 0 END), 0)
+        )
         FROM LedgerSplit ls
         JOIN ls.account a
         LEFT JOIN ls.categoryTag ct
@@ -62,13 +70,19 @@ interface LedgerSplitRepository : JpaRepository<LedgerSplit, UUID> {
         monthEnd: LocalDate,
         debit: SplitSide,
         credit: SplitSide,
-    ): List<Array<Any?>>
+    ): List<MonthlyExpenseProjection>
 
     @Query(
         """
-        SELECT a.id, a.name, ct.id, ct.name, a.currency.code,
-               SUM(CASE WHEN ls.side = :debit THEN ls.amountMinor ELSE 0 END)
-             - SUM(CASE WHEN ls.side = :credit THEN ls.amountMinor ELSE 0 END)
+        SELECT NEW com.decrux.pocketr_api.repositories.MonthlyExpenseProjection(
+            a.id,
+            a.name,
+            ct.id,
+            ct.name,
+            a.currency.code,
+            COALESCE(SUM(CASE WHEN ls.side = :debit THEN ls.amountMinor ELSE 0 END), 0)
+          - COALESCE(SUM(CASE WHEN ls.side = :credit THEN ls.amountMinor ELSE 0 END), 0)
+        )
         FROM LedgerSplit ls
         JOIN ls.account a
         LEFT JOIN ls.categoryTag ct
@@ -86,13 +100,15 @@ interface LedgerSplitRepository : JpaRepository<LedgerSplit, UUID> {
         monthEnd: LocalDate,
         debit: SplitSide,
         credit: SplitSide,
-    ): List<Array<Any?>>
+    ): List<MonthlyExpenseProjection>
 
     @Query(
         """
-        SELECT ls.transaction.txnDate,
-               SUM(CASE WHEN ls.side = :positive THEN ls.amountMinor ELSE 0 END)
-             - SUM(CASE WHEN ls.side = :negative THEN ls.amountMinor ELSE 0 END)
+        SELECT NEW com.decrux.pocketr_api.repositories.DailyNetProjection(
+            ls.transaction.txnDate,
+            COALESCE(SUM(CASE WHEN ls.side = :positive THEN ls.amountMinor ELSE 0 END), 0)
+          - COALESCE(SUM(CASE WHEN ls.side = :negative THEN ls.amountMinor ELSE 0 END), 0)
+        )
         FROM LedgerSplit ls
         WHERE ls.account.id = :accountId
           AND ls.transaction.txnDate >= :dateFrom
@@ -107,5 +123,5 @@ interface LedgerSplitRepository : JpaRepository<LedgerSplit, UUID> {
         dateTo: LocalDate,
         positive: SplitSide,
         negative: SplitSide,
-    ): List<Array<Any>>
+    ): List<DailyNetProjection>
 }

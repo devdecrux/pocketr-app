@@ -536,8 +536,8 @@ class LedgerTransactionValidationTest {
                 ),
             ).thenReturn(
                 listOf(
-                    arrayOf(checkingId, 190000L),
-                    arrayOf(liabilityId, -49950000L),
+                    AccountRawBalanceProjection(checkingId, 190000L),
+                    AccountRawBalanceProjection(liabilityId, -49950000L),
                 ),
             )
 

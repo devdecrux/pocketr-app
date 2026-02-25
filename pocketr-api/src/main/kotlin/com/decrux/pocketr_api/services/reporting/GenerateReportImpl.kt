@@ -57,12 +57,12 @@ class GenerateReportImpl(
 
         return rows.map { row ->
             MonthlyExpenseDto(
-                expenseAccountId = row[0] as UUID,
-                expenseAccountName = row[1] as String,
-                categoryTagId = row[2] as UUID?,
-                categoryTagName = row[3] as String?,
-                currency = row[4] as String,
-                netMinor = row[5] as Long,
+                expenseAccountId = row.expenseAccountId,
+                expenseAccountName = row.expenseAccountName,
+                categoryTagId = row.categoryTagId,
+                categoryTagName = row.categoryTagName,
+                currency = row.currency,
+                netMinor = row.netMinor,
             )
         }
     }
@@ -124,9 +124,7 @@ class GenerateReportImpl(
         val dailyNets = ledgerSplitRepository.dailyNetByAccount(
             accountId, dateFrom, dateTo, positive, negative,
         )
-        val dailyNetMap = dailyNets.associate { row ->
-            (row[0] as LocalDate) to (row[1] as Long)
-        }
+        val dailyNetMap = dailyNets.associate { it.txnDate to it.netMinor }
 
         // Build cumulative timeseries
         val points = mutableListOf<BalanceTimeseriesPointDto>()
