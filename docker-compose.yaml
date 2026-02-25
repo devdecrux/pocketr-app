@@ -9,8 +9,9 @@ services:
       - "127.0.0.1:5432:5432"
     restart: unless-stopped
     environment:
-      POSTGRES_USER: ${DB_USER}
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      # Keep local dev startup resilient even when `.env` is absent.
+      POSTGRES_USER: ${DB_USER:-pocketr_user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-pocketr_password}
       POSTGRES_DB: pocketr_db
     volumes:
       - db-data:/var/lib/postgresql/data
@@ -23,6 +24,9 @@ services:
     ports:
       - "127.0.0.1:80:80"
     restart: unless-stopped
+    # Keep privilege escalation disabled; routing model remains unchanged.
+    security_opt:
+      - no-new-privileges:true
     volumes:
       - ./config/traefik/traefik.yml:/etc/traefik/traefik.yml:ro
       - ./config/traefik/dynamic.yml:/etc/traefik/dynamic/dynamic.yml:ro

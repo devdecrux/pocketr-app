@@ -1,12 +1,7 @@
 <script setup lang="ts">
 import { HTTPError } from 'ky'
 import { computed, h, onMounted, ref, watch } from 'vue'
-import {
-  createColumnHelper,
-  getCoreRowModel,
-  getExpandedRowModel,
-  useVueTable,
-} from '@tanstack/vue-table'
+import { createColumnHelper, getCoreRowModel, getExpandedRowModel, useVueTable } from '@tanstack/vue-table'
 import { createTxn } from '@/api/ledger'
 import { useAccountStore } from '@/stores/account'
 import { useCategoryStore } from '@/stores/category'
@@ -24,15 +19,7 @@ import CurrencyAmountInput from '@/components/CurrencyAmountInput.vue'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -405,6 +392,14 @@ function splitAmount(split: LedgerSplit, currency: string): string {
   return `${prefix}${formatMinor(split.amountMinor, currency, minorUnit)}`
 }
 
+function orderedSplits(txn: LedgerTxn): LedgerSplit[] {
+  const sideRank: Record<'CREDIT' | 'DEBIT', number> = {
+    CREDIT: 0,
+    DEBIT: 1,
+  }
+  return [...txn.splits].sort((a, b) => sideRank[a.side] - sideRank[b.side])
+}
+
 // Reset form
 function resetForms(): void {
   expenseDate.value = todayString()
@@ -715,7 +710,7 @@ async function submitTransaction(): Promise<void> {
           <template #expanded="{ row }">
             <div class="space-y-1 pl-6">
               <div
-                v-for="split in row.original.splits"
+                v-for="split in orderedSplits(row.original)"
                 :key="split.id ?? split.accountId"
                 class="flex items-center justify-between text-xs"
               >
@@ -726,7 +721,7 @@ async function submitTransaction(): Promise<void> {
                 <span class="font-mono">{{ splitAmount(split, row.original.currency) }}</span>
               </div>
               <p
-                v-for="split in row.original.splits.filter((s) => s.memo)"
+                v-for="split in orderedSplits(row.original).filter((s) => s.memo)"
                 :key="`memo-${split.id}`"
                 class="text-[10px] text-muted-foreground italic"
               >

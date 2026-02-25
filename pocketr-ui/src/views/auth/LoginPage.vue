@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Moon, Sun } from 'lucide-vue-next'
+import { Moon, Sun, TriangleAlert } from 'lucide-vue-next'
 import { useColorMode } from '@vueuse/core'
 import { primeCsrfToken } from '@/api/csrf'
 import { api } from '@/api/http'
@@ -79,16 +79,6 @@ async function login(): Promise<void> {
         </DropdownMenuContent>
       </DropdownMenu>
     </div>
-    <div
-      v-if="isSessionExpired"
-      class="absolute top-16 left-1/2 -translate-x-1/2 w-full max-w-sm px-4"
-    >
-      <div
-        class="rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-700 dark:bg-amber-950/50 dark:text-amber-300"
-      >
-        Your session has expired. Please log in again.
-      </div>
-    </div>
     <Card
       class="min-w-sm max-w-sm border-[#9ccfad] bg-[#a8e0b7] text-[#2f463a] shadow-[0_10px_30px_rgba(0,0,0,0.18)] dark:border-border dark:bg-card dark:text-card-foreground"
     >
@@ -99,6 +89,13 @@ async function login(): Promise<void> {
         </CardDescription>
       </CardHeader>
       <CardContent>
+        <div
+          v-if="isSessionExpired"
+          class="mb-4 flex items-center gap-2 rounded-md border border-[#7fbf9a] bg-[#d8f0de] px-4 py-3 text-sm text-[#1f3a2f] shadow-sm dark:border-border dark:bg-muted/40 dark:text-foreground"
+        >
+          <TriangleAlert class="h-4 w-4 shrink-0 text-orange-500" />
+          <span>Your session has expired. Please log in again.</span>
+        </div>
         <form @submit.prevent="login">
           <div class="grid gap-4">
             <div class="grid gap-2">

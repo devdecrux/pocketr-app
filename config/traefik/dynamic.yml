@@ -1,5 +1,6 @@
 http:
   routers:
+    # Local-dev only: keep explicit localhost/host.docker.internal host matching.
     api-router:
       rule: "(Host(`localhost`) || Host(`127.0.0.1`) || Host(`host.docker.internal`)) && PathPrefix(`/api`)"
       entryPoints:

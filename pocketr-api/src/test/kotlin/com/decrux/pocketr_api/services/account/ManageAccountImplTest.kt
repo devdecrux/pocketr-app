@@ -6,6 +6,9 @@ import com.decrux.pocketr_api.entities.db.ledger.AccountType
 import com.decrux.pocketr_api.entities.db.ledger.Currency
 import com.decrux.pocketr_api.entities.dtos.CreateAccountDto
 import com.decrux.pocketr_api.entities.dtos.UpdateAccountDto
+import com.decrux.pocketr_api.exceptions.DomainBadRequestException
+import com.decrux.pocketr_api.exceptions.DomainForbiddenException
+import com.decrux.pocketr_api.exceptions.DomainNotFoundException
 import com.decrux.pocketr_api.repositories.AccountRepository
 import com.decrux.pocketr_api.repositories.CurrencyRepository
 import com.decrux.pocketr_api.repositories.HouseholdAccountShareRepository
@@ -19,7 +22,6 @@ import org.junit.jupiter.api.Test
 import org.mockito.ArgumentMatchers.any
 import org.mockito.ArgumentMatchers.anyLong
 import org.mockito.Mockito.*
-import org.springframework.web.server.ResponseStatusException
 import java.time.LocalDate
 import java.util.Optional
 import java.util.UUID
@@ -114,11 +116,11 @@ class ManageAccountImplTest {
         fun rejectManualEquityCreation() {
             val dto = CreateAccountDto(name = "Opening Equity", type = "EQUITY", currency = "EUR")
 
-            val ex = assertThrows(ResponseStatusException::class.java) {
+            val ex = assertThrows(DomainBadRequestException::class.java) {
                 service.createAccount(dto, ownerUser)
             }
-            assertEquals(400, ex.statusCode.value())
-            assertTrue(ex.reason!!.contains("system-managed"))
+            assertEquals(400, ex.status.value())
+            assertTrue(ex.message!!.contains("system-managed"))
             verify(accountRepository, never()).save(any(Account::class.java))
             assertTrue(openingBalanceService.calls.isEmpty())
         }
@@ -128,11 +130,11 @@ class ManageAccountImplTest {
         fun rejectInvalidAccountType() {
             val dto = CreateAccountDto(name = "Bad", type = "INVALID_TYPE", currency = "EUR")
 
-            val ex = assertThrows(ResponseStatusException::class.java) {
+            val ex = assertThrows(DomainBadRequestException::class.java) {
                 service.createAccount(dto, ownerUser)
             }
-            assertEquals(400, ex.statusCode.value())
-            assertTrue(ex.reason!!.contains("Invalid account type"))
+            assertEquals(400, ex.status.value())
+            assertTrue(ex.message!!.contains("Invalid account type"))
         }
 
         @Test
@@ -141,11 +143,11 @@ class ManageAccountImplTest {
             `when`(currencyRepository.findById("XYZ")).thenReturn(Optional.empty())
             val dto = CreateAccountDto(name = "Checking", type = "ASSET", currency = "XYZ")
 
-            val ex = assertThrows(ResponseStatusException::class.java) {
+            val ex = assertThrows(DomainBadRequestException::class.java) {
                 service.createAccount(dto, ownerUser)
             }
-            assertEquals(400, ex.statusCode.value())
-            assertTrue(ex.reason!!.contains("Invalid currency"))
+            assertEquals(400, ex.status.value())
+            assertTrue(ex.message!!.contains("Invalid currency"))
         }
 
         @Test
@@ -219,12 +221,12 @@ class ManageAccountImplTest {
                 openingBalanceMinor = 50_000,
             )
 
-            val ex = assertThrows(ResponseStatusException::class.java) {
+            val ex = assertThrows(DomainBadRequestException::class.java) {
                 service.createAccount(dto, ownerUser)
             }
 
-            assertEquals(400, ex.statusCode.value())
-            assertTrue(ex.reason!!.contains("ASSET"))
+            assertEquals(400, ex.status.value())
+            assertTrue(ex.message!!.contains("ASSET"))
             verify(accountRepository, never()).save(any(Account::class.java))
             assertTrue(openingBalanceService.calls.isEmpty())
         }
@@ -239,12 +241,12 @@ class ManageAccountImplTest {
                 openingBalanceDate = LocalDate.parse("2026-02-15"),
             )
 
-            val ex = assertThrows(ResponseStatusException::class.java) {
+            val ex = assertThrows(DomainBadRequestException::class.java) {
                 service.createAccount(dto, ownerUser)
             }
 
-            assertEquals(400, ex.statusCode.value())
-            assertTrue(ex.reason!!.contains("openingBalanceDate"))
+            assertEquals(400, ex.status.value())
+            assertTrue(ex.message!!.contains("openingBalanceDate"))
             verify(accountRepository, never()).save(any(Account::class.java))
             assertTrue(openingBalanceService.calls.isEmpty())
         }
@@ -313,10 +315,10 @@ class ManageAccountImplTest {
         fun rejectUpdateByNonOwner() {
             `when`(accountRepository.findById(accountId)).thenReturn(Optional.of(existingAccount))
 
-            val ex = assertThrows(ResponseStatusException::class.java) {
+            val ex = assertThrows(DomainForbiddenException::class.java) {
                 service.updateAccount(accountId, UpdateAccountDto(name = "Stolen"), otherUser)
             }
-            assertEquals(403, ex.statusCode.value())
+            assertEquals(403, ex.status.value())
         }
 
         @Test
@@ -325,10 +327,10 @@ class ManageAccountImplTest {
             val missingId = UUID.randomUUID()
             `when`(accountRepository.findById(missingId)).thenReturn(Optional.empty())
 
-            val ex = assertThrows(ResponseStatusException::class.java) {
+            val ex = assertThrows(DomainNotFoundException::class.java) {
                 service.updateAccount(missingId, UpdateAccountDto(name = "X"), ownerUser)
             }
-            assertEquals(404, ex.statusCode.value())
+            assertEquals(404, ex.status.value())
         }
 
         @Test
@@ -430,29 +432,29 @@ class ManageAccountImplTest {
         fun householdModeRejectsNonMember() {
             `when`(manageHousehold.isActiveMember(householdId, 1L)).thenReturn(false)
 
-            val ex = assertThrows(ResponseStatusException::class.java) {
+            val ex = assertThrows(DomainForbiddenException::class.java) {
                 service.listAccounts(ownerUser, "HOUSEHOLD", householdId)
             }
-            assertEquals(403, ex.statusCode.value())
+            assertEquals(403, ex.status.value())
             verify(accountRepository, never()).findByOwnerUserId(anyLong())
         }
 
         @Test
         @DisplayName("HOUSEHOLD mode without householdId returns 400")
         fun householdModeWithoutHouseholdId() {
-            val ex = assertThrows(ResponseStatusException::class.java) {
+            val ex = assertThrows(DomainBadRequestException::class.java) {
                 service.listAccounts(ownerUser, "HOUSEHOLD", null)
             }
-            assertEquals(400, ex.statusCode.value())
+            assertEquals(400, ex.status.value())
         }
 
         @Test
         @DisplayName("Invalid mode returns 400")
         fun invalidModeReturns400() {
-            val ex = assertThrows(ResponseStatusException::class.java) {
+            val ex = assertThrows(DomainBadRequestException::class.java) {
                 service.listAccounts(ownerUser, "INVALID", null)
             }
-            assertEquals(400, ex.statusCode.value())
+            assertEquals(400, ex.status.value())
         }
     }
 

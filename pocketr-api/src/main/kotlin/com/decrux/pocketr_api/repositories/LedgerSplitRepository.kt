@@ -24,6 +24,24 @@ interface LedgerSplitRepository : JpaRepository<LedgerSplit, UUID> {
 
     @Query(
         """
+        SELECT ls.account.id,
+               COALESCE(SUM(CASE WHEN ls.side = :debit THEN ls.amountMinor ELSE 0 END), 0)
+             - COALESCE(SUM(CASE WHEN ls.side = :credit THEN ls.amountMinor ELSE 0 END), 0)
+        FROM LedgerSplit ls
+        WHERE ls.account.id IN :accountIds
+          AND ls.transaction.txnDate <= :asOf
+        GROUP BY ls.account.id
+        """,
+    )
+    fun computeRawBalancesByAccountIds(
+        accountIds: Collection<UUID>,
+        asOf: LocalDate,
+        debit: SplitSide,
+        credit: SplitSide,
+    ): List<Array<Any>>
+
+    @Query(
+        """
         SELECT a.id, a.name, ct.id, ct.name, a.currency.code,
                SUM(CASE WHEN ls.side = :debit THEN ls.amountMinor ELSE 0 END)
              - SUM(CASE WHEN ls.side = :credit THEN ls.amountMinor ELSE 0 END)

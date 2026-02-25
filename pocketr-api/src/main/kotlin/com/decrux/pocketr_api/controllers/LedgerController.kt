@@ -52,4 +52,14 @@ class LedgerController(
     ): BalanceDto {
         return manageLedger.getAccountBalance(id, asOf ?: LocalDate.now(), user, householdId)
     }
+
+    @GetMapping("/accounts/balances")
+    fun getAccountBalances(
+        @RequestParam accountIds: List<UUID>,
+        @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) asOf: LocalDate?,
+        @RequestParam householdId: UUID?,
+        @AuthenticationPrincipal user: User,
+    ): List<BalanceDto> {
+        return manageLedger.getAccountBalances(accountIds, asOf ?: LocalDate.now(), user, householdId)
+    }
 }

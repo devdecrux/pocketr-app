@@ -1,6 +1,17 @@
+global:
+  # Dev-only proxy: avoid outbound version/usage telemetry in local environments.
+  checkNewVersion: false
+  sendAnonymousUsage: false
+
 entryPoints:
   web:
     address: ":80"
+    transport:
+      # Conservative timeouts to reduce idle/slow request abuse in dev proxy.
+      respondingTimeouts:
+        readTimeout: 30s
+        writeTimeout: 30s
+        idleTimeout: 120s
 
 api:
   dashboard: false
@@ -9,9 +20,8 @@ api:
 log:
   level: INFO
 
-accessLog:
-  filePath: /var/log/traefik-access.log
-  bufferingSize: 1
+# Keep logs in container stdout/stderr (`docker logs`) instead of writing files.
+accessLog: {}
 
 providers:
   file:

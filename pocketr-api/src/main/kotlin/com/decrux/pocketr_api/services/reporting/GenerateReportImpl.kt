@@ -7,13 +7,14 @@ import com.decrux.pocketr_api.entities.dtos.AccountBalanceSummaryDto
 import com.decrux.pocketr_api.entities.dtos.AccountBalanceTimeseriesDto
 import com.decrux.pocketr_api.entities.dtos.BalanceTimeseriesPointDto
 import com.decrux.pocketr_api.entities.dtos.MonthlyExpenseDto
+import com.decrux.pocketr_api.exceptions.DomainBadRequestException
+import com.decrux.pocketr_api.exceptions.DomainForbiddenException
+import com.decrux.pocketr_api.exceptions.DomainNotFoundException
 import com.decrux.pocketr_api.repositories.AccountRepository
 import com.decrux.pocketr_api.repositories.LedgerSplitRepository
 import com.decrux.pocketr_api.services.household.ManageHousehold
-import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
-import org.springframework.web.server.ResponseStatusException
 import java.time.LocalDate
 import java.time.YearMonth
 import java.util.UUID
@@ -43,15 +44,15 @@ class GenerateReportImpl(
 
             MODE_HOUSEHOLD -> {
                 val hId = householdId
-                    ?: throw ResponseStatusException(HttpStatus.BAD_REQUEST, "householdId is required for household mode")
+                    ?: throw DomainBadRequestException("householdId is required for household mode")
                 val userId = requireNotNull(user.userId) { "User ID must not be null" }
                 if (!manageHousehold.isActiveMember(hId, userId)) {
-                    throw ResponseStatusException(HttpStatus.FORBIDDEN, "Not an active member of this household")
+                    throw DomainForbiddenException("Not an active member of this household")
                 }
                 ledgerSplitRepository.monthlyExpensesByHousehold(hId, monthStart, monthEnd, SplitSide.DEBIT, SplitSide.CREDIT)
             }
 
-            else -> throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid mode: $mode. Must be INDIVIDUAL or HOUSEHOLD")
+            else -> throw DomainBadRequestException("Invalid mode: $mode. Must be INDIVIDUAL or HOUSEHOLD")
         }
 
         return rows.map { row ->
@@ -98,16 +99,16 @@ class GenerateReportImpl(
         user: User,
     ): AccountBalanceTimeseriesDto {
         if (dateFrom.isAfter(dateTo)) {
-            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "dateFrom must be before or equal to dateTo")
+            throw DomainBadRequestException("dateFrom must be before or equal to dateTo")
         }
 
         val userId = requireNotNull(user.userId) { "User ID must not be null" }
 
         val account = accountRepository.findById(accountId)
-            .orElseThrow { ResponseStatusException(HttpStatus.NOT_FOUND, "Account not found") }
+            .orElseThrow { DomainNotFoundException("Account not found") }
 
         if (account.owner?.userId != userId) {
-            throw ResponseStatusException(HttpStatus.FORBIDDEN, "Not the owner of this account")
+            throw DomainForbiddenException("Not the owner of this account")
         }
 
         val isDebitNormal = account.type in DEBIT_NORMAL_TYPES

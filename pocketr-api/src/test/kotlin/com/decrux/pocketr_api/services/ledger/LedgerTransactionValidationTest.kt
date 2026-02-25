@@ -522,6 +522,86 @@ class LedgerTransactionValidationTest {
     inner class BalanceComputation {
 
         @Test
+        @DisplayName("should compute batch balances with one grouped query")
+        fun computeBatchBalancesWithGroupedQuery() {
+            val asOf = LocalDate.of(2026, 2, 20)
+            val ids = listOf(checkingId, liabilityId, expenseId)
+            `when`(accountRepository.findAllById(ids)).thenReturn(listOf(checking, liabilityAcct, expenseAcct))
+            `when`(
+                ledgerSplitRepository.computeRawBalancesByAccountIds(
+                    ids,
+                    asOf,
+                    SplitSide.DEBIT,
+                    SplitSide.CREDIT,
+                ),
+            ).thenReturn(
+                listOf(
+                    arrayOf(checkingId, 190000L),
+                    arrayOf(liabilityId, -49950000L),
+                ),
+            )
+
+            val result = service.getAccountBalances(ids, asOf, userA, null)
+            val byId = result.associateBy { it.accountId }
+
+            assertEquals(3, result.size)
+            assertEquals(190000L, byId.getValue(checkingId).balanceMinor)
+            assertEquals(49950000L, byId.getValue(liabilityId).balanceMinor)
+            assertEquals(0L, byId.getValue(expenseId).balanceMinor)
+            verify(ledgerSplitRepository, times(1))
+                .computeRawBalancesByAccountIds(ids, asOf, SplitSide.DEBIT, SplitSide.CREDIT)
+            verifyNoMoreInteractions(ledgerSplitRepository)
+        }
+
+        @Test
+        @DisplayName("should reject batch balance query for non-owned account")
+        fun rejectBatchBalanceForNonOwnedAccount() {
+            val ids = listOf(checkingId, userBSavingsId)
+            `when`(accountRepository.findAllById(ids)).thenReturn(listOf(checking, userBSavings))
+
+            val ex = assertThrows(DomainHttpException::class.java) {
+                service.getAccountBalances(ids, LocalDate.now(), userA, null)
+            }
+
+            assertEquals(403, ex.status.value())
+            assertTrue(ex.message!!.contains("Not the owner"))
+            verifyNoInteractions(ledgerSplitRepository)
+        }
+
+        @Test
+        @DisplayName("should reject household batch query when any account is not shared")
+        fun rejectHouseholdBatchWhenAnyAccountNotShared() {
+            val householdId = UUID.randomUUID()
+            val ids = listOf(checkingId, savingsId)
+            `when`(accountRepository.findAllById(ids)).thenReturn(listOf(checking, savings))
+            `when`(manageHousehold.isActiveMember(householdId, userA.userId!!)).thenReturn(true)
+            `when`(manageHousehold.getSharedAccountIds(householdId)).thenReturn(setOf(checkingId))
+
+            val ex = assertThrows(DomainHttpException::class.java) {
+                service.getAccountBalances(ids, LocalDate.now(), userA, householdId)
+            }
+
+            assertEquals(403, ex.status.value())
+            assertTrue(ex.message!!.contains("not shared"))
+            verifyNoInteractions(ledgerSplitRepository)
+        }
+
+        @Test
+        @DisplayName("should return 404 when any account is missing in batch query")
+        fun batchNotFoundForMissingAccount() {
+            val missingId = UUID.randomUUID()
+            val ids = listOf(checkingId, missingId)
+            `when`(accountRepository.findAllById(ids)).thenReturn(listOf(checking))
+
+            val ex = assertThrows(DomainHttpException::class.java) {
+                service.getAccountBalances(ids, LocalDate.now(), userA, null)
+            }
+
+            assertEquals(404, ex.status.value())
+            verifyNoInteractions(ledgerSplitRepository)
+        }
+
+        @Test
         @DisplayName("should compute debit-normal balance for ASSET account")
         fun debitNormalBalanceForAsset() {
             `when`(accountRepository.findById(checkingId)).thenReturn(Optional.of(checking))

@@ -5,6 +5,9 @@ import com.decrux.pocketr_api.entities.db.ledger.Account
 import com.decrux.pocketr_api.entities.db.ledger.AccountType
 import com.decrux.pocketr_api.entities.db.ledger.Currency
 import com.decrux.pocketr_api.entities.db.ledger.SplitSide
+import com.decrux.pocketr_api.exceptions.DomainBadRequestException
+import com.decrux.pocketr_api.exceptions.DomainForbiddenException
+import com.decrux.pocketr_api.exceptions.DomainNotFoundException
 import com.decrux.pocketr_api.repositories.AccountRepository
 import com.decrux.pocketr_api.repositories.LedgerSplitRepository
 import com.decrux.pocketr_api.services.household.ManageHousehold
@@ -15,7 +18,6 @@ import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.mockito.Mockito.mock
 import org.mockito.Mockito.`when`
-import org.springframework.web.server.ResponseStatusException
 import java.time.LocalDate
 import java.time.YearMonth
 import java.util.Optional
@@ -202,11 +204,11 @@ class ReportingTest {
         @Test
         @DisplayName("household mode requires householdId")
         fun householdModeRequiresHouseholdId() {
-            val ex = assertThrows(ResponseStatusException::class.java) {
+            val ex = assertThrows(DomainBadRequestException::class.java) {
                 service.getMonthlyExpenses(userA, jan2026, "HOUSEHOLD", null)
             }
-            assertEquals(400, ex.statusCode.value())
-            assertTrue(ex.reason!!.contains("householdId is required"))
+            assertEquals(400, ex.status.value())
+            assertTrue(ex.message!!.contains("householdId is required"))
         }
 
         @Test
@@ -215,11 +217,11 @@ class ReportingTest {
             val householdId = UUID.randomUUID()
             `when`(manageHousehold.isActiveMember(householdId, 1L)).thenReturn(false)
 
-            val ex = assertThrows(ResponseStatusException::class.java) {
+            val ex = assertThrows(DomainForbiddenException::class.java) {
                 service.getMonthlyExpenses(userA, jan2026, "HOUSEHOLD", householdId)
             }
-            assertEquals(403, ex.statusCode.value())
-            assertTrue(ex.reason!!.contains("Not an active member"))
+            assertEquals(403, ex.status.value())
+            assertTrue(ex.message!!.contains("Not an active member"))
         }
 
         @Test
@@ -240,11 +242,11 @@ class ReportingTest {
         @Test
         @DisplayName("invalid mode is rejected")
         fun invalidModeRejected() {
-            val ex = assertThrows(ResponseStatusException::class.java) {
+            val ex = assertThrows(DomainBadRequestException::class.java) {
                 service.getMonthlyExpenses(userA, jan2026, "INVALID", null)
             }
-            assertEquals(400, ex.statusCode.value())
-            assertTrue(ex.reason!!.contains("Invalid mode"))
+            assertEquals(400, ex.status.value())
+            assertTrue(ex.message!!.contains("Invalid mode"))
         }
 
         @Test
@@ -331,10 +333,10 @@ class ReportingTest {
         fun rejectTimeseriesForNonOwnedAccount() {
             `when`(accountRepository.findById(checkingId)).thenReturn(Optional.of(checking))
 
-            val ex = assertThrows(ResponseStatusException::class.java) {
+            val ex = assertThrows(DomainForbiddenException::class.java) {
                 service.getBalanceTimeseries(checkingId, LocalDate.now(), LocalDate.now(), userB)
             }
-            assertEquals(403, ex.statusCode.value())
+            assertEquals(403, ex.status.value())
         }
 
         @Test
@@ -343,10 +345,10 @@ class ReportingTest {
             val missingId = UUID.randomUUID()
             `when`(accountRepository.findById(missingId)).thenReturn(Optional.empty())
 
-            val ex = assertThrows(ResponseStatusException::class.java) {
+            val ex = assertThrows(DomainNotFoundException::class.java) {
                 service.getBalanceTimeseries(missingId, LocalDate.now(), LocalDate.now(), userA)
             }
-            assertEquals(404, ex.statusCode.value())
+            assertEquals(404, ex.status.value())
         }
 
         @Test

@@ -8,7 +8,8 @@ import { useAccountStore } from '@/stores/account'
 import { useCurrencyStore } from '@/stores/currency'
 import { useLedgerStore } from '@/stores/ledger'
 import { useModeStore } from '@/stores/mode'
-import { getAccountBalance } from '@/api/ledger'
+import { useHouseholdStore } from '@/stores/household'
+import { getAccountBalances } from '@/api/ledger'
 import { getMonthlyReport } from '@/api/reports'
 import { formatMinor } from '@/utils/money'
 import type { MonthlyReportEntry } from '@/types/ledger'
@@ -17,6 +18,7 @@ const accountStore = useAccountStore()
 const currencyStore = useCurrencyStore()
 const ledgerStore = useLedgerStore()
 const modeStore = useModeStore()
+const householdStore = useHouseholdStore()
 
 const balances = ref<Map<string, number>>(new Map())
 const balancesLoading = ref(false)
@@ -32,6 +34,14 @@ const topAccounts = computed(() => {
   return accountStore.activeAccounts
     .filter((a) => a.type === 'ASSET' || a.type === 'LIABILITY')
     .slice(0, 6)
+})
+
+const sharedAccountIds = computed(() => {
+  const ids = new Set<string>()
+  for (const share of householdStore.sharedAccounts) {
+    ids.add(share.accountId)
+  }
+  return ids
 })
 
 const recentTransactions = computed(() => {
@@ -80,20 +90,27 @@ const spendingByAccount = computed(() => {
 
 async function loadBalances(): Promise<void> {
   balancesLoading.value = true
-  const promises = topAccounts.value.map(async (account) => {
-    try {
-      const result = await getAccountBalance(
-        account.id,
-        undefined,
-        modeStore.householdId ?? undefined,
-      )
-      balances.value.set(account.id, result.balanceMinor)
-    } catch {
-      // skip
+  balances.value = new Map()
+  const accountIds = modeStore.isHousehold
+    ? topAccounts.value
+        .map((account) => account.id)
+        .filter((accountId) => sharedAccountIds.value.has(accountId))
+    : topAccounts.value.map((account) => account.id)
+
+  try {
+    const result = await getAccountBalances(
+      accountIds,
+      undefined,
+      modeStore.householdId ?? undefined,
+    )
+    for (const balance of result) {
+      balances.value.set(balance.accountId, balance.balanceMinor)
     }
-  })
-  await Promise.all(promises)
-  balancesLoading.value = false
+  } catch {
+    // skip
+  } finally {
+    balancesLoading.value = false
+  }
 }
 
 async function loadReport(): Promise<void> {
@@ -113,6 +130,9 @@ async function loadReport(): Promise<void> {
 
 async function loadAll(): Promise<void> {
   await Promise.all([accountStore.load(), currencyStore.load(), ledgerStore.load()])
+  if (modeStore.isHousehold && modeStore.householdId) {
+    await householdStore.loadSharedAccounts(modeStore.householdId)
+  }
   await Promise.all([loadBalances(), loadReport()])
 }
 

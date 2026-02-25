@@ -4,6 +4,8 @@ spring:
       on-profile: dev
   datasource:
     url: jdbc:postgresql://localhost:5432/pocketr_db
+    # Dev-only fallback values keep IntelliJ `bootRun` working without extra env setup.
+    # Non-dev environments must provide DB_USER/DB_PASSWORD explicitly.
     username: ${DB_USER:pocketr_user}
     password: ${DB_PASSWORD:pocketr_password}
 

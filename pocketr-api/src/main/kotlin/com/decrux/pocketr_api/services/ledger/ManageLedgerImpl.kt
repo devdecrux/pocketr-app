@@ -156,6 +156,64 @@ class ManageLedgerImpl(
     }
 
     @Transactional(readOnly = true)
+    override fun getAccountBalances(
+        accountIds: List<UUID>,
+        asOf: LocalDate,
+        user: User,
+        householdId: UUID?,
+    ): List<BalanceDto> {
+        if (accountIds.isEmpty()) {
+            return emptyList()
+        }
+
+        val userId = requireNotNull(user.userId) { "User ID must not be null" }
+        val uniqueAccountIds = accountIds.distinct()
+        val accounts = accountRepository.findAllById(uniqueAccountIds)
+        if (accounts.size != uniqueAccountIds.size) {
+            throw DomainNotFoundException("Account not found")
+        }
+
+        if (householdId != null) {
+            if (!manageHousehold.isActiveMember(householdId, userId)) {
+                throw DomainForbiddenException("Not an active member of this household")
+            }
+            val sharedAccountIds = manageHousehold.getSharedAccountIds(householdId)
+            if (uniqueAccountIds.any { it !in sharedAccountIds }) {
+                throw DomainForbiddenException("Account is not shared into this household")
+            }
+        } else if (accounts.any { it.owner?.userId != userId }) {
+            throw DomainForbiddenException("Not the owner of this account")
+        }
+
+        val rawBalancesByAccountId = ledgerSplitRepository.computeRawBalancesByAccountIds(
+            uniqueAccountIds,
+            asOf,
+            SplitSide.DEBIT,
+            SplitSide.CREDIT,
+        ).associate { row ->
+            val accountId = row[0] as UUID
+            val rawBalance = (row[1] as Number).toLong()
+            accountId to rawBalance
+        }
+
+        val accountById = accounts.associateBy { requireNotNull(it.id) }
+        return uniqueAccountIds.map { accountId ->
+            val account = accountById.getValue(accountId)
+            val rawBalance = rawBalancesByAccountId[accountId] ?: 0L
+            val balanceMinor = if (account.type in DEBIT_NORMAL_TYPES) rawBalance else -rawBalance
+
+            BalanceDto(
+                accountId = accountId,
+                accountName = account.name,
+                accountType = account.type.name,
+                currency = requireNotNull(account.currency?.code),
+                balanceMinor = balanceMinor,
+                asOf = asOf,
+            )
+        }
+    }
+
+    @Transactional(readOnly = true)
     override fun getAccountBalance(accountId: UUID, asOf: LocalDate, user: User, householdId: UUID?): BalanceDto {
         val userId = requireNotNull(user.userId) { "User ID must not be null" }
 

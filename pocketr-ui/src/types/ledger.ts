@@ -111,7 +111,11 @@ export interface PagedResponse<T> {
 
 export interface AccountBalance {
   accountId: string
+  accountName: string
+  accountType: AccountType
+  currency: string
   balanceMinor: number
+  asOf: string
 }
 
 export interface MonthlyReportEntry {

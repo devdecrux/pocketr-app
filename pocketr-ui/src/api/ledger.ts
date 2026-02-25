@@ -35,3 +35,22 @@ export function getAccountBalance(
   if (householdId) searchParams.householdId = householdId
   return api.get(`${BASE}/accounts/${accountId}/balance`, { searchParams }).json<AccountBalance>()
 }
+
+export function getAccountBalances(
+  accountIds: string[],
+  asOf?: string,
+  householdId?: string,
+): Promise<AccountBalance[]> {
+  if (accountIds.length === 0) {
+    return Promise.resolve([])
+  }
+
+  const searchParams = new URLSearchParams()
+  for (const accountId of accountIds) {
+    searchParams.append('accountIds', accountId)
+  }
+  if (asOf) searchParams.append('asOf', asOf)
+  if (householdId) searchParams.append('householdId', householdId)
+
+  return api.get(`${BASE}/accounts/balances`, { searchParams }).json<AccountBalance[]>()
+}

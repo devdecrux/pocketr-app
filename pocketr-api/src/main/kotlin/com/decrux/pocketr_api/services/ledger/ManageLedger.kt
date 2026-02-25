@@ -24,5 +24,12 @@ interface ManageLedger {
         size: Int,
     ): PagedTransactionsDto
 
+    fun getAccountBalances(
+        accountIds: List<UUID>,
+        asOf: LocalDate,
+        user: User,
+        householdId: UUID?,
+    ): List<BalanceDto>
+
     fun getAccountBalance(accountId: UUID, asOf: LocalDate, user: User, householdId: UUID?): BalanceDto
 }

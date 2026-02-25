@@ -28,7 +28,7 @@ import { useCurrencyStore } from '@/stores/currency'
 import { useModeStore } from '@/stores/mode'
 import { useHouseholdStore } from '@/stores/household'
 import { createAccount, updateAccount } from '@/api/accounts'
-import { getAccountBalance } from '@/api/ledger'
+import { getAccountBalances } from '@/api/ledger'
 import { formatMinor } from '@/utils/money'
 import type { Account, AccountType, CreateAccountRequest } from '@/types/ledger'
 import CurrencyAmountInput from '@/components/CurrencyAmountInput.vue'
@@ -170,21 +170,26 @@ const table = useVueTable({
   getCoreRowModel: getCoreRowModel(),
 })
 
-// N+1 pattern: one API call per account. A batch balance endpoint should be preferred when available.
 async function loadBalances(): Promise<void> {
-  const promises = accountStore.activeAccounts.map(async (account) => {
-    try {
-      const result = await getAccountBalance(
-        account.id,
-        undefined,
-        modeStore.householdId ?? undefined,
-      )
-      balances.value.set(account.id, result.balanceMinor)
-    } catch {
-      // skip failed balance loads
+  balances.value = new Map()
+  const accountIds = modeStore.isHousehold
+    ? accountStore.activeAccounts
+        .map((account) => account.id)
+        .filter((accountId) => sharedAccountIds.value.has(accountId))
+    : accountStore.activeAccounts.map((account) => account.id)
+
+  try {
+    const result = await getAccountBalances(
+      accountIds,
+      undefined,
+      modeStore.householdId ?? undefined,
+    )
+    for (const balance of result) {
+      balances.value.set(balance.accountId, balance.balanceMinor)
     }
-  })
-  await Promise.all(promises)
+  } catch {
+    // skip failed balance loads
+  }
 }
 
 async function loadAll(): Promise<void> {
@@ -266,67 +271,84 @@ function todayString(): string {
               New Account
             </Button>
           </DialogTrigger>
-          <DialogContent>
+          <DialogContent class="sm:max-w-2xl">
             <DialogHeader>
               <DialogTitle>Create Account</DialogTitle>
               <DialogDescription> Add a new account to your ledger. </DialogDescription>
             </DialogHeader>
             <div class="grid gap-4 py-4">
-              <div class="grid gap-2">
-                <Label for="account-name">Name</Label>
-                <Input
-                  id="account-name"
-                  v-model="newAccount.name"
-                  placeholder="e.g. Checking, Savings"
-                />
+              <div class="grid grid-cols-1 gap-4 sm:grid-cols-3 sm:items-end">
+                <div class="grid gap-2 sm:col-span-2">
+                  <Label for="account-name">Name</Label>
+                  <Input
+                    id="account-name"
+                    v-model="newAccount.name"
+                    placeholder="e.g. Checking, Savings"
+                  />
+                </div>
+                <div class="grid gap-2">
+                  <Label>Type</Label>
+                  <Select v-model="newAccount.type">
+                    <SelectTrigger class="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem v-for="t in accountTypes" :key="t" :value="t">
+                        {{ t }}
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
-              <div class="grid gap-2">
-                <Label>Type</Label>
-                <Select v-model="newAccount.type">
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem v-for="t in accountTypes" :key="t" :value="t">
-                      {{ t }}
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
+
+              <div class="grid grid-cols-1 gap-4 sm:grid-cols-3 sm:items-end">
+                <div v-if="newAccount.type === 'ASSET'" class="grid gap-2">
+                  <Label for="opening-balance-date">Opening balance date</Label>
+                  <Input
+                    id="opening-balance-date"
+                    v-model="openingBalanceDate"
+                    type="date"
+                    :disabled="openingBalanceMinor === 0"
+                  />
+                </div>
+                <div v-else class="hidden sm:block" aria-hidden="true" />
+
+                <div v-if="newAccount.type === 'ASSET'" class="grid gap-2">
+                  <Label for="opening-balance">Initial balance</Label>
+                  <CurrencyAmountInput
+                    id="opening-balance"
+                    v-model="openingBalanceMinor"
+                    :minor-unit="openingBalanceMinorUnit"
+                    :currency-code="newAccount.currency"
+                    :allow-negative="true"
+                    placeholder="0.00"
+                  />
+                </div>
+                <div v-else class="hidden sm:block" aria-hidden="true" />
+
+                <div class="grid gap-2">
+                  <Label>Currency</Label>
+                  <Select v-model="newAccount.currency">
+                    <SelectTrigger class="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem
+                        v-for="c in currencyStore.currencies"
+                        :key="c.code"
+                        :value="c.code"
+                      >
+                        {{ c.code }} - {{ c.name }}
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
-              <div class="grid gap-2">
-                <Label>Currency</Label>
-                <Select v-model="newAccount.currency">
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem v-for="c in currencyStore.currencies" :key="c.code" :value="c.code">
-                      {{ c.code }} - {{ c.name }}
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div v-if="newAccount.type === 'ASSET'" class="grid gap-2">
-                <Label for="opening-balance">Initial balance</Label>
-                <CurrencyAmountInput
-                  id="opening-balance"
-                  v-model="openingBalanceMinor"
-                  :minor-unit="openingBalanceMinorUnit"
-                  :currency-code="newAccount.currency"
-                  :allow-negative="true"
-                  placeholder="0.00"
-                />
-                <p class="text-xs text-muted-foreground">
-                  Posted as an opening balance journal entry against Opening Equity.
-                </p>
-              </div>
-              <div
-                v-if="newAccount.type === 'ASSET' && openingBalanceMinor !== 0"
-                class="grid gap-2"
-              >
-                <Label for="opening-balance-date">Opening balance date</Label>
-                <Input id="opening-balance-date" v-model="openingBalanceDate" type="date" />
-              </div>
+
+              <p v-if="newAccount.type === 'ASSET'" class="text-xs text-muted-foreground">
+                Posted as an opening balance journal entry against Opening Equity. Opening balance
+                date is used only when initial balance is non-zero.
+              </p>
               <p v-if="createError" class="text-sm text-red-600">{{ createError }}</p>
             </div>
             <DialogFooter>
