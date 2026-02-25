@@ -16,15 +16,6 @@ class AccountController(
     private val manageAccount: ManageAccount,
 ) {
 
-    @PostMapping
-    @ResponseStatus(HttpStatus.CREATED)
-    fun createAccount(
-        @RequestBody dto: CreateAccountDto,
-        @AuthenticationPrincipal user: User,
-    ): AccountDto {
-        return manageAccount.createAccount(dto, user)
-    }
-
     @GetMapping
     fun listAccounts(
         @AuthenticationPrincipal user: User,
@@ -32,6 +23,15 @@ class AccountController(
         @RequestParam(required = false) householdId: UUID?,
     ): List<AccountDto> {
         return manageAccount.listAccounts(user, mode, householdId)
+    }
+
+    @PostMapping
+    @ResponseStatus(HttpStatus.CREATED)
+    fun createAccount(
+        @RequestBody dto: CreateAccountDto,
+        @AuthenticationPrincipal user: User,
+    ): AccountDto {
+        return manageAccount.createAccount(dto, user)
     }
 
     @PatchMapping("/{id}")

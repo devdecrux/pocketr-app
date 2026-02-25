@@ -1,10 +1,15 @@
 package com.decrux.pocketr_api.services.user_avatar
 
 import com.decrux.pocketr_api.entities.db.auth.User
+import com.decrux.pocketr_api.entities.dtos.UserDto
+import com.decrux.pocketr_api.repositories.UserRepository
 import com.decrux.pocketr_api.services.storage.StorageInitializer
 import org.springframework.beans.factory.annotation.Value
+import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
 import org.springframework.web.multipart.MultipartFile
+import org.springframework.web.server.ResponseStatusException
 import java.io.IOException
 import java.nio.file.Files
 import java.nio.file.Path
@@ -19,11 +24,35 @@ class UserAvatarService(
     @Value("\${pocketr.avatar.storage-dir:storage/avatars}")
     avatarStorageDir: String,
     storageInitializer: StorageInitializer,
+    private val userRepository: UserRepository,
 ) {
 
     private val avatarStoragePath: Path = storageInitializer.ensureWritableDirectory(
         Paths.get(avatarStorageDir),
     )
+
+    @Transactional
+    fun uploadAvatar(authenticatedUser: User, avatar: MultipartFile): UserDto {
+        val userId = authenticatedUser.userId
+            ?: throw ResponseStatusException(HttpStatus.UNAUTHORIZED, "Authenticated user id is missing")
+
+        val persistedUser = userRepository.findById(userId)
+            .orElseThrow { ResponseStatusException(HttpStatus.NOT_FOUND, "User not found") }
+
+        val storedPath = try {
+            storeAvatar(persistedUser, avatar)
+        } catch (e: IllegalArgumentException) {
+            throw ResponseStatusException(
+                HttpStatus.BAD_REQUEST,
+                e.message ?: "Invalid avatar upload request",
+                e,
+            )
+        }
+
+        persistedUser.avatarPath = storedPath
+        val savedUser = userRepository.save(persistedUser)
+        return toUserDto(savedUser)
+    }
 
     fun storeAvatar(user: User, avatar: MultipartFile): String {
         if (avatar.isEmpty) {
@@ -56,6 +85,53 @@ class UserAvatarService(
         return filename
     }
 
+    private fun validateAvatarType(avatar: MultipartFile): String {
+        val contentType = avatar.contentType?.lowercase(Locale.ROOT)
+            ?: throw IllegalArgumentException("Avatar content type is required")
+
+        if (contentType !in CONTENT_TYPE_TO_EXTENSION) {
+            throw IllegalArgumentException(
+                "Unsupported avatar format. Allowed formats: JPEG, PNG, GIF, WEBP",
+            )
+        }
+
+        return contentType
+    }
+
+    private fun buildFilename(userId: Long, contentType: String): String {
+        val extension = CONTENT_TYPE_TO_EXTENSION[contentType]
+            ?: throw IllegalArgumentException("Unsupported avatar format")
+
+        return "user-$userId-${UUID.randomUUID()}$extension"
+    }
+
+    private fun deleteAvatarIfExists(storedPath: String?) {
+        if (storedPath.isNullOrBlank()) {
+            return
+        }
+
+        val resolvedPath = avatarStoragePath.resolve(storedPath).normalize()
+        if (!resolvedPath.startsWith(avatarStoragePath)) {
+            return
+        }
+
+        try {
+            Files.deleteIfExists(resolvedPath)
+        } catch (_: IOException) {
+            // Ignore delete errors to avoid failing a successful upload.
+        }
+    }
+
+    fun toUserDto(user: User): UserDto {
+        return UserDto(
+            id = user.userId,
+            email = user.email,
+            firstName = user.firstName,
+            lastName = user.lastName,
+            avatar = resolveAvatarDataUrl(user.avatarPath),
+        )
+    }
+
     fun resolveAvatarDataUrl(storedPath: String?): String? {
         if (storedPath.isNullOrBlank()) {
             return null
@@ -78,43 +154,6 @@ class UserAvatarService(
         } catch (_: IOException) {
             null
         }
-    }
-
-    private fun validateAvatarType(avatar: MultipartFile): String {
-        val contentType = avatar.contentType?.lowercase(Locale.ROOT)
-            ?: throw IllegalArgumentException("Avatar content type is required")
-
-        if (contentType !in CONTENT_TYPE_TO_EXTENSION) {
-            throw IllegalArgumentException(
-                "Unsupported avatar format. Allowed formats: JPEG, PNG, GIF, WEBP",
-            )
-        }
-
-        return contentType
-    }
-
-    private fun deleteAvatarIfExists(storedPath: String?) {
-        if (storedPath.isNullOrBlank()) {
-            return
-        }
-
-        val resolvedPath = avatarStoragePath.resolve(storedPath).normalize()
-        if (!resolvedPath.startsWith(avatarStoragePath)) {
-            return
-        }
-
-        try {
-            Files.deleteIfExists(resolvedPath)
-        } catch (_: IOException) {
-            // Ignore delete errors to avoid failing a successful upload.
-        }
-    }
-
-    private fun buildFilename(userId: Long, contentType: String): String {
-        val extension = CONTENT_TYPE_TO_EXTENSION[contentType]
-            ?: throw IllegalArgumentException("Unsupported avatar format")
-
-        return "user-$userId-${UUID.randomUUID()}$extension"
     }
 
     private fun resolveContentType(path: Path): String {

@@ -14,15 +14,6 @@ class HouseholdController(
     private val manageHousehold: ManageHousehold,
 ) {
 
-    @PostMapping
-    @ResponseStatus(HttpStatus.CREATED)
-    fun createHousehold(
-        @RequestBody dto: CreateHouseholdDto,
-        @AuthenticationPrincipal user: User,
-    ): HouseholdDto {
-        return manageHousehold.createHousehold(dto, user)
-    }
-
     @GetMapping
     fun listHouseholds(@AuthenticationPrincipal user: User): List<HouseholdSummaryDto> {
         return manageHousehold.listHouseholds(user)
@@ -34,6 +25,15 @@ class HouseholdController(
         @AuthenticationPrincipal user: User,
     ): HouseholdDto {
         return manageHousehold.getHousehold(id, user)
+    }
+
+    @PostMapping
+    @ResponseStatus(HttpStatus.CREATED)
+    fun createHousehold(
+        @RequestBody dto: CreateHouseholdDto,
+        @AuthenticationPrincipal user: User,
+    ): HouseholdDto {
+        return manageHousehold.createHousehold(dto, user)
     }
 
     @PostMapping("/{id}/invite")
@@ -63,6 +63,22 @@ class HouseholdController(
         manageHousehold.leaveHousehold(id, user)
     }
 
+    @GetMapping("/{id}/shares")
+    fun listSharedAccounts(
+        @PathVariable id: UUID,
+        @AuthenticationPrincipal user: User,
+    ): List<HouseholdAccountShareDto> {
+        return manageHousehold.listSharedAccounts(id, user)
+    }
+
+    @GetMapping("/{id}/accounts")
+    fun listHouseholdAccounts(
+        @PathVariable id: UUID,
+        @AuthenticationPrincipal user: User,
+    ): List<AccountDto> {
+        return manageHousehold.listHouseholdAccounts(id, user)
+    }
+
     @PostMapping("/{id}/shares")
     @ResponseStatus(HttpStatus.CREATED)
     fun shareAccount(
@@ -81,21 +97,5 @@ class HouseholdController(
         @AuthenticationPrincipal user: User,
     ) {
         manageHousehold.unshareAccount(id, accountId, user)
-    }
-
-    @GetMapping("/{id}/shares")
-    fun listSharedAccounts(
-        @PathVariable id: UUID,
-        @AuthenticationPrincipal user: User,
-    ): List<HouseholdAccountShareDto> {
-        return manageHousehold.listSharedAccounts(id, user)
-    }
-
-    @GetMapping("/{id}/accounts")
-    fun listHouseholdAccounts(
-        @PathVariable id: UUID,
-        @AuthenticationPrincipal user: User,
-    ): List<AccountDto> {
-        return manageHousehold.listHouseholdAccounts(id, user)
     }
 }

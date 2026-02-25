@@ -19,15 +19,6 @@ class LedgerController(
     private val manageLedger: ManageLedger,
 ) {
 
-    @PostMapping("/transactions")
-    @ResponseStatus(HttpStatus.CREATED)
-    fun createTransaction(
-        @RequestBody dto: CreateTransactionDto,
-        @AuthenticationPrincipal user: User,
-    ): TransactionDto {
-        return manageLedger.createTransaction(dto, user)
-    }
-
     @GetMapping("/transactions")
     fun listTransactions(
         @AuthenticationPrincipal user: User,
@@ -41,6 +32,15 @@ class LedgerController(
         @RequestParam(defaultValue = "15") size: Int,
     ): PagedTransactionsDto {
         return manageLedger.listTransactions(user, mode, householdId, dateFrom, dateTo, accountId, categoryId, page, size)
+    }
+
+    @PostMapping("/transactions")
+    @ResponseStatus(HttpStatus.CREATED)
+    fun createTransaction(
+        @RequestBody dto: CreateTransactionDto,
+        @AuthenticationPrincipal user: User,
+    ): TransactionDto {
+        return manageLedger.createTransaction(dto, user)
     }
 
     @GetMapping("/accounts/{id}/balance")

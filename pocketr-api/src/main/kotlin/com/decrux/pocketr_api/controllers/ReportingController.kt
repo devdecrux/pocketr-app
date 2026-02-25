@@ -21,6 +21,14 @@ class ReportingController(
     private val generateReport: GenerateReport,
 ) {
 
+    @GetMapping("/balances")
+    fun getAllAccountBalances(
+        @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) asOf: LocalDate?,
+        @AuthenticationPrincipal user: User,
+    ): List<AccountBalanceSummaryDto> {
+        return generateReport.getAllAccountBalances(user, asOf ?: LocalDate.now())
+    }
+
     @GetMapping("/monthly")
     fun getMonthlyExpenses(
         @RequestParam(defaultValue = "INDIVIDUAL") mode: String,
@@ -29,14 +37,6 @@ class ReportingController(
         @AuthenticationPrincipal user: User,
     ): List<MonthlyExpenseDto> {
         return generateReport.getMonthlyExpenses(user, period, mode, householdId)
-    }
-
-    @GetMapping("/balances")
-    fun getAllAccountBalances(
-        @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) asOf: LocalDate?,
-        @AuthenticationPrincipal user: User,
-    ): List<AccountBalanceSummaryDto> {
-        return generateReport.getAllAccountBalances(user, asOf ?: LocalDate.now())
     }
 
     @GetMapping("/timeseries")

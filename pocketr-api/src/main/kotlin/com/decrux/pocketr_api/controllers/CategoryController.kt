@@ -16,6 +16,11 @@ class CategoryController(
     private val manageCategory: ManageCategory,
 ) {
 
+    @GetMapping
+    fun listCategories(@AuthenticationPrincipal user: User): List<CategoryDto> {
+        return manageCategory.listCategories(user)
+    }
+
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     fun createCategory(
@@ -23,11 +28,6 @@ class CategoryController(
         @AuthenticationPrincipal user: User,
     ): CategoryDto {
         return manageCategory.createCategory(dto, user)
-    }
-
-    @GetMapping
-    fun listCategories(@AuthenticationPrincipal user: User): List<CategoryDto> {
-        return manageCategory.listCategories(user)
     }
 
     @PatchMapping("/{id}")
