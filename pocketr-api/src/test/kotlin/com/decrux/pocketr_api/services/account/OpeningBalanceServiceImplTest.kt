@@ -40,7 +40,7 @@ class OpeningBalanceServiceImplTest {
 
     private val owner = User(
         userId = 1L,
-        passwordValue = "encoded",
+        password = "encoded",
         email = "owner@example.com",
     )
     private val eur = Currency(code = "EUR", minorUnit = 2, name = "Euro")
@@ -158,7 +158,7 @@ class OpeningBalanceServiceImplTest {
     fun rejectsNonOwner() {
         val anotherUser = User(
             userId = 2L,
-            passwordValue = "encoded",
+            password = "encoded",
             email = "another@example.com",
         )
         val assetAccount = Account(

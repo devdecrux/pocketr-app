@@ -20,7 +20,7 @@ class LedgerTransactionValidatorTest {
 
     private val eur = Currency(code = "EUR", minorUnit = 2, name = "Euro")
     private val usd = Currency(code = "USD", minorUnit = 2, name = "US Dollar")
-    private val owner = User(userId = 1L, passwordValue = "encoded", email = "alice@test.com")
+    private val owner = User(userId = 1L, password = "encoded", email = "alice@test.com")
 
     @BeforeEach
     fun setUp() {

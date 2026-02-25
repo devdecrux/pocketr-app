@@ -43,9 +43,9 @@ class HouseholdTransactionVisibilityTest {
 
     private val eur = Currency(code = "EUR", minorUnit = 2, name = "Euro")
 
-    private val alice = User(userId = 1L, passwordValue = "encoded", email = "alice@test.com")
-    private val bob = User(userId = 2L, passwordValue = "encoded", email = "bob@test.com")
-    private val outsider = User(userId = 99L, passwordValue = "encoded", email = "outsider@test.com")
+    private val alice = User(userId = 1L, password = "encoded", email = "alice@test.com")
+    private val bob = User(userId = 2L, password = "encoded", email = "bob@test.com")
+    private val outsider = User(userId = 99L, password = "encoded", email = "outsider@test.com")
 
     private val householdId = UUID.randomUUID()
 

@@ -26,13 +26,13 @@ class ManageCategoryImplTest {
 
     private val ownerUser = User(
         userId = 1L,
-        passwordValue = "encoded",
+        password = "encoded",
         email = "alice@example.com",
     )
 
     private val otherUser = User(
         userId = 2L,
-        passwordValue = "encoded",
+        password = "encoded",
         email = "bob@example.com",
     )
 

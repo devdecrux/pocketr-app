@@ -44,7 +44,7 @@ class UserRepositoryAuthFetchTest @Autowired constructor(
 
     private fun persistUserWithRole(email: String) {
         val user = User(
-            passwordValue = "encoded-password",
+            password = "encoded-password",
             email = email,
             roles = mutableListOf(UserRole(role = "USER")),
         )

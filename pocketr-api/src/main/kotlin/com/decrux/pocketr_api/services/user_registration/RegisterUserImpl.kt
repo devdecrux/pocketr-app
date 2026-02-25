@@ -19,7 +19,7 @@ class RegisterUserImpl(
         val email = userDto.email.trim()
 
         val user = User(
-            passwordValue = requireNotNull(passwordEncoder.encode(userDto.password.trim())) {
+            password = requireNotNull(passwordEncoder.encode(userDto.password.trim())) {
                 "Password encoder returned null"
             },
             email = email,

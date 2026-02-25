@@ -45,19 +45,19 @@ class HouseholdAccountShareIntegrationTest {
 
     private val userA = User(
         userId = 1L,
-        passwordValue = "encoded",
+        password = "encoded",
         email = "alice@example.com",
     )
 
     private val userB = User(
         userId = 2L,
-        passwordValue = "encoded",
+        password = "encoded",
         email = "bob@example.com",
     )
 
     private val userC = User(
         userId = 3L,
-        passwordValue = "encoded",
+        password = "encoded",
         email = "carol@example.com",
     )
 

@@ -11,8 +11,8 @@ class User(
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     var userId: Long? = null,
-    @Column(name = "password", nullable = false)
-    var passwordValue: String = "",
+    @Column(nullable = false)
+    private var password: String = "",
     @Column(nullable = false, unique = true)
     var email: String = "",
     var firstName: String? = null,
@@ -31,7 +31,7 @@ class User(
             .toSet()
     }
 
-    override fun getPassword(): String = passwordValue
+    override fun getPassword(): String = password
 
     override fun getUsername(): String = email
 }
