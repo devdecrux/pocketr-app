@@ -9,7 +9,6 @@ data class CreateSplitDto(
     val side: String,
     val amountMinor: Long,
     val categoryTagId: UUID? = null,
-    val memo: String? = null,
 )
 
 data class CreateTransactionDto(
@@ -31,7 +30,6 @@ data class SplitDto(
     val effectMinor: Long,
     val categoryTagId: UUID?,
     val categoryTagName: String?,
-    val memo: String?,
 )
 
 data class TxnCreatorDto(

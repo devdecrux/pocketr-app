@@ -131,7 +131,6 @@ export interface LedgerSplit {
     side: SplitSide;
     amountMinor: number;         // integer
     categoryTagId?: string | null;
-    memo?: string | null;
 }
 
 export interface LedgerTxn {
@@ -400,7 +399,6 @@ All forms produce `CreateTransactionRequest` with explicit splits.
 - amount
 - category tag (optional or required depending UX)
 - description (default based on tag/payee)
-- memo (optional)
 
 Splits:
 
@@ -682,7 +680,6 @@ export interface CreateTxnRequest {
         side: 'DEBIT' | 'CREDIT';
         amountMinor: number;
         categoryTagId?: string | null;
-        memo?: string | null;
     }>;
 }
 ```

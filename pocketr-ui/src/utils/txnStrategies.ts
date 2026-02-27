@@ -13,7 +13,6 @@ export interface ExpenseFields {
   currency: string
   description: string
   categoryTagId: string | null
-  memo: string
 }
 
 export interface IncomeFields {
@@ -66,7 +65,6 @@ export const expenseStrategy: TxnTabStrategy<ExpenseFields> = {
           side: 'DEBIT' as SplitSide,
           amountMinor: f.amount,
           categoryTagId: f.categoryTagId,
-          memo: f.memo.trim() || null,
         },
       ],
     }

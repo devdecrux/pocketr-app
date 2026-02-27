@@ -6,7 +6,7 @@ import {
   incomeStrategy,
   type TransferFields,
   transferStrategy,
-  type TxnModeContext,
+  type TxnModeContext
 } from '@/utils/txnStrategies'
 
 const ctx: TxnModeContext = { mode: 'INDIVIDUAL', householdId: null }
@@ -23,7 +23,6 @@ function validExpense(): ExpenseFields {
     currency: 'USD',
     description: 'Groceries',
     categoryTagId: 'cat-1',
-    memo: 'weekly shop',
   }
 }
 
@@ -57,18 +56,15 @@ describe('expenseStrategy.buildRequest', () => {
       side: 'DEBIT',
       amountMinor: 1000,
       categoryTagId: 'cat-1',
-      memo: 'weekly shop',
     })
   })
 
-  it('trims description and nullifies empty memo', () => {
+  it('trims description', () => {
     const req = expenseStrategy.buildRequest(ctx, {
       ...validExpense(),
       description: '  Lunch  ',
-      memo: '  ',
     })
     expect(req.description).toBe('Lunch')
-    expect(req.splits[1]!.memo).toBeNull()
   })
 })
 

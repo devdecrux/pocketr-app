@@ -52,7 +52,6 @@ export interface LedgerSplit {
   side: SplitSide
   amountMinor: number
   categoryTagId?: string | null
-  memo?: string | null
 }
 
 export interface TxnCreator {
@@ -86,7 +85,6 @@ export interface CreateTxnRequest {
     side: SplitSide
     amountMinor: number
     categoryTagId?: string | null
-    memo?: string | null
   }>
 }
 

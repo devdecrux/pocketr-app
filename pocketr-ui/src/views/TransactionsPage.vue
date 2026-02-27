@@ -1,7 +1,12 @@
 <script setup lang="ts">
 import { HTTPError } from 'ky'
 import { computed, h, onMounted, ref, watch } from 'vue'
-import { createColumnHelper, getCoreRowModel, getExpandedRowModel, useVueTable } from '@tanstack/vue-table'
+import {
+  createColumnHelper,
+  getCoreRowModel,
+  getExpandedRowModel,
+  useVueTable,
+} from '@tanstack/vue-table'
 import { createTxn } from '@/api/ledger'
 import { useAccountStore } from '@/stores/account'
 import { useCategoryStore } from '@/stores/category'
@@ -19,7 +24,15 @@ import CurrencyAmountInput from '@/components/CurrencyAmountInput.vue'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -55,7 +68,6 @@ const expenseAccount = ref('')
 const expenseAmount = ref(0)
 const expenseCategory = ref<string | null>(null)
 const expenseDescription = ref('')
-const expenseMemo = ref('')
 
 // Income form
 const incomeDate = ref(todayString())
@@ -124,7 +136,6 @@ function getStrategyResult(): {
       currency: expenseCurrency.value,
       description: expenseDescription.value,
       categoryTagId: expenseCategory.value,
-      memo: expenseMemo.value,
     }
     const error = expenseStrategy.validate(fields)
     return error ? { error } : { error: null, request: expenseStrategy.buildRequest(ctx, fields) }
@@ -408,7 +419,6 @@ function resetForms(): void {
   expenseAmount.value = 0
   expenseCategory.value = null
   expenseDescription.value = ''
-  expenseMemo.value = ''
 
   incomeDate.value = todayString()
   incomeDeposit.value = ''
@@ -521,10 +531,6 @@ async function submitTransaction(): Promise<void> {
                     v-model="expenseDescription"
                     placeholder="What was this for?"
                   />
-                </div>
-                <div class="grid gap-2">
-                  <Label for="expense-memo">Memo (optional)</Label>
-                  <Input id="expense-memo" v-model="expenseMemo" placeholder="Additional notes" />
                 </div>
               </TabsContent>
 
@@ -720,13 +726,6 @@ async function submitTransaction(): Promise<void> {
                 </div>
                 <span class="font-mono">{{ splitAmount(split, row.original.currency) }}</span>
               </div>
-              <p
-                v-for="split in orderedSplits(row.original).filter((s) => s.memo)"
-                :key="`memo-${split.id}`"
-                class="text-[10px] text-muted-foreground italic"
-              >
-                {{ split.memo }}
-              </p>
             </div>
           </template>
         </DataTable>

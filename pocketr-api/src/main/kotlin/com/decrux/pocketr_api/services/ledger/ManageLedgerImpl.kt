@@ -95,7 +95,6 @@ class ManageLedgerImpl(
                 side = SplitSide.valueOf(splitDto.side),
                 amountMinor = splitDto.amountMinor,
                 categoryTag = splitDto.categoryTagId?.let { categoryTagMap[it] },
-                memo = splitDto.memo?.trim()?.ifBlank { null },
             )
         }
         txn.splits = splits.toMutableList()
@@ -298,7 +297,6 @@ class ManageLedgerImpl(
                 effectMinor = effectMinor,
                 categoryTagId = categoryTag?.id,
                 categoryTagName = categoryTag?.name,
-                memo = memo,
             )
         }
     }

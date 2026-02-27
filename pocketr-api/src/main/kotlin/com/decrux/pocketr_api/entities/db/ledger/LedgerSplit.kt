@@ -29,5 +29,4 @@ class LedgerSplit(
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "category_tag_id")
     var categoryTag: CategoryTag? = null,
-    var memo: String? = null,
 )

@@ -182,8 +182,7 @@ create table ledger_split (
   account_id uuid not null references account(id),
   side text not null check (side in ('DEBIT','CREDIT')),
   amount_minor bigint not null check (amount_minor > 0),
-  category_tag_id uuid null references category_tag(id),
-  memo text null
+  category_tag_id uuid null references category_tag(id)
 );
 
 create index idx_split_txn on ledger_split(txn_id);
@@ -315,8 +314,8 @@ Creator may include accounts owned by others **only if**:
   "currency": "EUR",
   "description": "Electricity bill",
   "splits": [
-    { "accountId": "checking-uuid", "side": "CREDIT", "amountMinor": 4500, "categoryTagId": null, "memo": "paid via app" },
-    { "accountId": "apartment-bills-expense-uuid", "side": "DEBIT", "amountMinor": 4500, "categoryTagId": "electricity-tag-uuid", "memo": null }
+    { "accountId": "checking-uuid", "side": "CREDIT", "amountMinor": 4500, "categoryTagId": null },
+    { "accountId": "apartment-bills-expense-uuid", "side": "DEBIT", "amountMinor": 4500, "categoryTagId": "electricity-tag-uuid" }
   ]
 }
 ```
