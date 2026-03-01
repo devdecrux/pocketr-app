@@ -12,12 +12,12 @@ import com.decrux.pocketr.api.entities.dtos.CreateTransactionDto
 import com.decrux.pocketr.api.exceptions.BadRequestException
 import com.decrux.pocketr.api.exceptions.ForbiddenException
 import com.decrux.pocketr.api.exceptions.NotFoundException
-import com.decrux.pocketr.api.repositories.AccountRawBalanceProjection
 import com.decrux.pocketr.api.repositories.AccountRepository
 import com.decrux.pocketr.api.repositories.CategoryTagRepository
 import com.decrux.pocketr.api.repositories.CurrencyRepository
 import com.decrux.pocketr.api.repositories.LedgerSplitRepository
 import com.decrux.pocketr.api.repositories.LedgerTxnRepository
+import com.decrux.pocketr.api.repositories.projections.AccountRawBalanceProjection
 import com.decrux.pocketr.api.services.household.ManageHousehold
 import com.decrux.pocketr.api.services.user_avatar.UserAvatarService
 import org.junit.jupiter.api.Assertions.assertEquals

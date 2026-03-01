@@ -2,6 +2,9 @@ package com.decrux.pocketr.api.repositories
 
 import com.decrux.pocketr.api.entities.db.ledger.LedgerSplit
 import com.decrux.pocketr.api.entities.db.ledger.SplitSide
+import com.decrux.pocketr.api.repositories.projections.AccountRawBalanceProjection
+import com.decrux.pocketr.api.repositories.projections.DailyNetProjection
+import com.decrux.pocketr.api.repositories.projections.MonthlyExpenseProjection
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.Query
 import org.springframework.stereotype.Repository
@@ -28,7 +31,7 @@ interface LedgerSplitRepository : JpaRepository<LedgerSplit, UUID> {
 
     @Query(
         """
-        SELECT NEW com.decrux.pocketr.api.repositories.AccountRawBalanceProjection(
+        SELECT NEW com.decrux.pocketr.api.repositories.projections.AccountRawBalanceProjection(
             ls.account.id,
             COALESCE(SUM(CASE WHEN ls.side = :debit THEN ls.amountMinor ELSE 0 END), 0)
           - COALESCE(SUM(CASE WHEN ls.side = :credit THEN ls.amountMinor ELSE 0 END), 0)
@@ -48,7 +51,7 @@ interface LedgerSplitRepository : JpaRepository<LedgerSplit, UUID> {
 
     @Query(
         """
-        SELECT NEW com.decrux.pocketr.api.repositories.MonthlyExpenseProjection(
+        SELECT NEW com.decrux.pocketr.api.repositories.projections.MonthlyExpenseProjection(
             a.id,
             a.name,
             ct.id,
@@ -78,7 +81,7 @@ interface LedgerSplitRepository : JpaRepository<LedgerSplit, UUID> {
 
     @Query(
         """
-        SELECT NEW com.decrux.pocketr.api.repositories.MonthlyExpenseProjection(
+        SELECT NEW com.decrux.pocketr.api.repositories.projections.MonthlyExpenseProjection(
             a.id,
             a.name,
             ct.id,
@@ -108,7 +111,7 @@ interface LedgerSplitRepository : JpaRepository<LedgerSplit, UUID> {
 
     @Query(
         """
-        SELECT NEW com.decrux.pocketr.api.repositories.DailyNetProjection(
+        SELECT NEW com.decrux.pocketr.api.repositories.projections.DailyNetProjection(
             ls.transaction.txnDate,
             COALESCE(SUM(CASE WHEN ls.side = :positive THEN ls.amountMinor ELSE 0 END), 0)
           - COALESCE(SUM(CASE WHEN ls.side = :negative THEN ls.amountMinor ELSE 0 END), 0)

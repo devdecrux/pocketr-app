@@ -9,9 +9,9 @@ import com.decrux.pocketr.api.exceptions.BadRequestException
 import com.decrux.pocketr.api.exceptions.ForbiddenException
 import com.decrux.pocketr.api.exceptions.NotFoundException
 import com.decrux.pocketr.api.repositories.AccountRepository
-import com.decrux.pocketr.api.repositories.DailyNetProjection
 import com.decrux.pocketr.api.repositories.LedgerSplitRepository
-import com.decrux.pocketr.api.repositories.MonthlyExpenseProjection
+import com.decrux.pocketr.api.repositories.projections.DailyNetProjection
+import com.decrux.pocketr.api.repositories.projections.MonthlyExpenseProjection
 import com.decrux.pocketr.api.services.household.ManageHousehold
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNull
