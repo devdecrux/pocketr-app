@@ -6,7 +6,9 @@ import com.decrux.pocketr_api.entities.db.ledger.AccountType
 import com.decrux.pocketr_api.entities.db.ledger.Currency
 import com.decrux.pocketr_api.entities.dtos.CreateSplitDto
 import com.decrux.pocketr_api.exceptions.BadRequestException
-import org.junit.jupiter.api.Assertions.*
+import org.junit.jupiter.api.Assertions.assertDoesNotThrow
+import org.junit.jupiter.api.Assertions.assertThrows
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Nested

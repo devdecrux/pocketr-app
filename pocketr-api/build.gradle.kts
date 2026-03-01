@@ -70,6 +70,7 @@ ktlint {
     additionalEditorconfig.set(
         mapOf(
             "ktlint_standard_package-name" to "disabled",
+            "ij_kotlin_packages_to_use_import_on_demand" to "",
         ),
     )
     reporters {
