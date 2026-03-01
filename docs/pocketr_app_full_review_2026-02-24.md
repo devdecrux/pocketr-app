@@ -35,15 +35,17 @@ Main maintainability risks are concentrated in service/store coupling:
 
 - Severity: High
 - Evidence:
-  - `pocketr-api/src/main/kotlin/com/decrux/pocketr_api/services/reporting/GenerateReportImpl.kt:42-46`
-  - `pocketr-api/src/main/kotlin/com/decrux/pocketr_api/controllers/ReportingController.kt:24-31`
+    - `pocketr-api/src/main/kotlin/com/decrux/pocketr.api/services/reporting/GenerateReportImpl.kt:42-46`
+    - `pocketr-api/src/main/kotlin/com/decrux/pocketr.api/controllers/ReportingController.kt:24-31`
 - Why this matters: Any authenticated user can request household reports for arbitrary `householdId` values.
 - Pattern/Principle: Policy Object + Guard Clause (centralized authorization)
 - Steps to address:
+
 1. Inject `ManageHousehold` into `GenerateReportImpl`.
 2. Before querying household report data, validate active membership (`isActiveMember`).
 3. Return `403 FORBIDDEN` if the user is not an active member.
 4. Add integration tests for allowed vs denied report access.
+
 - Example:
 
 ```kotlin
@@ -68,16 +70,18 @@ MODE_HOUSEHOLD -> {
 
 - Severity: High
 - Evidence:
-  - `config/traefik/traefik.yml:1-7`
-  - `config/traefik/dynamic.yml:1-53`
-  - `docker-compose.yaml:22-24`
+    - `config/traefik/traefik.yml:1-7`
+    - `config/traefik/dynamic.yml:1-53`
+    - `docker-compose.yaml:22-24`
 - Why this matters: Proxy dashboard visibility plus plaintext traffic increases reconnaissance and interception risk.
 - Pattern/Principle: Defense in depth + secure defaults
 - Steps to address:
+
 1. Disable public dashboard exposure or protect it with auth middleware.
 2. Add HTTPS (`websecure`) entrypoint and certificates.
 3. Keep dashboard internal-only in non-dev environments.
 4. Add environment-specific Traefik config overlays (`dev` vs `prod`).
+
 - Example:
 
 ```yaml
@@ -105,14 +109,16 @@ api:
 
 - Severity: High
 - Evidence:
-  - `docker-compose.yaml:7-13`
+    - `docker-compose.yaml:7-13`
 - Why this matters: Credentials are committed to source and the database is reachable from host network.
 - Pattern/Principle: Least exposure + secret management
 - Steps to address:
+
 1. Remove `5432:5432` in non-local environments.
 2. Replace hardcoded credentials with environment/secrets manager values.
 3. Rotate database credentials after hardening.
 4. Add `.env.example` without real secrets and git-ignore runtime secret files.
+
 - Example:
 
 ```yaml
@@ -134,13 +140,15 @@ environment:
 
 - Severity: Medium
 - Evidence:
-  - `pocketr-ui/src/views/auth/LoginPage.vue:52-54`
+    - `pocketr-ui/src/views/auth/LoginPage.vue:52-54`
 - Why this matters: Crafted links can redirect authenticated users to attacker-controlled destinations.
 - Pattern/Principle: Validated Redirect pattern
 - Steps to address:
+
 1. Validate redirect targets as internal routes only.
 2. Default to `/dashboard` when validation fails.
 3. Reuse a shared redirect sanitizer in all auth entry points.
+
 - Example:
 
 ```ts
@@ -162,14 +170,16 @@ await router.push(redirectTarget)
 
 - Severity: Medium
 - Evidence:
-  - `pocketr-api/src/main/kotlin/com/decrux/pocketr_api/services/ledger/ManageLedgerImpl.kt:31-177`
+    - `pocketr-api/src/main/kotlin/com/decrux/pocketr.api/services/ledger/ManageLedgerImpl.kt:31-177`
 - Why this matters: Large sequential logic is hard to test, reason about, and safely change.
 - Pattern/Principle: SRP + Application Service + Validator/Policy collaborators
 - Steps to address:
+
 1. Extract validation steps into dedicated validators (`SplitValidator`, `CurrencyValidator`).
 2. Extract authorization checks into `TransactionPolicy`.
 3. Keep orchestration in the service; move HTTP mapping to controller advice.
 4. Add focused unit tests per validator/policy.
+
 - Example:
 
 ```kotlin
@@ -189,16 +199,18 @@ override fun createTransaction(dto: CreateTransactionDto, creator: User): Transa
 
 - Severity: Low
 - Evidence:
-  - `pocketr-api/src/main/kotlin/com/decrux/pocketr_api/services/account/ManageAccountImpl.kt:89-91`
-  - `pocketr-api/src/main/kotlin/com/decrux/pocketr_api/services/category/ManageCategoryImpl.kt:54-56`
-  - `pocketr-api/src/main/kotlin/com/decrux/pocketr_api/services/category/ManageCategoryImpl.kt:81-83`
-  - `pocketr-api/src/main/kotlin/com/decrux/pocketr_api/services/household/ManageHouseholdImpl.kt:190-192`
+    - `pocketr-api/src/main/kotlin/com/decrux/pocketr.api/services/account/ManageAccountImpl.kt:89-91`
+    - `pocketr-api/src/main/kotlin/com/decrux/pocketr.api/services/category/ManageCategoryImpl.kt:54-56`
+    - `pocketr-api/src/main/kotlin/com/decrux/pocketr.api/services/category/ManageCategoryImpl.kt:81-83`
+    - `pocketr-api/src/main/kotlin/com/decrux/pocketr.api/services/household/ManageHouseholdImpl.kt:190-192`
 - Why this matters: Duplicated authorization guard logic drifts over time and weakens consistency.
 - Pattern/Principle: Policy Object / shared guard abstraction
 - Steps to address:
+
 1. Add `OwnershipGuard` utility/service with reusable guard methods.
 2. Replace inline `if (owner mismatch)` checks with guard calls.
 3. Centralize messages and exception mapping.
+
 - Example:
 
 ```kotlin
@@ -213,13 +225,15 @@ class OwnershipGuard {
 
 - Severity: Low
 - Evidence:
-  - `pocketr-ui/src/views/TransactionsPage.vue:374-463`
+    - `pocketr-ui/src/views/TransactionsPage.vue:374-463`
 - Why this matters: The same validation and request construction is repeated three times.
 - Pattern/Principle: Strategy + Builder
 - Steps to address:
+
 1. Create tab strategy objects (`expense`, `income`, `transfer`) containing specific split builders.
 2. Share generic validation (`required fields`, `amount > 0`, `description`).
 3. Build one submit path that uses selected strategy.
+
 - Example:
 
 ```ts
@@ -240,15 +254,17 @@ await createTxn(request)
 
 - Severity: Medium
 - Evidence:
-  - `pocketr-ui/src/api/ledger.ts:28-31`
-  - `pocketr-ui/src/views/DashboardPage.vue:81-86`
-  - `pocketr-ui/src/views/AccountsPage.vue:173-178`
+    - `pocketr-ui/src/api/ledger.ts:28-31`
+    - `pocketr-ui/src/views/DashboardPage.vue:81-86`
+    - `pocketr-ui/src/views/AccountsPage.vue:173-178`
 - Impact: Household balances can fail with `403` and appear blank/stale in UI.
 - Root cause: The client helper does not include `householdId` query parameter.
 - Steps to address:
+
 1. Extend `getAccountBalance(accountId, asOf?, householdId?)`.
 2. Pass `modeStore.householdId` from household-mode screens.
 3. Add frontend tests for individual vs household mode request params.
+
 - Example:
 
 ```ts
@@ -264,16 +280,18 @@ export function getAccountBalance(accountId: string, asOf?: string, householdId?
 
 - Severity: Medium
 - Evidence:
-  - `pocketr-ui/src/stores/account.ts:40-43` (sends mode/householdId)
-  - `pocketr-api/src/main/kotlin/com/decrux/pocketr_api/controllers/AccountController.kt:28-33` (ignores mode/householdId)
-  - `pocketr-api/src/main/kotlin/com/decrux/pocketr_api/services/account/ManageAccountImpl.kt:78-81` (owner-only query)
+    - `pocketr-ui/src/stores/account.ts:40-43` (sends mode/householdId)
+    - `pocketr-api/src/main/kotlin/com/decrux/pocketr.api/controllers/AccountController.kt:28-33` (ignores mode/householdId)
+    - `pocketr-api/src/main/kotlin/com/decrux/pocketr.api/services/account/ManageAccountImpl.kt:78-81` (owner-only query)
 - Impact: Household-shared accounts may not appear in selectors and account-driven flows.
 - Root cause: Backend list endpoint always returns owner accounts only.
 - Steps to address:
+
 1. Extend backend list endpoint contract to include `mode` and optional `householdId`.
 2. Add repository/service path for household-visible accounts.
 3. Ensure membership validation before returning shared accounts.
 4. Add regression tests for household mode account visibility.
+
 - Example:
 
 ```kotlin
@@ -289,12 +307,14 @@ fun listAccounts(
 
 - Severity: High
 - Evidence:
-  - Same issue as `SEC-01` (`GenerateReportImpl.kt:42-46`)
+    - Same issue as `SEC-01` (`GenerateReportImpl.kt:42-46`)
 - Impact: Functional behavior is incorrect (returns data for unauthorized household scope).
 - Steps to address:
+
 1. Implement `SEC-01` fix.
 2. Add a negative integration test: non-member must receive `403`.
 3. Add audit log entry on denied report access attempts.
+
 - Example:
 
 ```kotlin
@@ -311,13 +331,15 @@ if (!manageHousehold.isActiveMember(hId, userId)) {
 
 - Severity: Medium
 - Evidence:
-  - `pocketr-api/src/main/kotlin/com/decrux/pocketr_api/services/ledger/ManageLedgerImpl.kt:31-177`
+    - `pocketr-api/src/main/kotlin/com/decrux/pocketr.api/services/ledger/ManageLedgerImpl.kt:31-177`
 - Why this matters: Domain logic is tightly coupled to transport concerns (`ResponseStatusException`), reducing reuse and testability.
 - Pattern/Principle: Hexagonal architecture + domain exceptions + controller advice mapping
 - Steps to address:
+
 1. Replace transport exceptions inside domain/application services with domain-level exceptions/results.
 2. Map domain exceptions to HTTP responses in a centralized `@ControllerAdvice`.
 3. Isolate persistence adapters from domain logic.
+
 - Example:
 
 ```kotlin
@@ -333,14 +355,16 @@ fun onDoubleEntryViolation(ex: DoubleEntryViolation) = ResponseEntity.badRequest
 
 - Severity: Medium
 - Evidence:
-  - `pocketr-ui/src/stores/account.ts:35-43`
-  - `pocketr-ui/src/stores/auth.ts:49-65`
+    - `pocketr-ui/src/stores/account.ts:35-43`
+    - `pocketr-ui/src/stores/auth.ts:49-65`
 - Why this matters: Stores are not independently composable; auth logic imports and resets multiple domain stores directly.
 - Pattern/Principle: Event-driven coordination + explicit dependency injection
 - Steps to address:
+
 1. Pass mode context as method arguments where needed (`load(modeCtx)`), not by importing other stores internally.
 2. Move mass reset logic to a central session lifecycle module/plugin.
 3. Have stores subscribe/react to session state changes.
+
 - Example:
 
 ```ts
@@ -352,14 +376,16 @@ sessionEvents.on('expired', () => resetAllStores(pinia))
 
 - Severity: Medium
 - Evidence:
-  - `docker-compose.yaml:3-31` (only db + traefik services)
-  - `config/traefik/dynamic.yml:48-53` (`host.docker.internal` routing)
+    - `docker-compose.yaml:3-31` (only db + traefik services)
+    - `config/traefik/dynamic.yml:48-53` (`host.docker.internal` routing)
 - Why this matters: Local behavior depends on host process ports, reducing portability and scaling readiness.
 - Pattern/Principle: Container-first composition + service discovery by network alias
 - Steps to address:
+
 1. Add backend and frontend services to compose.
 2. Route Traefik to container service names (e.g., `http://backend:8081`) instead of host gateway.
 3. Keep environment-specific overrides for local dev speed if needed.
+
 - Example:
 
 ```yaml
@@ -381,15 +407,18 @@ services:
 
 - Severity: Medium
 - Evidence:
-  - `pocketr-api/src/main/resources/application.yaml:15-17`
-- Why this matters: In alpha, breaking schema changes are acceptable, but `update` can still create inconsistent local states and hide model/schema mismatch issues.
+    - `pocketr-api/src/main/resources/application.yaml:15-17`
+- Why this matters: In alpha, breaking schema changes are acceptable, but `update` can still create inconsistent local states and hide model/schema
+  mismatch issues.
 - Pattern/Principle: Explicit alpha schema policy (profile-based behavior)
 - Steps to address:
+
 1. Keep Flyway/Liquibase out of scope for alpha.
 2. Replace one-size-fits-all `ddl-auto` with profile-based strategy:
 3. Use `update` only where preserving local seed data is needed.
 4. Use `create-drop` (or `create`) in dedicated alpha reset/test profiles to force clean schema alignment.
 5. Document quick DB reset workflow for developers and CI.
+
 - Example:
 
 ```yaml
@@ -411,14 +440,16 @@ spring:
 
 - Severity: High
 - Evidence:
-  - `config/traefik/traefik.yml:1-3`
-  - `config/traefik/dynamic.yml:5-7`
+    - `config/traefik/traefik.yml:1-3`
+    - `config/traefik/dynamic.yml:5-7`
 - Why this matters: Requests over HTTP are vulnerable to interception/tampering.
 - Pattern/Principle: Secure transport by default
 - Steps to address:
+
 1. Add TLS entrypoint and cert resolver.
 2. Redirect HTTP to HTTPS.
 3. Verify HSTS and secure cookie settings for production domains.
+
 - Example:
 
 ```yaml
@@ -437,14 +468,16 @@ http:
 
 - Severity: Medium
 - Evidence:
-  - `docker-compose.yaml:7-13`
-  - `docker-compose.yaml:22-24`
+    - `docker-compose.yaml:7-13`
+    - `docker-compose.yaml:22-24`
 - Why this matters: Same config pattern is reused without clear dev/prod separation, increasing accidental exposure risk.
 - Pattern/Principle: Environment isolation + config as policy
 - Steps to address:
+
 1. Split compose files (`compose.dev.yml`, `compose.prod.yml`) with explicit overrides.
 2. Keep sensitive values outside VCS and inject via environment/secrets provider.
 3. Add CI checks to fail if placeholder secrets are committed.
+
 - Example:
 
 ```bash

@@ -1,0 +1,63 @@
+package com.decrux.pocketr.api.controllers
+
+import com.decrux.pocketr.api.entities.db.auth.User
+import com.decrux.pocketr.api.entities.dtos.BalanceDto
+import com.decrux.pocketr.api.entities.dtos.CreateTransactionDto
+import com.decrux.pocketr.api.entities.dtos.PagedTransactionsDto
+import com.decrux.pocketr.api.entities.dtos.TransactionDto
+import com.decrux.pocketr.api.services.ledger.ManageLedger
+import org.springframework.format.annotation.DateTimeFormat
+import org.springframework.http.HttpStatus
+import org.springframework.security.core.annotation.AuthenticationPrincipal
+import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.PathVariable
+import org.springframework.web.bind.annotation.PostMapping
+import org.springframework.web.bind.annotation.RequestBody
+import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RequestParam
+import org.springframework.web.bind.annotation.ResponseStatus
+import org.springframework.web.bind.annotation.RestController
+import java.time.LocalDate
+import java.util.UUID
+
+@RestController
+@RequestMapping("/v1/ledger")
+class LedgerController(
+    private val manageLedger: ManageLedger,
+) {
+    @GetMapping("/transactions")
+    fun listTransactions(
+        @AuthenticationPrincipal user: User,
+        @RequestParam mode: String?,
+        @RequestParam householdId: UUID?,
+        @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) dateFrom: LocalDate?,
+        @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) dateTo: LocalDate?,
+        @RequestParam accountId: UUID?,
+        @RequestParam categoryId: UUID?,
+        @RequestParam(defaultValue = "0") page: Int,
+        @RequestParam(defaultValue = "15") size: Int,
+    ): PagedTransactionsDto = manageLedger.listTransactions(user, mode, householdId, dateFrom, dateTo, accountId, categoryId, page, size)
+
+    @PostMapping("/transactions")
+    @ResponseStatus(HttpStatus.CREATED)
+    fun createTransaction(
+        @RequestBody dto: CreateTransactionDto,
+        @AuthenticationPrincipal user: User,
+    ): TransactionDto = manageLedger.createTransaction(dto, user)
+
+    @GetMapping("/accounts/{id}/balance")
+    fun getAccountBalance(
+        @PathVariable id: UUID,
+        @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) asOf: LocalDate?,
+        @RequestParam householdId: UUID?,
+        @AuthenticationPrincipal user: User,
+    ): BalanceDto = manageLedger.getAccountBalance(id, asOf ?: LocalDate.now(), user, householdId)
+
+    @GetMapping("/accounts/balances")
+    fun getAccountBalances(
+        @RequestParam accountIds: List<UUID>,
+        @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) asOf: LocalDate?,
+        @RequestParam householdId: UUID?,
+        @AuthenticationPrincipal user: User,
+    ): List<BalanceDto> = manageLedger.getAccountBalances(accountIds, asOf ?: LocalDate.now(), user, householdId)
+}
