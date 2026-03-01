@@ -12,11 +12,9 @@ import org.springframework.transaction.annotation.Transactional
 class CustomUserDetailsService(
     private val userRepository: UserRepository,
 ) : UserDetailsService {
-
     @Transactional
     @Throws(UsernameNotFoundException::class)
-    override fun loadUserByUsername(email: String): UserDetails {
-        return userRepository.findUserByEmail(email)
+    override fun loadUserByUsername(email: String): UserDetails =
+        userRepository.findUserByEmail(email)
             ?: throw UserNotFoundException("User with email $email not found")
-    }
 }

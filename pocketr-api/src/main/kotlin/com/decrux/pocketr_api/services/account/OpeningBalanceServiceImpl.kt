@@ -23,7 +23,6 @@ class OpeningBalanceServiceImpl(
     private val manageLedger: ManageLedger,
     private val ownershipGuard: OwnershipGuard,
 ) : OpeningBalanceService {
-
     @Transactional
     override fun createForNewAssetAccount(
         owner: User,
@@ -55,42 +54,50 @@ class OpeningBalanceServiceImpl(
         val equitySide = if (openingBalanceMinor > 0) "CREDIT" else "DEBIT"
 
         manageLedger.createTransaction(
-            dto = CreateTransactionDto(
-                mode = "INDIVIDUAL",
-                householdId = null,
-                txnDate = txnDate,
-                currency = currencyCode,
-                description = "Opening balance - ${assetAccount.name}",
-                splits = listOf(
-                    CreateSplitDto(
-                        accountId = assetAccountId,
-                        side = assetSide,
-                        amountMinor = absoluteAmount,
-                    ),
-                    CreateSplitDto(
-                        accountId = openingEquityId,
-                        side = equitySide,
-                        amountMinor = absoluteAmount,
-                    ),
+            dto =
+                CreateTransactionDto(
+                    mode = "INDIVIDUAL",
+                    householdId = null,
+                    txnDate = txnDate,
+                    currency = currencyCode,
+                    description = "Opening balance - ${assetAccount.name}",
+                    splits =
+                        listOf(
+                            CreateSplitDto(
+                                accountId = assetAccountId,
+                                side = assetSide,
+                                amountMinor = absoluteAmount,
+                            ),
+                            CreateSplitDto(
+                                accountId = openingEquityId,
+                                side = equitySide,
+                                amountMinor = absoluteAmount,
+                            ),
+                        ),
                 ),
-            ),
             creator = owner,
         )
     }
 
-    private fun getOrCreateOpeningEquityAccount(owner: User, currencyCode: String, currency: Currency): Account {
+    private fun getOrCreateOpeningEquityAccount(
+        owner: User,
+        currencyCode: String,
+        currency: Currency,
+    ): Account {
         val ownerId = requireNotNull(owner.userId) { "User ID must not be null" }
 
         // Serialize Opening Equity creation per user without introducing broad account-name constraints.
-        userRepository.findByUserIdForUpdate(ownerId)
+        userRepository
+            .findByUserIdForUpdate(ownerId)
             .orElseThrow { NotFoundException("User not found") }
 
-        accountRepository.findByOwnerUserIdAndTypeAndCurrencyCodeAndName(
-            userId = ownerId,
-            type = AccountType.EQUITY,
-            currencyCode = currencyCode,
-            name = OPENING_EQUITY_NAME,
-        )?.let { return it }
+        accountRepository
+            .findByOwnerUserIdAndTypeAndCurrencyCodeAndName(
+                userId = ownerId,
+                type = AccountType.EQUITY,
+                currencyCode = currencyCode,
+                name = OPENING_EQUITY_NAME,
+            )?.let { return it }
 
         return accountRepository.save(
             Account(

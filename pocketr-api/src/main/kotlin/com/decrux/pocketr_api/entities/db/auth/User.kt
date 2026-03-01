@@ -23,13 +23,11 @@ class User(
     @JoinColumn(name = "user_id")
     var roles: MutableList<UserRole> = mutableListOf(),
 ) : UserDetails {
-
-    override fun getAuthorities(): Collection<GrantedAuthority> {
-        return roles
+    override fun getAuthorities(): Collection<GrantedAuthority> =
+        roles
             .toSet()
             .map { SimpleGrantedAuthority("ROLE_${it.role}") }
             .toSet()
-    }
 
     override fun getPassword(): String = password
 

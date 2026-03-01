@@ -5,7 +5,6 @@ import org.junit.jupiter.api.Test
 import java.time.Instant
 
 class LedgerTxnTest {
-
     @Test
     fun onCreateRefreshesUpdatedAt() {
         val originalUpdatedAt = Instant.parse("2020-01-01T00:00:00Z")

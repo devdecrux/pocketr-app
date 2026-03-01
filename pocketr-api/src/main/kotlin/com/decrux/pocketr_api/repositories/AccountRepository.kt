@@ -8,7 +8,6 @@ import java.util.UUID
 
 @Repository
 interface AccountRepository : JpaRepository<Account, UUID> {
-
     fun findByOwnerUserId(userId: Long): List<Account>
 
     fun findByOwnerUserIdAndTypeAndCurrencyCodeAndName(

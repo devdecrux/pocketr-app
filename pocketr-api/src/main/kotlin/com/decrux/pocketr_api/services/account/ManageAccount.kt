@@ -7,12 +7,22 @@ import com.decrux.pocketr_api.entities.dtos.UpdateAccountDto
 import java.util.UUID
 
 interface ManageAccount {
-
-    fun createAccount(dto: CreateAccountDto, owner: User): AccountDto
+    fun createAccount(
+        dto: CreateAccountDto,
+        owner: User,
+    ): AccountDto
 
     fun listAccounts(owner: User): List<AccountDto>
 
-    fun listAccounts(user: User, mode: String, householdId: UUID?): List<AccountDto>
+    fun listAccounts(
+        user: User,
+        mode: String,
+        householdId: UUID?,
+    ): List<AccountDto>
 
-    fun updateAccount(id: UUID, dto: UpdateAccountDto, owner: User): AccountDto
+    fun updateAccount(
+        id: UUID,
+        dto: UpdateAccountDto,
+        owner: User,
+    ): AccountDto
 }

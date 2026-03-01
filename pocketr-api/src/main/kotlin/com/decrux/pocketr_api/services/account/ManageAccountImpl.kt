@@ -28,22 +28,27 @@ class ManageAccountImpl(
     private val householdAccountShareRepository: HouseholdAccountShareRepository,
     private val ownershipGuard: OwnershipGuard,
 ) : ManageAccount {
-
     @Transactional
-    override fun createAccount(dto: CreateAccountDto, owner: User): AccountDto {
-        val accountType = try {
-            AccountType.valueOf(dto.type)
-        } catch (_: IllegalArgumentException) {
-            throw BadRequestException("Invalid account type: ${dto.type}")
-        }
+    override fun createAccount(
+        dto: CreateAccountDto,
+        owner: User,
+    ): AccountDto {
+        val accountType =
+            try {
+                AccountType.valueOf(dto.type)
+            } catch (_: IllegalArgumentException) {
+                throw BadRequestException("Invalid account type: ${dto.type}")
+            }
         if (accountType == AccountType.EQUITY) {
             throw BadRequestException(
                 "EQUITY accounts are system-managed and cannot be created manually",
             )
         }
 
-        val currency = currencyRepository.findById(dto.currency)
-            .orElseThrow { BadRequestException("Invalid currency: ${dto.currency}") }
+        val currency =
+            currencyRepository
+                .findById(dto.currency)
+                .orElseThrow { BadRequestException("Invalid currency: ${dto.currency}") }
 
         val openingBalanceMinor = dto.openingBalanceMinor ?: 0L
         if (openingBalanceMinor != 0L && accountType != AccountType.ASSET) {
@@ -57,12 +62,13 @@ class ManageAccountImpl(
             )
         }
 
-        val account = Account(
-            owner = owner,
-            name = dto.name.trim(),
-            type = accountType,
-            currency = currency,
-        )
+        val account =
+            Account(
+                owner = owner,
+                name = dto.name.trim(),
+                type = accountType,
+                currency = currency,
+            )
 
         val savedAccount = accountRepository.save(account)
 
@@ -86,7 +92,11 @@ class ManageAccountImpl(
     }
 
     @Transactional(readOnly = true)
-    override fun listAccounts(user: User, mode: String, householdId: UUID?): List<AccountDto> {
+    override fun listAccounts(
+        user: User,
+        mode: String,
+        householdId: UUID?,
+    ): List<AccountDto> {
         val userId = requireNotNull(user.userId) { "User ID must not be null" }
 
         if (mode == "INDIVIDUAL") {
@@ -97,8 +107,9 @@ class ManageAccountImpl(
             throw BadRequestException("Invalid mode: $mode")
         }
 
-        val hhId = householdId
-            ?: throw BadRequestException("householdId is required for HOUSEHOLD mode")
+        val hhId =
+            householdId
+                ?: throw BadRequestException("householdId is required for HOUSEHOLD mode")
 
         if (!manageHousehold.isActiveMember(hhId, userId)) {
             throw ForbiddenException("Not an active member of this household")
@@ -106,11 +117,12 @@ class ManageAccountImpl(
 
         val ownedAccounts = accountRepository.findByOwnerUserId(userId)
         val sharedAccountIds = householdAccountShareRepository.findSharedAccountIdsByHouseholdId(hhId)
-        val sharedAccounts = if (sharedAccountIds.isNotEmpty()) {
-            accountRepository.findAllById(sharedAccountIds)
-        } else {
-            emptyList()
-        }
+        val sharedAccounts =
+            if (sharedAccountIds.isNotEmpty()) {
+                accountRepository.findAllById(sharedAccountIds)
+            } else {
+                emptyList()
+            }
 
         val seen = mutableSetOf<UUID>()
         val merged = mutableListOf<Account>()
@@ -125,9 +137,15 @@ class ManageAccountImpl(
     }
 
     @Transactional
-    override fun updateAccount(id: UUID, dto: UpdateAccountDto, owner: User): AccountDto {
-        val account = accountRepository.findById(id)
-            .orElseThrow { NotFoundException("Account not found") }
+    override fun updateAccount(
+        id: UUID,
+        dto: UpdateAccountDto,
+        owner: User,
+    ): AccountDto {
+        val account =
+            accountRepository
+                .findById(id)
+                .orElseThrow { NotFoundException("Account not found") }
 
         ownershipGuard.requireOwner(account.owner?.userId, requireNotNull(owner.userId), "Not the owner of this account")
 
@@ -136,13 +154,14 @@ class ManageAccountImpl(
     }
 
     private companion object {
-        fun Account.toDto() = AccountDto(
-            id = requireNotNull(id) { "Account ID must not be null" },
-            ownerUserId = requireNotNull(owner?.userId) { "Owner user ID must not be null" },
-            name = name,
-            type = type.name,
-            currency = requireNotNull(currency?.code) { "Currency must not be null" },
-            createdAt = createdAt,
-        )
+        fun Account.toDto() =
+            AccountDto(
+                id = requireNotNull(id) { "Account ID must not be null" },
+                ownerUserId = requireNotNull(owner?.userId) { "Owner user ID must not be null" },
+                name = name,
+                type = type.name,
+                currency = requireNotNull(currency?.code) { "Currency must not be null" },
+                createdAt = createdAt,
+            )
     }
 }

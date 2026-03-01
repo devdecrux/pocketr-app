@@ -19,9 +19,11 @@ class ManageCategoryImpl(
     private val categoryTagRepository: CategoryTagRepository,
     private val ownershipGuard: OwnershipGuard,
 ) : ManageCategory {
-
     @Transactional
-    override fun createCategory(dto: CreateCategoryDto, owner: User): CategoryDto {
+    override fun createCategory(
+        dto: CreateCategoryDto,
+        owner: User,
+    ): CategoryDto {
         val userId = requireNotNull(owner.userId) { "User ID must not be null" }
         val name = dto.name.trim()
 
@@ -29,11 +31,12 @@ class ManageCategoryImpl(
             throw ResponseStatusException(HttpStatus.CONFLICT, "Category '$name' already exists")
         }
 
-        val tag = CategoryTag(
-            owner = owner,
-            name = name,
-            color = dto.color?.takeIf { it.isNotBlank() },
-        )
+        val tag =
+            CategoryTag(
+                owner = owner,
+                name = name,
+                color = dto.color?.takeIf { it.isNotBlank() },
+            )
 
         try {
             return categoryTagRepository.save(tag).toDto()
@@ -49,9 +52,15 @@ class ManageCategoryImpl(
     }
 
     @Transactional
-    override fun updateCategory(id: UUID, dto: UpdateCategoryDto, owner: User): CategoryDto {
-        val tag = categoryTagRepository.findById(id)
-            .orElseThrow { ResponseStatusException(HttpStatus.NOT_FOUND, "Category not found") }
+    override fun updateCategory(
+        id: UUID,
+        dto: UpdateCategoryDto,
+        owner: User,
+    ): CategoryDto {
+        val tag =
+            categoryTagRepository
+                .findById(id)
+                .orElseThrow { ResponseStatusException(HttpStatus.NOT_FOUND, "Category not found") }
 
         ownershipGuard.requireOwner(tag.owner?.userId, requireNotNull(owner.userId), "Not the owner of this category")
 
@@ -74,9 +83,14 @@ class ManageCategoryImpl(
     }
 
     @Transactional
-    override fun deleteCategory(id: UUID, owner: User) {
-        val tag = categoryTagRepository.findById(id)
-            .orElseThrow { ResponseStatusException(HttpStatus.NOT_FOUND, "Category not found") }
+    override fun deleteCategory(
+        id: UUID,
+        owner: User,
+    ) {
+        val tag =
+            categoryTagRepository
+                .findById(id)
+                .orElseThrow { ResponseStatusException(HttpStatus.NOT_FOUND, "Category not found") }
 
         ownershipGuard.requireOwner(tag.owner?.userId, requireNotNull(owner.userId), "Not the owner of this category")
 
@@ -89,11 +103,12 @@ class ManageCategoryImpl(
     }
 
     private companion object {
-        fun CategoryTag.toDto() = CategoryDto(
-            id = requireNotNull(id) { "Category ID must not be null" },
-            name = name,
-            color = color,
-            createdAt = createdAt,
-        )
+        fun CategoryTag.toDto() =
+            CategoryDto(
+                id = requireNotNull(id) { "Category ID must not be null" },
+                name = name,
+                color = color,
+                createdAt = createdAt,
+            )
     }
 }

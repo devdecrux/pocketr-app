@@ -13,20 +13,21 @@ class RegisterUserImpl(
     private val userRepository: UserRepository,
     private val passwordEncoder: PasswordEncoder,
 ) : RegisterUser {
-
     @Transactional
     override fun registerUser(userDto: RegisterUserDto) {
         val email = userDto.email.trim()
 
-        val user = User(
-            password = requireNotNull(passwordEncoder.encode(userDto.password.trim())) {
-                "Password encoder returned null"
-            },
-            email = email,
-            firstName = userDto.firstName,
-            lastName = userDto.lastName,
-            roles = mutableListOf(UserRole(role = ROLE_USER)),
-        )
+        val user =
+            User(
+                password =
+                    requireNotNull(passwordEncoder.encode(userDto.password.trim())) {
+                        "Password encoder returned null"
+                    },
+                email = email,
+                firstName = userDto.firstName,
+                lastName = userDto.lastName,
+                roles = mutableListOf(UserRole(role = ROLE_USER)),
+            )
         userRepository.saveAndFlush(user)
     }
 

@@ -12,7 +12,6 @@ import java.util.function.Supplier
 
 @Component
 class SpaCsrfTokenRequestHandler : CsrfTokenRequestHandler {
-
     private val plain = CsrfTokenRequestAttributeHandler()
     private val xor = XorCsrfTokenRequestAttributeHandler()
 
@@ -25,7 +24,10 @@ class SpaCsrfTokenRequestHandler : CsrfTokenRequestHandler {
         csrfToken.get()
     }
 
-    override fun resolveCsrfTokenValue(request: HttpServletRequest, csrfToken: CsrfToken): String? {
+    override fun resolveCsrfTokenValue(
+        request: HttpServletRequest,
+        csrfToken: CsrfToken,
+    ): String? {
         val headerValue = request.getHeader(csrfToken.headerName)
         return (if (StringUtils.hasText(headerValue)) plain else xor).resolveCsrfTokenValue(request, csrfToken)
     }

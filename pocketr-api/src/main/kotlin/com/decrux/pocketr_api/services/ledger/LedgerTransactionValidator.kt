@@ -8,7 +8,6 @@ import org.springframework.stereotype.Component
 
 @Component
 class LedgerTransactionValidator {
-
     fun validateSplits(splits: List<CreateSplitDto>) {
         if (splits.size < 2) {
             throw BadRequestException("Transaction must have at least 2 splits")
@@ -37,7 +36,10 @@ class LedgerTransactionValidator {
         }
     }
 
-    fun validateCurrencyConsistency(accounts: List<Account>, transactionCurrency: String) {
+    fun validateCurrencyConsistency(
+        accounts: List<Account>,
+        transactionCurrency: String,
+    ) {
         accounts.forEach { account ->
             if (account.currency?.code != transactionCurrency) {
                 throw BadRequestException(

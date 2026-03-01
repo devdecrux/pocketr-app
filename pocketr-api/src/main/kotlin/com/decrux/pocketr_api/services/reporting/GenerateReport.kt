@@ -9,7 +9,6 @@ import java.time.YearMonth
 import java.util.UUID
 
 interface GenerateReport {
-
     fun getMonthlyExpenses(
         user: User,
         period: YearMonth,
@@ -17,7 +16,10 @@ interface GenerateReport {
         householdId: UUID?,
     ): List<MonthlyExpenseDto>
 
-    fun getAllAccountBalances(user: User, asOf: LocalDate): List<AccountBalanceSummaryDto>
+    fun getAllAccountBalances(
+        user: User,
+        asOf: LocalDate,
+    ): List<AccountBalanceSummaryDto>
 
     fun getBalanceTimeseries(
         accountId: UUID,

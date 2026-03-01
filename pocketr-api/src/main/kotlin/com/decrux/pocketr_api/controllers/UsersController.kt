@@ -15,14 +15,15 @@ class UsersController(
     private val registerUser: RegisterUser,
     private val userAvatarService: UserAvatarService,
 ) {
-
     @GetMapping
-    fun retrieveUserData(@AuthenticationPrincipal user: User): UserDto {
-        return userAvatarService.toUserDto(user)
-    }
+    fun retrieveUserData(
+        @AuthenticationPrincipal user: User,
+    ): UserDto = userAvatarService.toUserDto(user)
 
     @PostMapping("/register")
-    fun registerUser(@RequestBody registerUserDto: RegisterUserDto) {
+    fun registerUser(
+        @RequestBody registerUserDto: RegisterUserDto,
+    ) {
         registerUser.registerUser(registerUserDto)
     }
 
@@ -30,7 +31,5 @@ class UsersController(
     fun uploadAvatar(
         @RequestParam("avatar") avatar: MultipartFile,
         @AuthenticationPrincipal user: User,
-    ): UserDto {
-        return userAvatarService.uploadAvatar(user, avatar)
-    }
+    ): UserDto = userAvatarService.uploadAvatar(user, avatar)
 }

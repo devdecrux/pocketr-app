@@ -18,7 +18,6 @@ import java.util.UUID
 class LedgerController(
     private val manageLedger: ManageLedger,
 ) {
-
     @GetMapping("/transactions")
     fun listTransactions(
         @AuthenticationPrincipal user: User,
@@ -30,18 +29,14 @@ class LedgerController(
         @RequestParam categoryId: UUID?,
         @RequestParam(defaultValue = "0") page: Int,
         @RequestParam(defaultValue = "15") size: Int,
-    ): PagedTransactionsDto {
-        return manageLedger.listTransactions(user, mode, householdId, dateFrom, dateTo, accountId, categoryId, page, size)
-    }
+    ): PagedTransactionsDto = manageLedger.listTransactions(user, mode, householdId, dateFrom, dateTo, accountId, categoryId, page, size)
 
     @PostMapping("/transactions")
     @ResponseStatus(HttpStatus.CREATED)
     fun createTransaction(
         @RequestBody dto: CreateTransactionDto,
         @AuthenticationPrincipal user: User,
-    ): TransactionDto {
-        return manageLedger.createTransaction(dto, user)
-    }
+    ): TransactionDto = manageLedger.createTransaction(dto, user)
 
     @GetMapping("/accounts/{id}/balance")
     fun getAccountBalance(
@@ -49,9 +44,7 @@ class LedgerController(
         @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) asOf: LocalDate?,
         @RequestParam householdId: UUID?,
         @AuthenticationPrincipal user: User,
-    ): BalanceDto {
-        return manageLedger.getAccountBalance(id, asOf ?: LocalDate.now(), user, householdId)
-    }
+    ): BalanceDto = manageLedger.getAccountBalance(id, asOf ?: LocalDate.now(), user, householdId)
 
     @GetMapping("/accounts/balances")
     fun getAccountBalances(
@@ -59,7 +52,5 @@ class LedgerController(
         @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) asOf: LocalDate?,
         @RequestParam householdId: UUID?,
         @AuthenticationPrincipal user: User,
-    ): List<BalanceDto> {
-        return manageLedger.getAccountBalances(accountIds, asOf ?: LocalDate.now(), user, householdId)
-    }
+    ): List<BalanceDto> = manageLedger.getAccountBalances(accountIds, asOf ?: LocalDate.now(), user, householdId)
 }

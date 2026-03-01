@@ -6,6 +6,7 @@ plugins {
     id("org.springframework.boot") version "4.0.2"
     id("io.spring.dependency-management") version "1.1.7"
     kotlin("plugin.jpa") version "2.3.10"
+    id("org.jlleitschuh.gradle.ktlint") version "12.1.1"
 }
 
 group = "com.decrux"
@@ -60,6 +61,40 @@ allOpen {
     annotation("jakarta.persistence.Entity")
     annotation("jakarta.persistence.MappedSuperclass")
     annotation("jakarta.persistence.Embeddable")
+}
+
+ktlint {
+    version.set("1.8.0")
+    outputToConsole.set(true)
+    ignoreFailures.set(false)
+    additionalEditorconfig.set(
+        mapOf(
+            "ktlint_standard_package-name" to "disabled",
+        ),
+    )
+    reporters {
+        reporter(org.jlleitschuh.gradle.ktlint.reporter.ReporterType.HTML)
+        reporter(org.jlleitschuh.gradle.ktlint.reporter.ReporterType.CHECKSTYLE)
+    }
+    filter {
+        exclude("**/generated/**")
+    }
+}
+
+tasks.named("check") {
+    dependsOn("ktlintCheck")
+}
+
+tasks.register("lint") {
+    group = "verification"
+    description = "Runs Kotlin lint checks."
+    dependsOn("ktlintCheck")
+}
+
+tasks.register("lintFix") {
+    group = "formatting"
+    description = "Auto-formats Kotlin sources with ktlint."
+    dependsOn("ktlintFormat")
 }
 
 tasks.withType<Test> {

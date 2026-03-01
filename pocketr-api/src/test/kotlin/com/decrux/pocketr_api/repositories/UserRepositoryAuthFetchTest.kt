@@ -14,12 +14,13 @@ import org.springframework.test.context.ActiveProfiles
 @DataJpaTest
 @ActiveProfiles("test")
 @DisplayName("UserRepository auth fetch strategy")
-class UserRepositoryAuthFetchTest @Autowired constructor(
+class UserRepositoryAuthFetchTest
+@Autowired
+constructor(
     private val userRepository: UserRepository,
     private val testEntityManager: TestEntityManager,
     private val entityManagerFactory: EntityManagerFactory,
 ) {
-
     @Test
     @DisplayName("findUserByEmail loads roles for auth path")
     fun findUserByEmailLoadsRoles() {
@@ -43,11 +44,12 @@ class UserRepositoryAuthFetchTest @Autowired constructor(
     }
 
     private fun persistUserWithRole(email: String) {
-        val user = User(
-            password = "encoded-password",
-            email = email,
-            roles = mutableListOf(UserRole(role = "USER")),
-        )
+        val user =
+            User(
+                password = "encoded-password",
+                email = email,
+                roles = mutableListOf(UserRole(role = "USER")),
+            )
         testEntityManager.persistAndFlush(user)
         testEntityManager.clear()
     }

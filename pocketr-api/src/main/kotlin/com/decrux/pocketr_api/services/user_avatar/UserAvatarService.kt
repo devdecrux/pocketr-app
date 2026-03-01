@@ -26,35 +26,45 @@ class UserAvatarService(
     storageInitializer: StorageInitializer,
     private val userRepository: UserRepository,
 ) {
-
-    private val avatarStoragePath: Path = storageInitializer.ensureWritableDirectory(
-        Paths.get(avatarStorageDir),
-    )
+    private val avatarStoragePath: Path =
+        storageInitializer.ensureWritableDirectory(
+            Paths.get(avatarStorageDir),
+        )
 
     @Transactional
-    fun uploadAvatar(authenticatedUser: User, avatar: MultipartFile): UserDto {
-        val userId = authenticatedUser.userId
-            ?: throw ResponseStatusException(HttpStatus.UNAUTHORIZED, "Authenticated user id is missing")
+    fun uploadAvatar(
+        authenticatedUser: User,
+        avatar: MultipartFile,
+    ): UserDto {
+        val userId =
+            authenticatedUser.userId
+                ?: throw ResponseStatusException(HttpStatus.UNAUTHORIZED, "Authenticated user id is missing")
 
-        val persistedUser = userRepository.findById(userId)
-            .orElseThrow { ResponseStatusException(HttpStatus.NOT_FOUND, "User not found") }
+        val persistedUser =
+            userRepository
+                .findById(userId)
+                .orElseThrow { ResponseStatusException(HttpStatus.NOT_FOUND, "User not found") }
 
-        val storedPath = try {
-            storeAvatar(persistedUser, avatar)
-        } catch (e: IllegalArgumentException) {
-            throw ResponseStatusException(
-                HttpStatus.BAD_REQUEST,
-                e.message ?: "Invalid avatar upload request",
-                e,
-            )
-        }
+        val storedPath =
+            try {
+                storeAvatar(persistedUser, avatar)
+            } catch (e: IllegalArgumentException) {
+                throw ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    e.message ?: "Invalid avatar upload request",
+                    e,
+                )
+            }
 
         persistedUser.avatarPath = storedPath
         val savedUser = userRepository.save(persistedUser)
         return toUserDto(savedUser)
     }
 
-    fun storeAvatar(user: User, avatar: MultipartFile): String {
+    fun storeAvatar(
+        user: User,
+        avatar: MultipartFile,
+    ): String {
         if (avatar.isEmpty) {
             throw IllegalArgumentException("Avatar file is required")
         }
@@ -63,10 +73,11 @@ class UserAvatarService(
         }
 
         val contentType = validateAvatarType(avatar)
-        val filename = buildFilename(
-            userId = requireNotNull(user.userId) { "Authenticated user id is required" },
-            contentType = contentType,
-        )
+        val filename =
+            buildFilename(
+                userId = requireNotNull(user.userId) { "Authenticated user id is required" },
+                contentType = contentType,
+            )
         val targetPath = avatarStoragePath.resolve(filename).normalize()
 
         if (!targetPath.startsWith(avatarStoragePath)) {
@@ -86,8 +97,9 @@ class UserAvatarService(
     }
 
     private fun validateAvatarType(avatar: MultipartFile): String {
-        val contentType = avatar.contentType?.lowercase(Locale.ROOT)
-            ?: throw IllegalArgumentException("Avatar content type is required")
+        val contentType =
+            avatar.contentType?.lowercase(Locale.ROOT)
+                ?: throw IllegalArgumentException("Avatar content type is required")
 
         if (contentType !in CONTENT_TYPE_TO_EXTENSION) {
             throw IllegalArgumentException(
@@ -98,9 +110,13 @@ class UserAvatarService(
         return contentType
     }
 
-    private fun buildFilename(userId: Long, contentType: String): String {
-        val extension = CONTENT_TYPE_TO_EXTENSION[contentType]
-            ?: throw IllegalArgumentException("Unsupported avatar format")
+    private fun buildFilename(
+        userId: Long,
+        contentType: String,
+    ): String {
+        val extension =
+            CONTENT_TYPE_TO_EXTENSION[contentType]
+                ?: throw IllegalArgumentException("Unsupported avatar format")
 
         return "user-$userId-${UUID.randomUUID()}$extension"
     }
@@ -122,15 +138,14 @@ class UserAvatarService(
         }
     }
 
-    fun toUserDto(user: User): UserDto {
-        return UserDto(
+    fun toUserDto(user: User): UserDto =
+        UserDto(
             id = user.userId,
             email = user.email,
             firstName = user.firstName,
             lastName = user.lastName,
             avatar = resolveAvatarDataUrl(user.avatarPath),
         )
-    }
 
     fun resolveAvatarDataUrl(storedPath: String?): String? {
         if (storedPath.isNullOrBlank()) {
@@ -157,9 +172,11 @@ class UserAvatarService(
     }
 
     private fun resolveContentType(path: Path): String {
-        val detectedType = Files.probeContentType(path)
-            ?.lowercase(Locale.ROOT)
-            ?.takeIf { it.isNotBlank() }
+        val detectedType =
+            Files
+                .probeContentType(path)
+                ?.lowercase(Locale.ROOT)
+                ?.takeIf { it.isNotBlank() }
         if (detectedType != null) {
             return detectedType
         }
@@ -175,11 +192,12 @@ class UserAvatarService(
     private companion object {
         const val MAX_AVATAR_SIZE_BYTES = 5L * 1024 * 1024
 
-        val CONTENT_TYPE_TO_EXTENSION: Map<String, String> = mapOf(
-            "image/jpeg" to ".jpg",
-            "image/png" to ".png",
-            "image/gif" to ".gif",
-            "image/webp" to ".webp",
-        )
+        val CONTENT_TYPE_TO_EXTENSION: Map<String, String> =
+            mapOf(
+                "image/jpeg" to ".jpg",
+                "image/png" to ".png",
+                "image/gif" to ".gif",
+                "image/webp" to ".webp",
+            )
     }
 }

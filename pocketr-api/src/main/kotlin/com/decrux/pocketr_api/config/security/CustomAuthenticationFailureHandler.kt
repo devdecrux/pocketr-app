@@ -8,7 +8,6 @@ import org.springframework.stereotype.Component
 
 @Component
 class CustomAuthenticationFailureHandler : AuthenticationFailureHandler {
-
     override fun onAuthenticationFailure(
         request: HttpServletRequest,
         response: HttpServletResponse,

@@ -9,7 +9,6 @@ import org.springframework.web.bind.annotation.RestController
 @RestController
 @RequestMapping("/v1/internal")
 class InternalController {
-
     @GetMapping("/csrf-token")
     fun getCsrfToken() {
         // Exposes CSRF token in development to support SPA bootstrap.

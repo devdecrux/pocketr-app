@@ -12,7 +12,6 @@ import java.util.UUID
 class LedgerTransactionPolicy(
     private val manageHousehold: ManageHousehold,
 ) {
-
     fun checkAccountAccess(
         accounts: List<Account>,
         userId: Long,
@@ -29,8 +28,9 @@ class LedgerTransactionPolicy(
             )
         }
 
-        val hhId = householdId
-            ?: throw BadRequestException("householdId is required for household mode")
+        val hhId =
+            householdId
+                ?: throw BadRequestException("householdId is required for household mode")
 
         if (!manageHousehold.isActiveMember(hhId, userId)) {
             throw ForbiddenException("Not an active member of this household")

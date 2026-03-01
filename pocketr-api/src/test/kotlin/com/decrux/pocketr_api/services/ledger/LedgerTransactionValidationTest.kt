@@ -32,7 +32,6 @@ import java.util.UUID
  */
 @DisplayName("ManageLedgerImpl — Transaction Validation")
 class LedgerTransactionValidationTest {
-
     private lateinit var ledgerTxnRepository: LedgerTxnRepository
     private lateinit var ledgerSplitRepository: LedgerSplitRepository
     private lateinit var accountRepository: AccountRepository
@@ -66,8 +65,6 @@ class LedgerTransactionValidationTest {
 
     private val userBSavingsId = UUID.randomUUID()
     private val userBSavings = Account(id = userBSavingsId, owner = userB, name = "Bob Savings", type = AccountType.ASSET, currency = eur)
-    private val userBExpenseId = UUID.randomUUID()
-    private val userBExpense = Account(id = userBExpenseId, owner = userB, name = "Bob Groceries", type = AccountType.EXPENSE, currency = eur)
 
     private val usdAccountId = UUID.randomUUID()
     private val usdAccount = Account(id = usdAccountId, owner = userA, name = "USD Checking", type = AccountType.ASSET, currency = usd)
@@ -84,12 +81,18 @@ class LedgerTransactionValidationTest {
         transactionValidator = LedgerTransactionValidator()
         transactionPolicy = LedgerTransactionPolicy(manageHousehold)
 
-        service = ManageLedgerImpl(
-            ledgerTxnRepository, ledgerSplitRepository,
-            accountRepository, currencyRepository, categoryTagRepository,
-            manageHousehold, userAvatarService,
-            transactionValidator, transactionPolicy,
-        )
+        service =
+            ManageLedgerImpl(
+                ledgerTxnRepository,
+                ledgerSplitRepository,
+                accountRepository,
+                currencyRepository,
+                categoryTagRepository,
+                manageHousehold,
+                userAvatarService,
+                transactionValidator,
+                transactionPolicy,
+            )
 
         `when`(currencyRepository.findById("EUR")).thenReturn(Optional.of(eur))
         `when`(currencyRepository.findById("USD")).thenReturn(Optional.of(usd))
@@ -108,112 +111,141 @@ class LedgerTransactionValidationTest {
         `when`(accountRepository.findAllById(ids)).thenReturn(accounts.toList())
     }
 
-    private fun validExpenseDto() = CreateTransactionDto(
-        txnDate = LocalDate.of(2026, 2, 15),
-        currency = "EUR",
-        description = "Electricity bill",
-        splits = listOf(
-            CreateSplitDto(accountId = checkingId, side = "CREDIT", amountMinor = 4500),
-            CreateSplitDto(accountId = expenseId, side = "DEBIT", amountMinor = 4500),
-        ),
-    )
+    private fun validExpenseDto() =
+        CreateTransactionDto(
+            txnDate = LocalDate.of(2026, 2, 15),
+            currency = "EUR",
+            description = "Electricity bill",
+            splits =
+                listOf(
+                    CreateSplitDto(accountId = checkingId, side = "CREDIT", amountMinor = 4500),
+                    CreateSplitDto(accountId = expenseId, side = "DEBIT", amountMinor = 4500),
+                ),
+        )
 
     @Nested
     @DisplayName("Double-entry invariants")
     inner class DoubleEntryInvariants {
-
         @Test
         @DisplayName("should reject transaction with fewer than 2 splits")
         fun rejectFewerThan2Splits() {
-            val dto = CreateTransactionDto(
-                txnDate = LocalDate.now(), currency = "EUR", description = "Test",
-                splits = listOf(CreateSplitDto(accountId = checkingId, side = "DEBIT", amountMinor = 1000)),
-            )
+            val dto =
+                CreateTransactionDto(
+                    txnDate = LocalDate.now(),
+                    currency = "EUR",
+                    description = "Test",
+                    splits = listOf(CreateSplitDto(accountId = checkingId, side = "DEBIT", amountMinor = 1000)),
+                )
 
-            val ex = assertThrows(BadRequestException::class.java) {
-                service.createTransaction(dto, userA)
-            }
+            val ex =
+                assertThrows(BadRequestException::class.java) {
+                    service.createTransaction(dto, userA)
+                }
             assertTrue(ex.message!!.contains("at least 2 splits"))
         }
 
         @Test
         @DisplayName("should reject transaction with 0 splits")
         fun rejectZeroSplits() {
-            val dto = CreateTransactionDto(
-                txnDate = LocalDate.now(), currency = "EUR", description = "Test",
-                splits = emptyList(),
-            )
+            val dto =
+                CreateTransactionDto(
+                    txnDate = LocalDate.now(),
+                    currency = "EUR",
+                    description = "Test",
+                    splits = emptyList(),
+                )
 
-            val ex = assertThrows(BadRequestException::class.java) {
-                service.createTransaction(dto, userA)
-            }
+            val ex =
+                assertThrows(BadRequestException::class.java) {
+                    service.createTransaction(dto, userA)
+                }
         }
 
         @Test
         @DisplayName("should reject transaction where total debits != total credits")
         fun rejectDebitsNotEqualCredits() {
-            val dto = CreateTransactionDto(
-                txnDate = LocalDate.now(), currency = "EUR", description = "Unbalanced",
-                splits = listOf(
-                    CreateSplitDto(accountId = checkingId, side = "DEBIT", amountMinor = 5000),
-                    CreateSplitDto(accountId = expenseId, side = "CREDIT", amountMinor = 4500),
-                ),
-            )
+            val dto =
+                CreateTransactionDto(
+                    txnDate = LocalDate.now(),
+                    currency = "EUR",
+                    description = "Unbalanced",
+                    splits =
+                        listOf(
+                            CreateSplitDto(accountId = checkingId, side = "DEBIT", amountMinor = 5000),
+                            CreateSplitDto(accountId = expenseId, side = "CREDIT", amountMinor = 4500),
+                        ),
+                )
 
-            val ex = assertThrows(BadRequestException::class.java) {
-                service.createTransaction(dto, userA)
-            }
+            val ex =
+                assertThrows(BadRequestException::class.java) {
+                    service.createTransaction(dto, userA)
+                }
             assertTrue(ex.message!!.contains("Double-entry violation"))
         }
 
         @Test
         @DisplayName("should reject transaction where any split amount is zero")
         fun rejectZeroAmount() {
-            val dto = CreateTransactionDto(
-                txnDate = LocalDate.now(), currency = "EUR", description = "Zero",
-                splits = listOf(
-                    CreateSplitDto(accountId = checkingId, side = "CREDIT", amountMinor = 0),
-                    CreateSplitDto(accountId = expenseId, side = "DEBIT", amountMinor = 0),
-                ),
-            )
+            val dto =
+                CreateTransactionDto(
+                    txnDate = LocalDate.now(),
+                    currency = "EUR",
+                    description = "Zero",
+                    splits =
+                        listOf(
+                            CreateSplitDto(accountId = checkingId, side = "CREDIT", amountMinor = 0),
+                            CreateSplitDto(accountId = expenseId, side = "DEBIT", amountMinor = 0),
+                        ),
+                )
 
-            val ex = assertThrows(BadRequestException::class.java) {
-                service.createTransaction(dto, userA)
-            }
+            val ex =
+                assertThrows(BadRequestException::class.java) {
+                    service.createTransaction(dto, userA)
+                }
             assertTrue(ex.message!!.contains("greater than 0"))
         }
 
         @Test
         @DisplayName("should reject transaction where any split amount is negative")
         fun rejectNegativeAmount() {
-            val dto = CreateTransactionDto(
-                txnDate = LocalDate.now(), currency = "EUR", description = "Negative",
-                splits = listOf(
-                    CreateSplitDto(accountId = checkingId, side = "CREDIT", amountMinor = -1000),
-                    CreateSplitDto(accountId = expenseId, side = "DEBIT", amountMinor = -1000),
-                ),
-            )
+            val dto =
+                CreateTransactionDto(
+                    txnDate = LocalDate.now(),
+                    currency = "EUR",
+                    description = "Negative",
+                    splits =
+                        listOf(
+                            CreateSplitDto(accountId = checkingId, side = "CREDIT", amountMinor = -1000),
+                            CreateSplitDto(accountId = expenseId, side = "DEBIT", amountMinor = -1000),
+                        ),
+                )
 
-            val ex = assertThrows(BadRequestException::class.java) {
-                service.createTransaction(dto, userA)
-            }
+            val ex =
+                assertThrows(BadRequestException::class.java) {
+                    service.createTransaction(dto, userA)
+                }
             assertTrue(ex.message!!.contains("greater than 0"))
         }
 
         @Test
         @DisplayName("should reject transaction with invalid split side")
         fun rejectInvalidSplitSide() {
-            val dto = CreateTransactionDto(
-                txnDate = LocalDate.now(), currency = "EUR", description = "Bad side",
-                splits = listOf(
-                    CreateSplitDto(accountId = checkingId, side = "INVALID", amountMinor = 1000),
-                    CreateSplitDto(accountId = expenseId, side = "DEBIT", amountMinor = 1000),
-                ),
-            )
+            val dto =
+                CreateTransactionDto(
+                    txnDate = LocalDate.now(),
+                    currency = "EUR",
+                    description = "Bad side",
+                    splits =
+                        listOf(
+                            CreateSplitDto(accountId = checkingId, side = "INVALID", amountMinor = 1000),
+                            CreateSplitDto(accountId = expenseId, side = "DEBIT", amountMinor = 1000),
+                        ),
+                )
 
-            val ex = assertThrows(BadRequestException::class.java) {
-                service.createTransaction(dto, userA)
-            }
+            val ex =
+                assertThrows(BadRequestException::class.java) {
+                    service.createTransaction(dto, userA)
+                }
             assertTrue(ex.message!!.contains("Invalid split side"))
         }
     }
@@ -221,22 +253,26 @@ class LedgerTransactionValidationTest {
     @Nested
     @DisplayName("Currency consistency")
     inner class CurrencyConsistency {
-
         @Test
         @DisplayName("should reject transaction where account currency != transaction currency")
         fun rejectCurrencyMismatch() {
             stubAccounts(usdAccount, expenseAcct)
-            val dto = CreateTransactionDto(
-                txnDate = LocalDate.now(), currency = "EUR", description = "Mismatch",
-                splits = listOf(
-                    CreateSplitDto(accountId = usdAccountId, side = "CREDIT", amountMinor = 4500),
-                    CreateSplitDto(accountId = expenseId, side = "DEBIT", amountMinor = 4500),
-                ),
-            )
+            val dto =
+                CreateTransactionDto(
+                    txnDate = LocalDate.now(),
+                    currency = "EUR",
+                    description = "Mismatch",
+                    splits =
+                        listOf(
+                            CreateSplitDto(accountId = usdAccountId, side = "CREDIT", amountMinor = 4500),
+                            CreateSplitDto(accountId = expenseId, side = "DEBIT", amountMinor = 4500),
+                        ),
+                )
 
-            val ex = assertThrows(BadRequestException::class.java) {
-                service.createTransaction(dto, userA)
-            }
+            val ex =
+                assertThrows(BadRequestException::class.java) {
+                    service.createTransaction(dto, userA)
+                }
             assertTrue(ex.message!!.contains("currency"))
         }
 
@@ -244,17 +280,22 @@ class LedgerTransactionValidationTest {
         @DisplayName("should reject transaction with unknown currency code")
         fun rejectUnknownCurrency() {
             `when`(currencyRepository.findById("XYZ")).thenReturn(Optional.empty())
-            val dto = CreateTransactionDto(
-                txnDate = LocalDate.now(), currency = "XYZ", description = "Unknown currency",
-                splits = listOf(
-                    CreateSplitDto(accountId = checkingId, side = "CREDIT", amountMinor = 1000),
-                    CreateSplitDto(accountId = expenseId, side = "DEBIT", amountMinor = 1000),
-                ),
-            )
+            val dto =
+                CreateTransactionDto(
+                    txnDate = LocalDate.now(),
+                    currency = "XYZ",
+                    description = "Unknown currency",
+                    splits =
+                        listOf(
+                            CreateSplitDto(accountId = checkingId, side = "CREDIT", amountMinor = 1000),
+                            CreateSplitDto(accountId = expenseId, side = "DEBIT", amountMinor = 1000),
+                        ),
+                )
 
-            val ex = assertThrows(BadRequestException::class.java) {
-                service.createTransaction(dto, userA)
-            }
+            val ex =
+                assertThrows(BadRequestException::class.java) {
+                    service.createTransaction(dto, userA)
+                }
             assertTrue(ex.message!!.contains("Invalid currency"))
         }
     }
@@ -262,22 +303,26 @@ class LedgerTransactionValidationTest {
     @Nested
     @DisplayName("Ownership permissions (individual mode)")
     inner class OwnershipPermissions {
-
         @Test
         @DisplayName("should reject posting to non-owned account in individual mode")
         fun rejectPostingToNonOwnedAccount() {
             stubAccounts(checking, userBSavings)
-            val dto = CreateTransactionDto(
-                txnDate = LocalDate.now(), currency = "EUR", description = "Not my account",
-                splits = listOf(
-                    CreateSplitDto(accountId = checkingId, side = "CREDIT", amountMinor = 5000),
-                    CreateSplitDto(accountId = userBSavingsId, side = "DEBIT", amountMinor = 5000),
-                ),
-            )
+            val dto =
+                CreateTransactionDto(
+                    txnDate = LocalDate.now(),
+                    currency = "EUR",
+                    description = "Not my account",
+                    splits =
+                        listOf(
+                            CreateSplitDto(accountId = checkingId, side = "CREDIT", amountMinor = 5000),
+                            CreateSplitDto(accountId = userBSavingsId, side = "DEBIT", amountMinor = 5000),
+                        ),
+                )
 
-            val ex = assertThrows(ForbiddenException::class.java) {
-                service.createTransaction(dto, userA)
-            }
+            val ex =
+                assertThrows(ForbiddenException::class.java) {
+                    service.createTransaction(dto, userA)
+                }
             assertTrue(ex.message!!.contains("not owned by current user"))
         }
 
@@ -301,17 +346,22 @@ class LedgerTransactionValidationTest {
             val bobTag = CategoryTag(id = bobTagId, owner = userB, name = "Bob's Food")
             `when`(categoryTagRepository.findAllById(listOf(bobTagId))).thenReturn(listOf(bobTag))
 
-            val dto = CreateTransactionDto(
-                txnDate = LocalDate.now(), currency = "EUR", description = "With someone else's tag",
-                splits = listOf(
-                    CreateSplitDto(accountId = checkingId, side = "CREDIT", amountMinor = 5000),
-                    CreateSplitDto(accountId = expenseId, side = "DEBIT", amountMinor = 5000, categoryTagId = bobTagId),
-                ),
-            )
+            val dto =
+                CreateTransactionDto(
+                    txnDate = LocalDate.now(),
+                    currency = "EUR",
+                    description = "With someone else's tag",
+                    splits =
+                        listOf(
+                            CreateSplitDto(accountId = checkingId, side = "CREDIT", amountMinor = 5000),
+                            CreateSplitDto(accountId = expenseId, side = "DEBIT", amountMinor = 5000, categoryTagId = bobTagId),
+                        ),
+                )
 
-            val ex = assertThrows(ForbiddenException::class.java) {
-                service.createTransaction(dto, userA)
-            }
+            val ex =
+                assertThrows(ForbiddenException::class.java) {
+                    service.createTransaction(dto, userA)
+                }
             assertTrue(ex.message!!.contains("not owned by current user"))
         }
 
@@ -322,17 +372,22 @@ class LedgerTransactionValidationTest {
             val missingTagId = UUID.randomUUID()
             `when`(categoryTagRepository.findAllById(listOf(missingTagId))).thenReturn(emptyList())
 
-            val dto = CreateTransactionDto(
-                txnDate = LocalDate.now(), currency = "EUR", description = "Missing tag",
-                splits = listOf(
-                    CreateSplitDto(accountId = checkingId, side = "CREDIT", amountMinor = 5000),
-                    CreateSplitDto(accountId = expenseId, side = "DEBIT", amountMinor = 5000, categoryTagId = missingTagId),
-                ),
-            )
+            val dto =
+                CreateTransactionDto(
+                    txnDate = LocalDate.now(),
+                    currency = "EUR",
+                    description = "Missing tag",
+                    splits =
+                        listOf(
+                            CreateSplitDto(accountId = checkingId, side = "CREDIT", amountMinor = 5000),
+                            CreateSplitDto(accountId = expenseId, side = "DEBIT", amountMinor = 5000, categoryTagId = missingTagId),
+                        ),
+                )
 
-            val ex = assertThrows(BadRequestException::class.java) {
-                service.createTransaction(dto, userA)
-            }
+            val ex =
+                assertThrows(BadRequestException::class.java) {
+                    service.createTransaction(dto, userA)
+                }
             assertTrue(ex.message!!.contains("Category tags not found"))
         }
 
@@ -342,17 +397,22 @@ class LedgerTransactionValidationTest {
             val missingId = UUID.randomUUID()
             `when`(accountRepository.findAllById(listOf(checkingId, missingId))).thenReturn(listOf(checking))
 
-            val dto = CreateTransactionDto(
-                txnDate = LocalDate.now(), currency = "EUR", description = "Missing account",
-                splits = listOf(
-                    CreateSplitDto(accountId = checkingId, side = "CREDIT", amountMinor = 5000),
-                    CreateSplitDto(accountId = missingId, side = "DEBIT", amountMinor = 5000),
-                ),
-            )
+            val dto =
+                CreateTransactionDto(
+                    txnDate = LocalDate.now(),
+                    currency = "EUR",
+                    description = "Missing account",
+                    splits =
+                        listOf(
+                            CreateSplitDto(accountId = checkingId, side = "CREDIT", amountMinor = 5000),
+                            CreateSplitDto(accountId = missingId, side = "DEBIT", amountMinor = 5000),
+                        ),
+                )
 
-            val ex = assertThrows(BadRequestException::class.java) {
-                service.createTransaction(dto, userA)
-            }
+            val ex =
+                assertThrows(BadRequestException::class.java) {
+                    service.createTransaction(dto, userA)
+                }
             assertTrue(ex.message!!.contains("Accounts not found"))
         }
     }
@@ -360,7 +420,6 @@ class LedgerTransactionValidationTest {
     @Nested
     @DisplayName("Valid transaction scenarios")
     inner class ValidTransactionScenarios {
-
         @Test
         @DisplayName("should succeed for expense transaction (ASSET credit, EXPENSE debit)")
         fun validExpenseTransaction() {
@@ -369,13 +428,17 @@ class LedgerTransactionValidationTest {
             val tag = CategoryTag(id = tagId, owner = userA, name = "Electricity")
             `when`(categoryTagRepository.findAllById(listOf(tagId))).thenReturn(listOf(tag))
 
-            val dto = CreateTransactionDto(
-                txnDate = LocalDate.of(2026, 2, 15), currency = "EUR", description = "Electricity bill",
-                splits = listOf(
-                    CreateSplitDto(accountId = checkingId, side = "CREDIT", amountMinor = 4500),
-                    CreateSplitDto(accountId = expenseId, side = "DEBIT", amountMinor = 4500, categoryTagId = tagId),
-                ),
-            )
+            val dto =
+                CreateTransactionDto(
+                    txnDate = LocalDate.of(2026, 2, 15),
+                    currency = "EUR",
+                    description = "Electricity bill",
+                    splits =
+                        listOf(
+                            CreateSplitDto(accountId = checkingId, side = "CREDIT", amountMinor = 4500),
+                            CreateSplitDto(accountId = expenseId, side = "DEBIT", amountMinor = 4500, categoryTagId = tagId),
+                        ),
+                )
 
             val result = service.createTransaction(dto, userA)
             assertNotNull(result.id)
@@ -388,13 +451,17 @@ class LedgerTransactionValidationTest {
         @DisplayName("should succeed for income transaction (INCOME credit, ASSET debit)")
         fun validIncomeTransaction() {
             stubAccounts(checking, incomeAcct)
-            val dto = CreateTransactionDto(
-                txnDate = LocalDate.of(2026, 1, 31), currency = "EUR", description = "January salary",
-                splits = listOf(
-                    CreateSplitDto(accountId = checkingId, side = "DEBIT", amountMinor = 200000),
-                    CreateSplitDto(accountId = incomeId, side = "CREDIT", amountMinor = 200000),
-                ),
-            )
+            val dto =
+                CreateTransactionDto(
+                    txnDate = LocalDate.of(2026, 1, 31),
+                    currency = "EUR",
+                    description = "January salary",
+                    splits =
+                        listOf(
+                            CreateSplitDto(accountId = checkingId, side = "DEBIT", amountMinor = 200000),
+                            CreateSplitDto(accountId = incomeId, side = "CREDIT", amountMinor = 200000),
+                        ),
+                )
 
             val result = service.createTransaction(dto, userA)
             assertNotNull(result.id)
@@ -405,13 +472,17 @@ class LedgerTransactionValidationTest {
         @DisplayName("should succeed for transfer between own ASSET accounts")
         fun validTransferTransaction() {
             stubAccounts(checking, savings)
-            val dto = CreateTransactionDto(
-                txnDate = LocalDate.now(), currency = "EUR", description = "Move to savings",
-                splits = listOf(
-                    CreateSplitDto(accountId = checkingId, side = "CREDIT", amountMinor = 30000),
-                    CreateSplitDto(accountId = savingsId, side = "DEBIT", amountMinor = 30000),
-                ),
-            )
+            val dto =
+                CreateTransactionDto(
+                    txnDate = LocalDate.now(),
+                    currency = "EUR",
+                    description = "Move to savings",
+                    splits =
+                        listOf(
+                            CreateSplitDto(accountId = checkingId, side = "CREDIT", amountMinor = 30000),
+                            CreateSplitDto(accountId = savingsId, side = "DEBIT", amountMinor = 30000),
+                        ),
+                )
 
             val result = service.createTransaction(dto, userA)
             assertNotNull(result.id)
@@ -421,13 +492,17 @@ class LedgerTransactionValidationTest {
         @DisplayName("should succeed for liability payment (ASSET credit, LIABILITY debit)")
         fun validLiabilityPayment() {
             stubAccounts(checking, liabilityAcct)
-            val dto = CreateTransactionDto(
-                txnDate = LocalDate.now(), currency = "EUR", description = "Mortgage payment",
-                splits = listOf(
-                    CreateSplitDto(accountId = checkingId, side = "CREDIT", amountMinor = 50000),
-                    CreateSplitDto(accountId = liabilityId, side = "DEBIT", amountMinor = 50000),
-                ),
-            )
+            val dto =
+                CreateTransactionDto(
+                    txnDate = LocalDate.now(),
+                    currency = "EUR",
+                    description = "Mortgage payment",
+                    splits =
+                        listOf(
+                            CreateSplitDto(accountId = checkingId, side = "CREDIT", amountMinor = 50000),
+                            CreateSplitDto(accountId = liabilityId, side = "DEBIT", amountMinor = 50000),
+                        ),
+                )
 
             val result = service.createTransaction(dto, userA)
             assertNotNull(result.id)
@@ -437,13 +512,17 @@ class LedgerTransactionValidationTest {
         @DisplayName("should succeed for opening balance (EQUITY credit, ASSET debit)")
         fun validOpeningBalance() {
             stubAccounts(checking, equityAcct)
-            val dto = CreateTransactionDto(
-                txnDate = LocalDate.now(), currency = "EUR", description = "Opening balance",
-                splits = listOf(
-                    CreateSplitDto(accountId = checkingId, side = "DEBIT", amountMinor = 100000),
-                    CreateSplitDto(accountId = equityId, side = "CREDIT", amountMinor = 100000),
-                ),
-            )
+            val dto =
+                CreateTransactionDto(
+                    txnDate = LocalDate.now(),
+                    currency = "EUR",
+                    description = "Opening balance",
+                    splits =
+                        listOf(
+                            CreateSplitDto(accountId = checkingId, side = "DEBIT", amountMinor = 100000),
+                            CreateSplitDto(accountId = equityId, side = "CREDIT", amountMinor = 100000),
+                        ),
+                )
 
             val result = service.createTransaction(dto, userA)
             assertNotNull(result.id)
@@ -458,14 +537,18 @@ class LedgerTransactionValidationTest {
             val householdExp = Account(id = householdExpId, owner = userA, name = "Household", type = AccountType.EXPENSE, currency = eur)
             stubAccounts(checking, food, householdExp)
 
-            val dto = CreateTransactionDto(
-                txnDate = LocalDate.now(), currency = "EUR", description = "Grocery trip",
-                splits = listOf(
-                    CreateSplitDto(accountId = checkingId, side = "CREDIT", amountMinor = 10000),
-                    CreateSplitDto(accountId = foodId, side = "DEBIT", amountMinor = 7000),
-                    CreateSplitDto(accountId = householdExpId, side = "DEBIT", amountMinor = 3000),
-                ),
-            )
+            val dto =
+                CreateTransactionDto(
+                    txnDate = LocalDate.now(),
+                    currency = "EUR",
+                    description = "Grocery trip",
+                    splits =
+                        listOf(
+                            CreateSplitDto(accountId = checkingId, side = "CREDIT", amountMinor = 10000),
+                            CreateSplitDto(accountId = foodId, side = "DEBIT", amountMinor = 7000),
+                            CreateSplitDto(accountId = householdExpId, side = "DEBIT", amountMinor = 3000),
+                        ),
+                )
 
             val result = service.createTransaction(dto, userA)
             assertNotNull(result.id)
@@ -476,13 +559,17 @@ class LedgerTransactionValidationTest {
         @DisplayName("should trim description whitespace")
         fun trimDescription() {
             stubAccounts(checking, expenseAcct)
-            val dto = CreateTransactionDto(
-                txnDate = LocalDate.now(), currency = "EUR", description = "  Trimmed  ",
-                splits = listOf(
-                    CreateSplitDto(accountId = checkingId, side = "CREDIT", amountMinor = 1000),
-                    CreateSplitDto(accountId = expenseId, side = "DEBIT", amountMinor = 1000),
-                ),
-            )
+            val dto =
+                CreateTransactionDto(
+                    txnDate = LocalDate.now(),
+                    currency = "EUR",
+                    description = "  Trimmed  ",
+                    splits =
+                        listOf(
+                            CreateSplitDto(accountId = checkingId, side = "CREDIT", amountMinor = 1000),
+                            CreateSplitDto(accountId = expenseId, side = "DEBIT", amountMinor = 1000),
+                        ),
+                )
 
             val result = service.createTransaction(dto, userA)
             assertEquals("Trimmed", result.description)
@@ -492,13 +579,17 @@ class LedgerTransactionValidationTest {
         @DisplayName("should allow transaction with null category tags")
         fun allowNullCategoryTags() {
             stubAccounts(checking, savings)
-            val dto = CreateTransactionDto(
-                txnDate = LocalDate.now(), currency = "EUR", description = "Transfer",
-                splits = listOf(
-                    CreateSplitDto(accountId = checkingId, side = "CREDIT", amountMinor = 5000, categoryTagId = null),
-                    CreateSplitDto(accountId = savingsId, side = "DEBIT", amountMinor = 5000, categoryTagId = null),
-                ),
-            )
+            val dto =
+                CreateTransactionDto(
+                    txnDate = LocalDate.now(),
+                    currency = "EUR",
+                    description = "Transfer",
+                    splits =
+                        listOf(
+                            CreateSplitDto(accountId = checkingId, side = "CREDIT", amountMinor = 5000, categoryTagId = null),
+                            CreateSplitDto(accountId = savingsId, side = "DEBIT", amountMinor = 5000, categoryTagId = null),
+                        ),
+                )
 
             val result = service.createTransaction(dto, userA)
             assertNotNull(result.id)
@@ -510,7 +601,6 @@ class LedgerTransactionValidationTest {
     @Nested
     @DisplayName("Balance computation")
     inner class BalanceComputation {
-
         @Test
         @DisplayName("should compute batch balances with one grouped query")
         fun computeBatchBalancesWithGroupedQuery() {
@@ -549,9 +639,10 @@ class LedgerTransactionValidationTest {
             val ids = listOf(checkingId, userBSavingsId)
             `when`(accountRepository.findAllById(ids)).thenReturn(listOf(checking, userBSavings))
 
-            val ex = assertThrows(ForbiddenException::class.java) {
-                service.getAccountBalances(ids, LocalDate.now(), userA, null)
-            }
+            val ex =
+                assertThrows(ForbiddenException::class.java) {
+                    service.getAccountBalances(ids, LocalDate.now(), userA, null)
+                }
             assertTrue(ex.message!!.contains("Not the owner"))
             verifyNoInteractions(ledgerSplitRepository)
         }
@@ -565,9 +656,10 @@ class LedgerTransactionValidationTest {
             `when`(manageHousehold.isActiveMember(householdId, userA.userId!!)).thenReturn(true)
             `when`(manageHousehold.getSharedAccountIds(householdId)).thenReturn(setOf(checkingId))
 
-            val ex = assertThrows(ForbiddenException::class.java) {
-                service.getAccountBalances(ids, LocalDate.now(), userA, householdId)
-            }
+            val ex =
+                assertThrows(ForbiddenException::class.java) {
+                    service.getAccountBalances(ids, LocalDate.now(), userA, householdId)
+                }
             assertTrue(ex.message!!.contains("not shared"))
             verifyNoInteractions(ledgerSplitRepository)
         }

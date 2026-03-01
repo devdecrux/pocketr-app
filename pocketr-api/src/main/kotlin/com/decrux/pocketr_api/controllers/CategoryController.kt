@@ -15,29 +15,24 @@ import java.util.UUID
 class CategoryController(
     private val manageCategory: ManageCategory,
 ) {
-
     @GetMapping
-    fun listCategories(@AuthenticationPrincipal user: User): List<CategoryDto> {
-        return manageCategory.listCategories(user)
-    }
+    fun listCategories(
+        @AuthenticationPrincipal user: User,
+    ): List<CategoryDto> = manageCategory.listCategories(user)
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     fun createCategory(
         @RequestBody dto: CreateCategoryDto,
         @AuthenticationPrincipal user: User,
-    ): CategoryDto {
-        return manageCategory.createCategory(dto, user)
-    }
+    ): CategoryDto = manageCategory.createCategory(dto, user)
 
     @PatchMapping("/{id}")
     fun updateCategory(
         @PathVariable id: UUID,
         @RequestBody dto: UpdateCategoryDto,
         @AuthenticationPrincipal user: User,
-    ): CategoryDto {
-        return manageCategory.updateCategory(id, dto, user)
-    }
+    ): CategoryDto = manageCategory.updateCategory(id, dto, user)
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)

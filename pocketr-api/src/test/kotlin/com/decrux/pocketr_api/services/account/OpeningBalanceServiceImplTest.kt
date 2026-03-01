@@ -26,35 +26,37 @@ import java.util.UUID
 
 @DisplayName("OpeningBalanceServiceImpl")
 class OpeningBalanceServiceImplTest {
-
     private val accountRepository = mock(AccountRepository::class.java)
     private val userRepository = mock(UserRepository::class.java)
     private val manageLedger = CapturingManageLedger()
 
-    private val service = OpeningBalanceServiceImpl(
-        accountRepository = accountRepository,
-        userRepository = userRepository,
-        manageLedger = manageLedger,
-        ownershipGuard = OwnershipGuard(),
-    )
+    private val service =
+        OpeningBalanceServiceImpl(
+            accountRepository = accountRepository,
+            userRepository = userRepository,
+            manageLedger = manageLedger,
+            ownershipGuard = OwnershipGuard(),
+        )
 
-    private val owner = User(
-        userId = 1L,
-        password = "encoded",
-        email = "owner@example.com",
-    )
+    private val owner =
+        User(
+            userId = 1L,
+            password = "encoded",
+            email = "owner@example.com",
+        )
     private val eur = Currency(code = "EUR", minorUnit = 2, name = "Euro")
 
     @Test
     @DisplayName("creates positive opening balance as DEBIT(asset)/CREDIT(equity)")
     fun createsPositiveOpeningBalance() {
-        val assetAccount = Account(
-            id = UUID.randomUUID(),
-            owner = owner,
-            name = "Checking",
-            type = AccountType.ASSET,
-            currency = eur,
-        )
+        val assetAccount =
+            Account(
+                id = UUID.randomUUID(),
+                owner = owner,
+                name = "Checking",
+                type = AccountType.ASSET,
+                currency = eur,
+            )
         val equityAccountId = UUID.randomUUID()
 
         `when`(userRepository.findByUserIdForUpdate(1L)).thenReturn(Optional.of(owner))
@@ -93,20 +95,22 @@ class OpeningBalanceServiceImplTest {
     @Test
     @DisplayName("creates negative opening balance as CREDIT(asset)/DEBIT(equity)")
     fun createsNegativeOpeningBalance() {
-        val assetAccount = Account(
-            id = UUID.randomUUID(),
-            owner = owner,
-            name = "Checking",
-            type = AccountType.ASSET,
-            currency = eur,
-        )
-        val equityAccount = Account(
-            id = UUID.randomUUID(),
-            owner = owner,
-            name = "Opening Equity",
-            type = AccountType.EQUITY,
-            currency = eur,
-        )
+        val assetAccount =
+            Account(
+                id = UUID.randomUUID(),
+                owner = owner,
+                name = "Checking",
+                type = AccountType.ASSET,
+                currency = eur,
+            )
+        val equityAccount =
+            Account(
+                id = UUID.randomUUID(),
+                owner = owner,
+                name = "Opening Equity",
+                type = AccountType.EQUITY,
+                currency = eur,
+            )
 
         `when`(userRepository.findByUserIdForUpdate(1L)).thenReturn(Optional.of(owner))
         `when`(
@@ -136,17 +140,19 @@ class OpeningBalanceServiceImplTest {
     @Test
     @DisplayName("rejects opening balance for non-ASSET account")
     fun rejectsNonAsset() {
-        val liability = Account(
-            id = UUID.randomUUID(),
-            owner = owner,
-            name = "Loan",
-            type = AccountType.LIABILITY,
-            currency = eur,
-        )
+        val liability =
+            Account(
+                id = UUID.randomUUID(),
+                owner = owner,
+                name = "Loan",
+                type = AccountType.LIABILITY,
+                currency = eur,
+            )
 
-        val ex = assertThrows(BadRequestException::class.java) {
-            service.createForNewAssetAccount(owner, liability, 1000, LocalDate.parse("2026-02-15"))
-        }
+        val ex =
+            assertThrows(BadRequestException::class.java) {
+                service.createForNewAssetAccount(owner, liability, 1000, LocalDate.parse("2026-02-15"))
+            }
         verifyNoInteractions(userRepository)
         assertEquals(0, manageLedger.calls.size)
     }
@@ -154,22 +160,25 @@ class OpeningBalanceServiceImplTest {
     @Test
     @DisplayName("rejects opening balance when caller does not own account")
     fun rejectsNonOwner() {
-        val anotherUser = User(
-            userId = 2L,
-            password = "encoded",
-            email = "another@example.com",
-        )
-        val assetAccount = Account(
-            id = UUID.randomUUID(),
-            owner = anotherUser,
-            name = "Checking",
-            type = AccountType.ASSET,
-            currency = eur,
-        )
+        val anotherUser =
+            User(
+                userId = 2L,
+                password = "encoded",
+                email = "another@example.com",
+            )
+        val assetAccount =
+            Account(
+                id = UUID.randomUUID(),
+                owner = anotherUser,
+                name = "Checking",
+                type = AccountType.ASSET,
+                currency = eur,
+            )
 
-        val ex = assertThrows(ForbiddenException::class.java) {
-            service.createForNewAssetAccount(owner, assetAccount, 1000, LocalDate.parse("2026-02-15"))
-        }
+        val ex =
+            assertThrows(ForbiddenException::class.java) {
+                service.createForNewAssetAccount(owner, assetAccount, 1000, LocalDate.parse("2026-02-15"))
+            }
         verifyNoInteractions(userRepository)
         assertEquals(0, manageLedger.calls.size)
     }
@@ -182,7 +191,10 @@ class OpeningBalanceServiceImplTest {
     private class CapturingManageLedger : ManageLedger {
         val calls = mutableListOf<LedgerCall>()
 
-        override fun createTransaction(dto: CreateTransactionDto, creator: User): TransactionDto {
+        override fun createTransaction(
+            dto: CreateTransactionDto,
+            creator: User,
+        ): TransactionDto {
             calls.add(LedgerCall(dto = dto, creator = creator))
             return TransactionDto(
                 id = UUID.randomUUID(),
@@ -215,17 +227,13 @@ class OpeningBalanceServiceImplTest {
             asOf: LocalDate,
             user: User,
             householdId: UUID?,
-        ): List<BalanceDto> {
-            throw UnsupportedOperationException("Not used in this test")
-        }
+        ): List<BalanceDto> = throw UnsupportedOperationException("Not used in this test")
 
         override fun getAccountBalance(
             accountId: UUID,
             asOf: LocalDate,
             user: User,
             householdId: UUID?,
-        ): BalanceDto {
-            throw UnsupportedOperationException("Not used in this test")
-        }
+        ): BalanceDto = throw UnsupportedOperationException("Not used in this test")
     }
 }

@@ -9,24 +9,19 @@ import org.springframework.web.server.ResponseStatusException
 
 @RestControllerAdvice
 class CustomExceptionHandler {
-
     @ExceptionHandler(IllegalArgumentException::class)
-    fun handleIllegalArgumentException(ex: IllegalArgumentException): Nothing {
+    fun handleIllegalArgumentException(ex: IllegalArgumentException): Nothing =
         throw ResponseStatusException(HttpStatus.BAD_REQUEST, ex.message, ex)
-    }
 
     @ExceptionHandler(AccessDeniedException::class)
-    fun handleAccessDeniedException(ex: AccessDeniedException): Nothing {
+    fun handleAccessDeniedException(ex: AccessDeniedException): Nothing =
         throw ResponseStatusException(HttpStatus.FORBIDDEN, ex.message, ex)
-    }
 
     @ExceptionHandler(NoSuchElementException::class)
-    fun handleNoSuchElementException(ex: NoSuchElementException): Nothing {
+    fun handleNoSuchElementException(ex: NoSuchElementException): Nothing =
         throw ResponseStatusException(HttpStatus.NOT_FOUND, ex.message, ex)
-    }
 
     @ExceptionHandler(AuthenticationException::class)
-    fun handleAuthenticationException(ex: AuthenticationException): Nothing {
+    fun handleAuthenticationException(ex: AuthenticationException): Nothing =
         throw ResponseStatusException(HttpStatus.UNAUTHORIZED, ex.message, ex)
-    }
 }

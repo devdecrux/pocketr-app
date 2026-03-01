@@ -7,8 +7,10 @@ import java.util.UUID
 
 @Repository
 interface CategoryTagRepository : JpaRepository<CategoryTag, UUID> {
-
     fun findByOwnerUserId(userId: Long): List<CategoryTag>
 
-    fun existsByOwnerUserIdAndNameIgnoreCase(userId: Long, name: String): Boolean
+    fun existsByOwnerUserIdAndNameIgnoreCase(
+        userId: Long,
+        name: String,
+    ): Boolean
 }

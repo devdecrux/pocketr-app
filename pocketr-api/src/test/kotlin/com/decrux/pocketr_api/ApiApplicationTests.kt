@@ -9,9 +9,7 @@ import org.springframework.test.context.ActiveProfiles
 @ActiveProfiles("test")
 @Disabled("Temporarily disabled until a PostgreSQL test database is provisioned in CI/local test environment")
 class ApiApplicationTests {
-
-	@Test
-	fun contextLoads() {
-	}
-
+    @Test
+    fun contextLoads() {
+    }
 }

@@ -29,9 +29,11 @@ class ManageLedgerImpl(
     private val transactionValidator: LedgerTransactionValidator,
     private val transactionPolicy: LedgerTransactionPolicy,
 ) : ManageLedger {
-
     @Transactional
-    override fun createTransaction(dto: CreateTransactionDto, creator: User): TransactionDto {
+    override fun createTransaction(
+        dto: CreateTransactionDto,
+        creator: User,
+    ): TransactionDto {
         val userId = requireNotNull(creator.userId) { "User ID must not be null" }
         val isHouseholdMode = dto.mode?.uppercase() == "HOUSEHOLD"
 
@@ -39,8 +41,10 @@ class ManageLedgerImpl(
         transactionValidator.validateSplits(dto.splits)
 
         // 5. Validate currency exists
-        val currency = currencyRepository.findById(dto.currency)
-            .orElseThrow { BadRequestException("Invalid currency: ${dto.currency}") }
+        val currency =
+            currencyRepository
+                .findById(dto.currency)
+                .orElseThrow { BadRequestException("Invalid currency: ${dto.currency}") }
 
         // 6. Load and validate all accounts
         val accountIds = dto.splits.map { it.accountId }.distinct()
@@ -60,43 +64,46 @@ class ManageLedgerImpl(
 
         // 9. Validate category tags
         val categoryTagIds = dto.splits.mapNotNull { it.categoryTagId }.distinct()
-        val categoryTagMap: Map<UUID, CategoryTag> = if (categoryTagIds.isNotEmpty()) {
-            val tags = categoryTagRepository.findAllById(categoryTagIds)
-            if (tags.size != categoryTagIds.size) {
-                val foundIds = tags.map { it.id }.toSet()
-                val missingIds = categoryTagIds.filter { it !in foundIds }
-                throw BadRequestException("Category tags not found: $missingIds")
-            }
-            tags.forEach { tag ->
-                if (tag.owner?.userId != userId) {
-                    throw ForbiddenException(
-                        "Category tag '${tag.name}' is not owned by current user",
-                    )
+        val categoryTagMap: Map<UUID, CategoryTag> =
+            if (categoryTagIds.isNotEmpty()) {
+                val tags = categoryTagRepository.findAllById(categoryTagIds)
+                if (tags.size != categoryTagIds.size) {
+                    val foundIds = tags.map { it.id }.toSet()
+                    val missingIds = categoryTagIds.filter { it !in foundIds }
+                    throw BadRequestException("Category tags not found: $missingIds")
                 }
+                tags.forEach { tag ->
+                    if (tag.owner?.userId != userId) {
+                        throw ForbiddenException(
+                            "Category tag '${tag.name}' is not owned by current user",
+                        )
+                    }
+                }
+                tags.associateBy { requireNotNull(it.id) }
+            } else {
+                emptyMap()
             }
-            tags.associateBy { requireNotNull(it.id) }
-        } else {
-            emptyMap()
-        }
 
         // 10. Persist transaction
-        val txn = LedgerTxn(
-            createdBy = creator,
-            householdId = if (isHouseholdMode) dto.householdId else null,
-            txnDate = dto.txnDate,
-            description = dto.description.trim(),
-            currency = currency,
-        )
-
-        val splits = dto.splits.map { splitDto ->
-            LedgerSplit(
-                transaction = txn,
-                account = accountMap.getValue(splitDto.accountId),
-                side = SplitSide.valueOf(splitDto.side),
-                amountMinor = splitDto.amountMinor,
-                categoryTag = splitDto.categoryTagId?.let { categoryTagMap[it] },
+        val txn =
+            LedgerTxn(
+                createdBy = creator,
+                householdId = if (isHouseholdMode) dto.householdId else null,
+                txnDate = dto.txnDate,
+                description = dto.description.trim(),
+                currency = currency,
             )
-        }
+
+        val splits =
+            dto.splits.map { splitDto ->
+                LedgerSplit(
+                    transaction = txn,
+                    account = accountMap.getValue(splitDto.accountId),
+                    side = SplitSide.valueOf(splitDto.side),
+                    amountMinor = splitDto.amountMinor,
+                    categoryTag = splitDto.categoryTagId?.let { categoryTagMap[it] },
+                )
+            }
         txn.splits = splits.toMutableList()
 
         val savedTxn = ledgerTxnRepository.save(txn)
@@ -118,31 +125,34 @@ class ManageLedgerImpl(
         val userId = requireNotNull(user.userId) { "User ID must not be null" }
         val isHouseholdMode = mode?.uppercase() == "HOUSEHOLD"
 
-        var spec: Specification<LedgerTxn> = if (isHouseholdMode) {
-            val hhId = householdId
-                ?: throw BadRequestException("householdId is required for household mode")
-            if (!manageHousehold.isActiveMember(hhId, userId)) {
-                throw ForbiddenException("Not an active member of this household")
+        var spec: Specification<LedgerTxn> =
+            if (isHouseholdMode) {
+                val hhId =
+                    householdId
+                        ?: throw BadRequestException("householdId is required for household mode")
+                if (!manageHousehold.isActiveMember(hhId, userId)) {
+                    throw ForbiddenException("Not an active member of this household")
+                }
+                val sharedAccountIds = manageHousehold.getSharedAccountIds(hhId)
+                if (sharedAccountIds.isEmpty()) {
+                    return PagedTransactionsDto(content = emptyList(), page = page, size = size, totalElements = 0, totalPages = 0)
+                }
+                LedgerTxnSpecs.hasAnySharedAccount(sharedAccountIds)
+            } else {
+                LedgerTxnSpecs.forUser(userId)
             }
-            val sharedAccountIds = manageHousehold.getSharedAccountIds(hhId)
-            if (sharedAccountIds.isEmpty()) {
-                return PagedTransactionsDto(content = emptyList(), page = page, size = size, totalElements = 0, totalPages = 0)
-            }
-            LedgerTxnSpecs.hasAnySharedAccount(sharedAccountIds)
-        } else {
-            LedgerTxnSpecs.forUser(userId)
-        }
 
         dateFrom?.let { spec = spec.and(LedgerTxnSpecs.dateFrom(it)) }
         dateTo?.let { spec = spec.and(LedgerTxnSpecs.dateTo(it)) }
         accountId?.let { spec = spec.and(LedgerTxnSpecs.hasAccount(it)) }
         categoryId?.let { spec = spec.and(LedgerTxnSpecs.hasCategory(it)) }
 
-        val pageable = PageRequest.of(
-            page,
-            size,
-            Sort.by(Sort.Direction.DESC, "txnDate").and(Sort.by(Sort.Direction.DESC, "createdAt")),
-        )
+        val pageable =
+            PageRequest.of(
+                page,
+                size,
+                Sort.by(Sort.Direction.DESC, "txnDate").and(Sort.by(Sort.Direction.DESC, "createdAt")),
+            )
         val pageResult = ledgerTxnRepository.findAll(spec, pageable)
 
         return PagedTransactionsDto(
@@ -184,12 +194,14 @@ class ManageLedgerImpl(
             throw ForbiddenException("Not the owner of this account")
         }
 
-        val rawBalancesByAccountId = ledgerSplitRepository.computeRawBalancesByAccountIds(
-            uniqueAccountIds,
-            asOf,
-            SplitSide.DEBIT,
-            SplitSide.CREDIT,
-        ).associate { it.accountId to it.rawBalance }
+        val rawBalancesByAccountId =
+            ledgerSplitRepository
+                .computeRawBalancesByAccountIds(
+                    uniqueAccountIds,
+                    asOf,
+                    SplitSide.DEBIT,
+                    SplitSide.CREDIT,
+                ).associate { it.accountId to it.rawBalance }
 
         val accountById = accounts.associateBy { requireNotNull(it.id) }
         return uniqueAccountIds.map { accountId ->
@@ -209,11 +221,18 @@ class ManageLedgerImpl(
     }
 
     @Transactional(readOnly = true)
-    override fun getAccountBalance(accountId: UUID, asOf: LocalDate, user: User, householdId: UUID?): BalanceDto {
+    override fun getAccountBalance(
+        accountId: UUID,
+        asOf: LocalDate,
+        user: User,
+        householdId: UUID?,
+    ): BalanceDto {
         val userId = requireNotNull(user.userId) { "User ID must not be null" }
 
-        val account = accountRepository.findById(accountId)
-            .orElseThrow { NotFoundException("Account not found") }
+        val account =
+            accountRepository
+                .findById(accountId)
+                .orElseThrow { NotFoundException("Account not found") }
 
         // In household mode, allow viewing shared accounts; otherwise require ownership
         if (householdId != null) {
@@ -228,11 +247,12 @@ class ManageLedgerImpl(
         }
 
         val isDebitNormal = account.type in setOf(AccountType.ASSET, AccountType.EXPENSE)
-        val balanceMinor = if (isDebitNormal) {
-            ledgerSplitRepository.computeBalance(accountId, asOf, SplitSide.DEBIT, SplitSide.CREDIT)
-        } else {
-            ledgerSplitRepository.computeBalance(accountId, asOf, SplitSide.CREDIT, SplitSide.DEBIT)
-        }
+        val balanceMinor =
+            if (isDebitNormal) {
+                ledgerSplitRepository.computeBalance(accountId, asOf, SplitSide.DEBIT, SplitSide.CREDIT)
+            } else {
+                ledgerSplitRepository.computeBalance(accountId, asOf, SplitSide.CREDIT, SplitSide.DEBIT)
+            }
 
         return BalanceDto(
             accountId = requireNotNull(account.id),
@@ -257,14 +277,15 @@ class ManageLedgerImpl(
                 description = description,
                 householdId = householdId,
                 txnKind = deriveTxnKind(splits),
-                createdBy = createdBy?.let {
-                    TxnCreatorDto(
-                        firstName = it.firstName,
-                        lastName = it.lastName,
-                        email = it.email,
-                        avatar = avatarService.resolveAvatarDataUrl(it.avatarPath),
-                    )
-                },
+                createdBy =
+                    createdBy?.let {
+                        TxnCreatorDto(
+                            firstName = it.firstName,
+                            lastName = it.lastName,
+                            email = it.email,
+                            avatar = avatarService.resolveAvatarDataUrl(it.avatarPath),
+                        )
+                    },
                 splits = splitDtos,
                 createdAt = createdAt,
                 updatedAt = updatedAt,

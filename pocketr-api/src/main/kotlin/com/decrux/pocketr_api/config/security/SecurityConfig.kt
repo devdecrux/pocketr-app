@@ -22,52 +22,59 @@ class SecurityConfig(
     @Value("\${app.security.csrf-cookie-path:}")
     private val csrfCookiePath: String,
 ) {
-
     @Bean
     fun securityFilterChain(http: HttpSecurity): SecurityFilterChain {
-        val csrfTokenRepository = CookieCsrfTokenRepository.withHttpOnlyFalse().apply {
-            if (csrfCookiePath.isNotBlank()) {
-                setCookiePath(csrfCookiePath)
+        val csrfTokenRepository =
+            CookieCsrfTokenRepository.withHttpOnlyFalse().apply {
+                if (csrfCookiePath.isNotBlank()) {
+                    setCookiePath(csrfCookiePath)
+                }
             }
-        }
 
         return http
             .csrf { csrf ->
-                csrf.csrfTokenRepository(csrfTokenRepository)
+                csrf
+                    .csrfTokenRepository(csrfTokenRepository)
                     .csrfTokenRequestHandler(spaCsrfTokenRequestHandler)
-            }
-            .sessionManagement { session ->
+            }.sessionManagement { session ->
                 session.maximumSessions(1)
-            }
-            .formLogin { form ->
-                form.loginPage(SecurityConstants.FRONTEND_LOGIN_URL.value).permitAll()
-                    .loginProcessingUrl(SecurityConstants.BACKEND_LOGIN_PROCESSING_URL.value).permitAll()
+            }.formLogin { form ->
+                form
+                    .loginPage(SecurityConstants.FRONTEND_LOGIN_URL.value)
+                    .permitAll()
+                    .loginProcessingUrl(SecurityConstants.BACKEND_LOGIN_PROCESSING_URL.value)
+                    .permitAll()
                     .usernameParameter("email")
                     .successHandler(customAuthenticationSuccessHandler)
                     .failureHandler(customAuthenticationFailureHandler)
-            }
-            .authorizeHttpRequests { authorizeRequests ->
+            }.authorizeHttpRequests { authorizeRequests ->
                 authorizeRequests
-                    .requestMatchers(SecurityConstants.FRONTEND_STATIC_ASSETS.value).permitAll()
-                    .requestMatchers(SecurityConstants.FRONTEND_FAVICON.value).permitAll()
-                    .requestMatchers(SecurityConstants.FRONTEND_LANDING_PAGE.value).permitAll()
-                    .requestMatchers(SecurityConstants.FRONTEND_LOGIN_URL.value).permitAll()
-                    .requestMatchers(SecurityConstants.FRONTEND_REGISTER_URL.value).permitAll()
-                    .requestMatchers(SecurityConstants.BACKEND_REGISTER_ENDPOINT.value).permitAll()
-                    .requestMatchers(SecurityConstants.GET_CSRF_TOKEN_ENDPOINT.value).permitAll()
-                    .anyRequest().authenticated()
-            }
-            .exceptionHandling { exception ->
+                    .requestMatchers(SecurityConstants.FRONTEND_STATIC_ASSETS.value)
+                    .permitAll()
+                    .requestMatchers(SecurityConstants.FRONTEND_FAVICON.value)
+                    .permitAll()
+                    .requestMatchers(SecurityConstants.FRONTEND_LANDING_PAGE.value)
+                    .permitAll()
+                    .requestMatchers(SecurityConstants.FRONTEND_LOGIN_URL.value)
+                    .permitAll()
+                    .requestMatchers(SecurityConstants.FRONTEND_REGISTER_URL.value)
+                    .permitAll()
+                    .requestMatchers(SecurityConstants.BACKEND_REGISTER_ENDPOINT.value)
+                    .permitAll()
+                    .requestMatchers(SecurityConstants.GET_CSRF_TOKEN_ENDPOINT.value)
+                    .permitAll()
+                    .anyRequest()
+                    .authenticated()
+            }.exceptionHandling { exception ->
                 exception.authenticationEntryPoint(customAuthenticationEntryPoint)
-            }
-            .userDetailsService(customUserDetailsService)
+            }.userDetailsService(customUserDetailsService)
             .logout { logout ->
-                logout.logoutUrl(SecurityConstants.BACKEND_LOGOUT_PROCESSING_URL.value)
+                logout
+                    .logoutUrl(SecurityConstants.BACKEND_LOGOUT_PROCESSING_URL.value)
                     .clearAuthentication(true)
                     .invalidateHttpSession(true)
                     .logoutSuccessHandler(customLogoutSuccessHandler)
-            }
-            .build()
+            }.build()
     }
 
     @Bean

@@ -15,31 +15,24 @@ import java.util.UUID
 class AccountController(
     private val manageAccount: ManageAccount,
 ) {
-
     @GetMapping
     fun listAccounts(
         @AuthenticationPrincipal user: User,
         @RequestParam(defaultValue = "INDIVIDUAL") mode: String,
         @RequestParam(required = false) householdId: UUID?,
-    ): List<AccountDto> {
-        return manageAccount.listAccounts(user, mode, householdId)
-    }
+    ): List<AccountDto> = manageAccount.listAccounts(user, mode, householdId)
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     fun createAccount(
         @RequestBody dto: CreateAccountDto,
         @AuthenticationPrincipal user: User,
-    ): AccountDto {
-        return manageAccount.createAccount(dto, user)
-    }
+    ): AccountDto = manageAccount.createAccount(dto, user)
 
     @PatchMapping("/{id}")
     fun updateAccount(
         @PathVariable id: UUID,
         @RequestBody dto: UpdateAccountDto,
         @AuthenticationPrincipal user: User,
-    ): AccountDto {
-        return manageAccount.updateAccount(id, dto, user)
-    }
+    ): AccountDto = manageAccount.updateAccount(id, dto, user)
 }

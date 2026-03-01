@@ -12,15 +12,13 @@ import org.springframework.web.bind.annotation.RestController
 class CurrencyController(
     private val currencyRepository: CurrencyRepository,
 ) {
-
     @GetMapping
-    fun listCurrencies(): List<CurrencyDto> {
-        return currencyRepository.findAll().map { it.toDto() }
-    }
+    fun listCurrencies(): List<CurrencyDto> = currencyRepository.findAll().map { it.toDto() }
 
-    private fun Currency.toDto() = CurrencyDto(
-        code = code,
-        minorUnit = minorUnit,
-        name = name,
-    )
+    private fun Currency.toDto() =
+        CurrencyDto(
+            code = code,
+            minorUnit = minorUnit,
+            name = name,
+        )
 }

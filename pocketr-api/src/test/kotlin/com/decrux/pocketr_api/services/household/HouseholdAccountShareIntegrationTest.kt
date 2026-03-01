@@ -33,7 +33,6 @@ import java.util.UUID
  */
 @DisplayName("ManageHouseholdImpl")
 class HouseholdAccountShareIntegrationTest {
-
     private lateinit var householdRepository: HouseholdRepository
     private lateinit var memberRepository: HouseholdMemberRepository
     private lateinit var shareRepository: HouseholdAccountShareRepository
@@ -43,69 +42,52 @@ class HouseholdAccountShareIntegrationTest {
 
     private val eur = Currency(code = "EUR", minorUnit = 2, name = "Euro")
 
-    private val userA = User(
-        userId = 1L,
-        password = "encoded",
-        email = "alice@example.com",
-    )
+    private val userA =
+        User(
+            userId = 1L,
+            password = "encoded",
+            email = "alice@example.com",
+        )
 
-    private val userB = User(
-        userId = 2L,
-        password = "encoded",
-        email = "bob@example.com",
-    )
+    private val userB =
+        User(
+            userId = 2L,
+            password = "encoded",
+            email = "bob@example.com",
+        )
 
-    private val userC = User(
-        userId = 3L,
-        password = "encoded",
-        email = "carol@example.com",
-    )
+    private val userC =
+        User(
+            userId = 3L,
+            password = "encoded",
+            email = "carol@example.com",
+        )
 
     private val householdId = UUID.randomUUID()
-    private val household = Household(
-        id = householdId,
-        name = "Test Household",
-        createdBy = userA,
-        createdAt = Instant.now(),
-    )
+    private val household =
+        Household(
+            id = householdId,
+            name = "Test Household",
+            createdBy = userA,
+            createdAt = Instant.now(),
+        )
 
     private val checkingId = UUID.randomUUID()
-    private val checkingAccount = Account(
-        id = checkingId,
-        owner = userA,
-        name = "Checking",
-        type = AccountType.ASSET,
-        currency = eur,
-    )
+    private val checkingAccount =
+        Account(
+            id = checkingId,
+            owner = userA,
+            name = "Checking",
+            type = AccountType.ASSET,
+            currency = eur,
+        )
 
     private val savingsId = UUID.randomUUID()
-    private val savingsAccount = Account(
-        id = savingsId,
-        owner = userB,
-        name = "Savings",
-        type = AccountType.ASSET,
-        currency = eur,
-    )
 
-    private val secretSavingsId = UUID.randomUUID()
-    private val secretSavingsAccount = Account(
-        id = secretSavingsId,
-        owner = userA,
-        name = "Secret Savings",
-        type = AccountType.ASSET,
-        currency = eur,
-    )
-
-    private val groceriesId = UUID.randomUUID()
-    private val groceriesAccount = Account(
-        id = groceriesId,
-        owner = userB,
-        name = "Groceries",
-        type = AccountType.EXPENSE,
-        currency = eur,
-    )
-
-    private fun activeMember(user: User, role: HouseholdRole) = HouseholdMember(
+    private fun activeMember(
+        user: User,
+        role: HouseholdRole,
+    ) = HouseholdMember(
         household = household,
         user = user,
         role = role,
@@ -113,14 +95,15 @@ class HouseholdAccountShareIntegrationTest {
         joinedAt = Instant.now(),
     )
 
-    private fun invitedMember(user: User) = HouseholdMember(
-        household = household,
-        user = user,
-        role = HouseholdRole.MEMBER,
-        status = MemberStatus.INVITED,
-        invitedBy = userA,
-        invitedAt = Instant.now(),
-    )
+    private fun invitedMember(user: User) =
+        HouseholdMember(
+            household = household,
+            user = user,
+            role = HouseholdRole.MEMBER,
+            status = MemberStatus.INVITED,
+            invitedBy = userA,
+            invitedAt = Instant.now(),
+        )
 
     @BeforeEach
     fun setUp() {
@@ -130,14 +113,15 @@ class HouseholdAccountShareIntegrationTest {
         accountRepository = mock(AccountRepository::class.java)
         userRepository = mock(UserRepository::class.java)
 
-        service = ManageHouseholdImpl(
-            householdRepository,
-            memberRepository,
-            shareRepository,
-            accountRepository,
-            userRepository,
-            OwnershipGuard(),
-        )
+        service =
+            ManageHouseholdImpl(
+                householdRepository,
+                memberRepository,
+                shareRepository,
+                accountRepository,
+                userRepository,
+                OwnershipGuard(),
+            )
 
         `when`(memberRepository.findByUserUserIdAndStatus(1L, MemberStatus.INVITED)).thenReturn(emptyList())
         `when`(memberRepository.findByUserUserIdAndStatus(2L, MemberStatus.INVITED)).thenReturn(emptyList())
@@ -147,7 +131,6 @@ class HouseholdAccountShareIntegrationTest {
     @Nested
     @DisplayName("Household creation")
     inner class HouseholdCreation {
-
         @Test
         @DisplayName("creates household with creator as OWNER and ACTIVE")
         fun createsHouseholdWithOwner() {
@@ -185,9 +168,10 @@ class HouseholdAccountShareIntegrationTest {
         fun cannotCreateWhenAlreadyActiveElsewhere() {
             `when`(memberRepository.existsByUserUserIdAndStatus(1L, MemberStatus.ACTIVE)).thenReturn(true)
 
-            val ex = assertThrows(ResponseStatusException::class.java) {
-                service.createHousehold(CreateHouseholdDto(name = "Family"), userA)
-            }
+            val ex =
+                assertThrows(ResponseStatusException::class.java) {
+                    service.createHousehold(CreateHouseholdDto(name = "Family"), userA)
+                }
 
             assertEquals(409, ex.statusCode.value())
             assertTrue(ex.reason!!.contains("already an active member"))
@@ -197,16 +181,16 @@ class HouseholdAccountShareIntegrationTest {
     @Nested
     @DisplayName("Account sharing visibility")
     inner class AccountSharingVisibility {
-
         @Test
         @DisplayName("shared accounts appear in household account list for all members")
         fun sharedAccountAppearsForAllMembers() {
             stubActiveMember(userB, HouseholdRole.MEMBER)
-            val share = HouseholdAccountShare(
-                household = household,
-                account = checkingAccount,
-                sharedBy = userA,
-            )
+            val share =
+                HouseholdAccountShare(
+                    household = household,
+                    account = checkingAccount,
+                    sharedBy = userA,
+                )
             `when`(shareRepository.findByHouseholdIdWithAccountAndOwner(householdId)).thenReturn(listOf(share))
 
             val accounts = service.listHouseholdAccounts(householdId, userB)
@@ -223,11 +207,12 @@ class HouseholdAccountShareIntegrationTest {
         @DisplayName("unshared account disappears from household account list")
         fun unsharingRemovesAccount() {
             stubActiveMember(userA, HouseholdRole.OWNER)
-            val share = HouseholdAccountShare(
-                household = household,
-                account = checkingAccount,
-                sharedBy = userA,
-            )
+            val share =
+                HouseholdAccountShare(
+                    household = household,
+                    account = checkingAccount,
+                    sharedBy = userA,
+                )
             `when`(shareRepository.findByHouseholdIdAndAccountId(householdId, checkingId)).thenReturn(share)
 
             service.unshareAccount(householdId, checkingId, userA)
@@ -239,11 +224,12 @@ class HouseholdAccountShareIntegrationTest {
         @DisplayName("non-shared accounts remain invisible in household mode")
         fun nonSharedAccountsInvisible() {
             stubActiveMember(userB, HouseholdRole.MEMBER)
-            val share = HouseholdAccountShare(
-                household = household,
-                account = checkingAccount,
-                sharedBy = userA,
-            )
+            val share =
+                HouseholdAccountShare(
+                    household = household,
+                    account = checkingAccount,
+                    sharedBy = userA,
+                )
             `when`(shareRepository.findByHouseholdIdWithAccountAndOwner(householdId)).thenReturn(listOf(share))
 
             val accounts = service.listHouseholdAccounts(householdId, userB)
@@ -257,11 +243,12 @@ class HouseholdAccountShareIntegrationTest {
         @DisplayName("listSharedAccounts returns share metadata for active members")
         fun listSharedAccountsReturnsMetadata() {
             stubActiveMember(userB, HouseholdRole.MEMBER)
-            val share = HouseholdAccountShare(
-                household = household,
-                account = checkingAccount,
-                sharedBy = userA,
-            )
+            val share =
+                HouseholdAccountShare(
+                    household = household,
+                    account = checkingAccount,
+                    sharedBy = userA,
+                )
             `when`(shareRepository.findByHouseholdIdWithAccountAndOwner(householdId)).thenReturn(listOf(share))
 
             val shares = service.listSharedAccounts(householdId, userB)
@@ -276,7 +263,6 @@ class HouseholdAccountShareIntegrationTest {
     @Nested
     @DisplayName("Account sharing operations")
     inner class AccountSharingOperations {
-
         @Test
         @DisplayName("owner can share their account into a household")
         fun ownerCanShareAccount() {
@@ -300,9 +286,10 @@ class HouseholdAccountShareIntegrationTest {
             `when`(householdRepository.findById(householdId)).thenReturn(Optional.of(household))
             `when`(accountRepository.findById(checkingId)).thenReturn(Optional.of(checkingAccount))
 
-            val ex = assertThrows(ForbiddenException::class.java) {
-                service.shareAccount(householdId, ShareAccountDto(checkingId), userB)
-            }
+            val ex =
+                assertThrows(ForbiddenException::class.java) {
+                    service.shareAccount(householdId, ShareAccountDto(checkingId), userB)
+                }
             assertTrue(ex.message!!.contains("owner"))
         }
 
@@ -314,9 +301,10 @@ class HouseholdAccountShareIntegrationTest {
             `when`(accountRepository.findById(checkingId)).thenReturn(Optional.of(checkingAccount))
             `when`(shareRepository.existsByHouseholdIdAndAccountId(householdId, checkingId)).thenReturn(true)
 
-            val ex = assertThrows(ResponseStatusException::class.java) {
-                service.shareAccount(householdId, ShareAccountDto(checkingId), userA)
-            }
+            val ex =
+                assertThrows(ResponseStatusException::class.java) {
+                    service.shareAccount(householdId, ShareAccountDto(checkingId), userA)
+                }
 
             assertEquals(409, ex.statusCode.value())
         }
@@ -325,16 +313,18 @@ class HouseholdAccountShareIntegrationTest {
         @DisplayName("non-owner cannot unshare someone else's account")
         fun nonOwnerCannotUnshare() {
             stubActiveMember(userB, HouseholdRole.MEMBER)
-            val share = HouseholdAccountShare(
-                household = household,
-                account = checkingAccount,
-                sharedBy = userA,
-            )
+            val share =
+                HouseholdAccountShare(
+                    household = household,
+                    account = checkingAccount,
+                    sharedBy = userA,
+                )
             `when`(shareRepository.findByHouseholdIdAndAccountId(householdId, checkingId)).thenReturn(share)
 
-            val ex = assertThrows(ForbiddenException::class.java) {
-                service.unshareAccount(householdId, checkingId, userB)
-            }
+            val ex =
+                assertThrows(ForbiddenException::class.java) {
+                    service.unshareAccount(householdId, checkingId, userB)
+                }
         }
 
         @Test
@@ -343,9 +333,10 @@ class HouseholdAccountShareIntegrationTest {
             stubActiveMember(userA, HouseholdRole.OWNER)
             `when`(shareRepository.findByHouseholdIdAndAccountId(householdId, checkingId)).thenReturn(null)
 
-            val ex = assertThrows(ResponseStatusException::class.java) {
-                service.unshareAccount(householdId, checkingId, userA)
-            }
+            val ex =
+                assertThrows(ResponseStatusException::class.java) {
+                    service.unshareAccount(householdId, checkingId, userA)
+                }
 
             assertEquals(404, ex.statusCode.value())
         }
@@ -354,7 +345,6 @@ class HouseholdAccountShareIntegrationTest {
     @Nested
     @DisplayName("Membership role enforcement")
     inner class MembershipRoleEnforcement {
-
         @Test
         @DisplayName("OWNER can invite new members")
         fun ownerCanInviteMembers() {
@@ -389,9 +379,10 @@ class HouseholdAccountShareIntegrationTest {
         fun memberCannotInviteMembers() {
             stubActiveMember(userB, HouseholdRole.MEMBER)
 
-            val ex = assertThrows(ResponseStatusException::class.java) {
-                service.inviteMember(householdId, InviteMemberDto("carol@example.com"), userB)
-            }
+            val ex =
+                assertThrows(ResponseStatusException::class.java) {
+                    service.inviteMember(householdId, InviteMemberDto("carol@example.com"), userB)
+                }
 
             assertEquals(403, ex.statusCode.value())
             assertTrue(ex.reason!!.contains("OWNER or ADMIN"))
@@ -405,9 +396,10 @@ class HouseholdAccountShareIntegrationTest {
             `when`(memberRepository.findByHouseholdIdAndUserUserId(householdId, 3L)).thenReturn(null)
             `when`(memberRepository.existsByUserUserIdAndStatus(3L, MemberStatus.ACTIVE)).thenReturn(true)
 
-            val ex = assertThrows(ResponseStatusException::class.java) {
-                service.inviteMember(householdId, InviteMemberDto("carol@example.com"), userA)
-            }
+            val ex =
+                assertThrows(ResponseStatusException::class.java) {
+                    service.inviteMember(householdId, InviteMemberDto("carol@example.com"), userA)
+                }
 
             assertEquals(409, ex.statusCode.value())
             assertTrue(ex.reason!!.contains("active member"))
@@ -419,9 +411,10 @@ class HouseholdAccountShareIntegrationTest {
             val invited = invitedMember(userC)
             `when`(memberRepository.findByHouseholdIdAndUserUserId(householdId, 3L)).thenReturn(invited)
 
-            val ex = assertThrows(ResponseStatusException::class.java) {
-                service.listHouseholdAccounts(householdId, userC)
-            }
+            val ex =
+                assertThrows(ResponseStatusException::class.java) {
+                    service.listHouseholdAccounts(householdId, userC)
+                }
 
             assertEquals(403, ex.statusCode.value())
             assertTrue(ex.reason!!.contains("not active"))
@@ -432,9 +425,10 @@ class HouseholdAccountShareIntegrationTest {
         fun nonMemberCannotAccess() {
             `when`(memberRepository.findByHouseholdIdAndUserUserId(householdId, 3L)).thenReturn(null)
 
-            val ex = assertThrows(ResponseStatusException::class.java) {
-                service.listHouseholdAccounts(householdId, userC)
-            }
+            val ex =
+                assertThrows(ResponseStatusException::class.java) {
+                    service.listHouseholdAccounts(householdId, userC)
+                }
 
             assertEquals(403, ex.statusCode.value())
         }
@@ -443,7 +437,6 @@ class HouseholdAccountShareIntegrationTest {
     @Nested
     @DisplayName("Invite acceptance")
     inner class InviteAcceptance {
-
         @Test
         @DisplayName("accepting invite changes status from INVITED to ACTIVE")
         fun acceptInviteChangesStatusToActive() {
@@ -463,9 +456,10 @@ class HouseholdAccountShareIntegrationTest {
             val active = activeMember(userB, HouseholdRole.MEMBER)
             `when`(memberRepository.findByHouseholdIdAndUserUserId(householdId, 2L)).thenReturn(active)
 
-            val ex = assertThrows(ResponseStatusException::class.java) {
-                service.acceptInvite(householdId, userB)
-            }
+            val ex =
+                assertThrows(ResponseStatusException::class.java) {
+                    service.acceptInvite(householdId, userB)
+                }
 
             assertEquals(400, ex.statusCode.value())
         }
@@ -475,9 +469,10 @@ class HouseholdAccountShareIntegrationTest {
         fun acceptingNonExistentInviteThrows() {
             `when`(memberRepository.findByHouseholdIdAndUserUserId(householdId, 2L)).thenReturn(null)
 
-            val ex = assertThrows(ResponseStatusException::class.java) {
-                service.acceptInvite(householdId, userB)
-            }
+            val ex =
+                assertThrows(ResponseStatusException::class.java) {
+                    service.acceptInvite(householdId, userB)
+                }
 
             assertEquals(404, ex.statusCode.value())
         }
@@ -495,9 +490,10 @@ class HouseholdAccountShareIntegrationTest {
                 ),
             ).thenReturn(true)
 
-            val ex = assertThrows(ResponseStatusException::class.java) {
-                service.acceptInvite(householdId, userB)
-            }
+            val ex =
+                assertThrows(ResponseStatusException::class.java) {
+                    service.acceptInvite(householdId, userB)
+                }
 
             assertEquals(409, ex.statusCode.value())
             assertTrue(ex.reason!!.contains("Leave your current household"))
@@ -507,7 +503,6 @@ class HouseholdAccountShareIntegrationTest {
     @Nested
     @DisplayName("Invite edge cases")
     inner class InviteEdgeCases {
-
         @Test
         @DisplayName("inviting already-existing member throws CONFLICT")
         fun invitingExistingMemberThrowsConflict() {
@@ -516,9 +511,10 @@ class HouseholdAccountShareIntegrationTest {
             `when`(memberRepository.findByHouseholdIdAndUserUserId(householdId, 2L))
                 .thenReturn(activeMember(userB, HouseholdRole.MEMBER))
 
-            val ex = assertThrows(ResponseStatusException::class.java) {
-                service.inviteMember(householdId, InviteMemberDto("bob@example.com"), userA)
-            }
+            val ex =
+                assertThrows(ResponseStatusException::class.java) {
+                    service.inviteMember(householdId, InviteMemberDto("bob@example.com"), userA)
+                }
 
             assertEquals(409, ex.statusCode.value())
         }
@@ -529,9 +525,10 @@ class HouseholdAccountShareIntegrationTest {
             stubActiveMember(userA, HouseholdRole.OWNER)
             `when`(userRepository.findByEmail("nobody@example.com")).thenReturn(Optional.empty())
 
-            val ex = assertThrows(ResponseStatusException::class.java) {
-                service.inviteMember(householdId, InviteMemberDto("nobody@example.com"), userA)
-            }
+            val ex =
+                assertThrows(ResponseStatusException::class.java) {
+                    service.inviteMember(householdId, InviteMemberDto("nobody@example.com"), userA)
+                }
 
             assertEquals(400, ex.statusCode.value())
         }
@@ -553,7 +550,6 @@ class HouseholdAccountShareIntegrationTest {
     @Nested
     @DisplayName("Household listing and detail")
     inner class HouseholdListingAndDetail {
-
         @Test
         @DisplayName("listHouseholds returns memberships with status")
         fun listHouseholdsReturnsMembershipsWithStatus() {
@@ -573,9 +569,10 @@ class HouseholdAccountShareIntegrationTest {
         fun getHouseholdForbiddenForNonMember() {
             `when`(memberRepository.findByHouseholdIdAndUserUserId(householdId, 3L)).thenReturn(null)
 
-            val ex = assertThrows(ResponseStatusException::class.java) {
-                service.getHousehold(householdId, userC)
-            }
+            val ex =
+                assertThrows(ResponseStatusException::class.java) {
+                    service.getHousehold(householdId, userC)
+                }
 
             assertEquals(403, ex.statusCode.value())
         }
@@ -596,7 +593,6 @@ class HouseholdAccountShareIntegrationTest {
     @Nested
     @DisplayName("isActiveMember and isAccountShared helpers")
     inner class HelperMethods {
-
         @Test
         @DisplayName("isActiveMember returns true for ACTIVE member")
         fun isActiveMemberReturnsTrue() {
@@ -657,7 +653,6 @@ class HouseholdAccountShareIntegrationTest {
     @Nested
     @DisplayName("Leave household")
     inner class LeaveHousehold {
-
         @Test
         @DisplayName("active member can leave household")
         fun activeMemberCanLeave() {
@@ -705,7 +700,10 @@ class HouseholdAccountShareIntegrationTest {
     }
 
     /** Stubs memberRepository to return an ACTIVE member for the given user and role. */
-    private fun stubActiveMember(user: User, role: HouseholdRole) {
+    private fun stubActiveMember(
+        user: User,
+        role: HouseholdRole,
+    ) {
         val member = activeMember(user, role)
         val userId = requireNotNull(user.userId)
         `when`(memberRepository.findByHouseholdIdAndUserUserId(householdId, userId)).thenReturn(member)

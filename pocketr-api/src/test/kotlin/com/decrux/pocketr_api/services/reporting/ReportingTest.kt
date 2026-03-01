@@ -35,7 +35,6 @@ import java.util.UUID
  */
 @DisplayName("GenerateReportImpl — Reporting")
 class ReportingTest {
-
     private lateinit var ledgerSplitRepository: LedgerSplitRepository
     private lateinit var accountRepository: AccountRepository
     private lateinit var manageHousehold: ManageHousehold
@@ -73,7 +72,6 @@ class ReportingTest {
     @Nested
     @DisplayName("Account balance summaries")
     inner class BalanceComputation {
-
         @Test
         @DisplayName("should compute correct balances for all account types")
         fun computeBalancesForAllAccountTypes() {
@@ -125,13 +123,11 @@ class ReportingTest {
             val result = service.getAllAccountBalances(userA, LocalDate.now())
             assertTrue(result.isEmpty())
         }
-
     }
 
     @Nested
     @DisplayName("Monthly expense summaries")
     inner class MonthlyExpenseSummaries {
-
         private val jan2026 = YearMonth.of(2026, 1)
         private val feb2026 = YearMonth.of(2026, 2)
         private val janStart = LocalDate.of(2026, 1, 1)
@@ -189,7 +185,9 @@ class ReportingTest {
         fun expenseTotalsHouseholdMode() {
             val householdId = UUID.randomUUID()
             `when`(manageHousehold.isActiveMember(householdId, 1L)).thenReturn(true)
-            `when`(ledgerSplitRepository.monthlyExpensesByHousehold(householdId, janStart, janEnd, SplitSide.DEBIT, SplitSide.CREDIT)).thenReturn(
+            `when`(
+                ledgerSplitRepository.monthlyExpensesByHousehold(householdId, janStart, janEnd, SplitSide.DEBIT, SplitSide.CREDIT),
+            ).thenReturn(
                 listOf(
                     MonthlyExpenseProjection(groceriesId, "Groceries", foodTagId, "Food", "EUR", 5000L),
                     MonthlyExpenseProjection(utilitiesId, "Utilities", electricityTagId, "Electricity", "EUR", 3000L),
@@ -206,9 +204,10 @@ class ReportingTest {
         @Test
         @DisplayName("household mode requires householdId")
         fun householdModeRequiresHouseholdId() {
-            val ex = assertThrows(BadRequestException::class.java) {
-                service.getMonthlyExpenses(userA, jan2026, "HOUSEHOLD", null)
-            }
+            val ex =
+                assertThrows(BadRequestException::class.java) {
+                    service.getMonthlyExpenses(userA, jan2026, "HOUSEHOLD", null)
+                }
             assertTrue(ex.message!!.contains("householdId is required"))
         }
 
@@ -218,9 +217,10 @@ class ReportingTest {
             val householdId = UUID.randomUUID()
             `when`(manageHousehold.isActiveMember(householdId, 1L)).thenReturn(false)
 
-            val ex = assertThrows(ForbiddenException::class.java) {
-                service.getMonthlyExpenses(userA, jan2026, "HOUSEHOLD", householdId)
-            }
+            val ex =
+                assertThrows(ForbiddenException::class.java) {
+                    service.getMonthlyExpenses(userA, jan2026, "HOUSEHOLD", householdId)
+                }
             assertTrue(ex.message!!.contains("Not an active member"))
         }
 
@@ -229,7 +229,9 @@ class ReportingTest {
         fun householdModeSucceedsForActiveMember() {
             val householdId = UUID.randomUUID()
             `when`(manageHousehold.isActiveMember(householdId, 1L)).thenReturn(true)
-            `when`(ledgerSplitRepository.monthlyExpensesByHousehold(householdId, janStart, janEnd, SplitSide.DEBIT, SplitSide.CREDIT)).thenReturn(
+            `when`(
+                ledgerSplitRepository.monthlyExpensesByHousehold(householdId, janStart, janEnd, SplitSide.DEBIT, SplitSide.CREDIT),
+            ).thenReturn(
                 listOf(MonthlyExpenseProjection(groceriesId, "Groceries", foodTagId, "Food", "EUR", 7000L)),
             )
 
@@ -242,9 +244,10 @@ class ReportingTest {
         @Test
         @DisplayName("invalid mode is rejected")
         fun invalidModeRejected() {
-            val ex = assertThrows(BadRequestException::class.java) {
-                service.getMonthlyExpenses(userA, jan2026, "INVALID", null)
-            }
+            val ex =
+                assertThrows(BadRequestException::class.java) {
+                    service.getMonthlyExpenses(userA, jan2026, "INVALID", null)
+                }
             assertTrue(ex.message!!.contains("Invalid mode"))
         }
 
@@ -264,10 +267,10 @@ class ReportingTest {
             val result = service.getMonthlyExpenses(userA, jan2026, "INDIVIDUAL", null)
 
             assertEquals(4, result.size)
-            assertEquals(15000L, result[0].netMinor)  // Groceries/Food
-            assertEquals(8000L, result[1].netMinor)   // Groceries/Beverages
-            assertEquals(4500L, result[2].netMinor)   // Utilities/Electricity
-            assertEquals(2000L, result[3].netMinor)   // Utilities/(null)
+            assertEquals(15000L, result[0].netMinor) // Groceries/Food
+            assertEquals(8000L, result[1].netMinor) // Groceries/Beverages
+            assertEquals(4500L, result[2].netMinor) // Utilities/Electricity
+            assertEquals(2000L, result[3].netMinor) // Utilities/(null)
             assertNull(result[3].categoryTagId)
             assertNull(result[3].categoryTagName)
         }
@@ -275,7 +278,9 @@ class ReportingTest {
         @Test
         @DisplayName("returns empty list when no expenses in period")
         fun emptyWhenNoExpenses() {
-            `when`(ledgerSplitRepository.monthlyExpensesByUser(1L, janStart, janEnd, SplitSide.DEBIT, SplitSide.CREDIT)).thenReturn(emptyList())
+            `when`(
+                ledgerSplitRepository.monthlyExpensesByUser(1L, janStart, janEnd, SplitSide.DEBIT, SplitSide.CREDIT),
+            ).thenReturn(emptyList())
 
             val result = service.getMonthlyExpenses(userA, jan2026, "INDIVIDUAL", null)
             assertTrue(result.isEmpty())
@@ -285,7 +290,6 @@ class ReportingTest {
     @Nested
     @DisplayName("Balance timeseries")
     inner class BalanceTimeseries {
-
         @Test
         @DisplayName("should build cumulative daily timeseries for ASSET account")
         fun cumulativeTimeseriesForAsset() {
@@ -296,18 +300,25 @@ class ReportingTest {
             // Opening balance (everything before Feb 1)
             `when`(
                 ledgerSplitRepository.computeBalance(
-                    checkingId, LocalDate.of(2026, 1, 31), SplitSide.DEBIT, SplitSide.CREDIT,
-                )
+                    checkingId,
+                    LocalDate.of(2026, 1, 31),
+                    SplitSide.DEBIT,
+                    SplitSide.CREDIT,
+                ),
             ).thenReturn(100000L)
             // Daily changes
             `when`(
                 ledgerSplitRepository.dailyNetByAccount(
-                    checkingId, dateFrom, dateTo, SplitSide.DEBIT, SplitSide.CREDIT,
-                )
+                    checkingId,
+                    dateFrom,
+                    dateTo,
+                    SplitSide.DEBIT,
+                    SplitSide.CREDIT,
+                ),
             ).thenReturn(
                 listOf(
-                    DailyNetProjection(LocalDate.of(2026, 2, 1), 200000L),  // salary
-                    DailyNetProjection(LocalDate.of(2026, 2, 3), -5000L),   // expense
+                    DailyNetProjection(LocalDate.of(2026, 2, 1), 200000L), // salary
+                    DailyNetProjection(LocalDate.of(2026, 2, 3), -5000L), // expense
                 ),
             )
 
@@ -332,9 +343,10 @@ class ReportingTest {
         fun rejectTimeseriesForNonOwnedAccount() {
             `when`(accountRepository.findById(checkingId)).thenReturn(Optional.of(checking))
 
-            val ex = assertThrows(ForbiddenException::class.java) {
-                service.getBalanceTimeseries(checkingId, LocalDate.now(), LocalDate.now(), userB)
-            }
+            val ex =
+                assertThrows(ForbiddenException::class.java) {
+                    service.getBalanceTimeseries(checkingId, LocalDate.now(), LocalDate.now(), userB)
+                }
         }
 
         @Test
@@ -343,9 +355,10 @@ class ReportingTest {
             val missingId = UUID.randomUUID()
             `when`(accountRepository.findById(missingId)).thenReturn(Optional.empty())
 
-            val ex = assertThrows(NotFoundException::class.java) {
-                service.getBalanceTimeseries(missingId, LocalDate.now(), LocalDate.now(), userA)
-            }
+            val ex =
+                assertThrows(NotFoundException::class.java) {
+                    service.getBalanceTimeseries(missingId, LocalDate.now(), LocalDate.now(), userA)
+                }
         }
 
         @Test
@@ -357,22 +370,29 @@ class ReportingTest {
             `when`(accountRepository.findById(mortgageId)).thenReturn(Optional.of(mortgage))
             `when`(
                 ledgerSplitRepository.computeBalance(
-                    mortgageId, LocalDate.of(2026, 1, 31), SplitSide.CREDIT, SplitSide.DEBIT,
-                )
+                    mortgageId,
+                    LocalDate.of(2026, 1, 31),
+                    SplitSide.CREDIT,
+                    SplitSide.DEBIT,
+                ),
             ).thenReturn(500000L)
             `when`(
                 ledgerSplitRepository.dailyNetByAccount(
-                    mortgageId, dateFrom, dateTo, SplitSide.CREDIT, SplitSide.DEBIT,
-                )
+                    mortgageId,
+                    dateFrom,
+                    dateTo,
+                    SplitSide.CREDIT,
+                    SplitSide.DEBIT,
+                ),
             ).thenReturn(
-                listOf(DailyNetProjection(LocalDate.of(2026, 2, 1), -50000L)),  // payment reduces liability
+                listOf(DailyNetProjection(LocalDate.of(2026, 2, 1), -50000L)), // payment reduces liability
             )
 
             val result = service.getBalanceTimeseries(mortgageId, dateFrom, dateTo, userA)
 
             assertEquals(2, result.points.size)
-            assertEquals(450000L, result.points[0].balanceMinor)  // 500000 - 50000
-            assertEquals(450000L, result.points[1].balanceMinor)  // no change on Feb 2
+            assertEquals(450000L, result.points[0].balanceMinor) // 500000 - 50000
+            assertEquals(450000L, result.points[1].balanceMinor) // no change on Feb 2
         }
 
         @Test
@@ -382,13 +402,20 @@ class ReportingTest {
             `when`(accountRepository.findById(checkingId)).thenReturn(Optional.of(checking))
             `when`(
                 ledgerSplitRepository.computeBalance(
-                    checkingId, date.minusDays(1), SplitSide.DEBIT, SplitSide.CREDIT,
-                )
+                    checkingId,
+                    date.minusDays(1),
+                    SplitSide.DEBIT,
+                    SplitSide.CREDIT,
+                ),
             ).thenReturn(100000L)
             `when`(
                 ledgerSplitRepository.dailyNetByAccount(
-                    checkingId, date, date, SplitSide.DEBIT, SplitSide.CREDIT,
-                )
+                    checkingId,
+                    date,
+                    date,
+                    SplitSide.DEBIT,
+                    SplitSide.CREDIT,
+                ),
             ).thenReturn(emptyList())
 
             val result = service.getBalanceTimeseries(checkingId, date, date, userA)

@@ -9,8 +9,10 @@ import java.time.LocalDate
 import java.util.UUID
 
 interface ManageLedger {
-
-    fun createTransaction(dto: CreateTransactionDto, creator: User): TransactionDto
+    fun createTransaction(
+        dto: CreateTransactionDto,
+        creator: User,
+    ): TransactionDto
 
     fun listTransactions(
         user: User,
@@ -31,5 +33,10 @@ interface ManageLedger {
         householdId: UUID?,
     ): List<BalanceDto>
 
-    fun getAccountBalance(accountId: UUID, asOf: LocalDate, user: User, householdId: UUID?): BalanceDto
+    fun getAccountBalance(
+        accountId: UUID,
+        asOf: LocalDate,
+        user: User,
+        householdId: UUID?,
+    ): BalanceDto
 }

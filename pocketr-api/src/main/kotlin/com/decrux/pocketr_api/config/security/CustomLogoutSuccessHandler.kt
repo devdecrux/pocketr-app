@@ -8,7 +8,6 @@ import org.springframework.stereotype.Component
 
 @Component
 class CustomLogoutSuccessHandler : LogoutSuccessHandler {
-
     override fun onLogoutSuccess(
         request: HttpServletRequest,
         response: HttpServletResponse,

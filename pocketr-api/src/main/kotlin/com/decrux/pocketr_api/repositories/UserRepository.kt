@@ -12,14 +12,17 @@ import java.util.Optional
 
 @Repository
 interface UserRepository : JpaRepository<User, Long> {
-
     @EntityGraph(attributePaths = ["roles"])
     @Query("select u from User u where u.email = :email")
-    fun findUserByEmail(@Param("email") email: String): User?
+    fun findUserByEmail(
+        @Param("email") email: String,
+    ): User?
 
     fun findByEmail(email: String): Optional<User>
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select u from User u where u.userId = :userId")
-    fun findByUserIdForUpdate(@Param("userId") userId: Long): Optional<User>
+    fun findByUserIdForUpdate(
+        @Param("userId") userId: Long,
+    ): Optional<User>
 }

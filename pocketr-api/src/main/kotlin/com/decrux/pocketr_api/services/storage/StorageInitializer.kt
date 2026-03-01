@@ -7,7 +7,6 @@ import java.nio.file.Path
 
 @Component
 class StorageInitializer {
-
     fun ensureWritableDirectory(storagePath: Path): Path {
         val normalizedPath = storagePath.toAbsolutePath().normalize()
         return try {

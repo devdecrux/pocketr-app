@@ -20,21 +20,22 @@ import java.util.UUID
 
 @DisplayName("ManageCategoryImpl")
 class ManageCategoryImplTest {
-
     private lateinit var categoryTagRepository: CategoryTagRepository
     private lateinit var service: ManageCategoryImpl
 
-    private val ownerUser = User(
-        userId = 1L,
-        password = "encoded",
-        email = "alice@example.com",
-    )
+    private val ownerUser =
+        User(
+            userId = 1L,
+            password = "encoded",
+            email = "alice@example.com",
+        )
 
-    private val otherUser = User(
-        userId = 2L,
-        password = "encoded",
-        email = "bob@example.com",
-    )
+    private val otherUser =
+        User(
+            userId = 2L,
+            password = "encoded",
+            email = "bob@example.com",
+        )
 
     @BeforeEach
     fun setUp() {
@@ -45,7 +46,6 @@ class ManageCategoryImplTest {
     @Nested
     @DisplayName("createCategory")
     inner class CreateCategory {
-
         @Test
         @DisplayName("should create category with unique name")
         fun createCategoryWithUniqueName() {
@@ -66,9 +66,10 @@ class ManageCategoryImplTest {
         fun rejectDuplicateNameForSameUser() {
             `when`(categoryTagRepository.existsByOwnerUserIdAndNameIgnoreCase(1L, "Groceries")).thenReturn(true)
 
-            val ex = assertThrows(ResponseStatusException::class.java) {
-                service.createCategory(CreateCategoryDto(name = "Groceries"), ownerUser)
-            }
+            val ex =
+                assertThrows(ResponseStatusException::class.java) {
+                    service.createCategory(CreateCategoryDto(name = "Groceries"), ownerUser)
+                }
             assertEquals(409, ex.statusCode.value())
             assertTrue(ex.reason!!.contains("already exists"))
         }
@@ -78,9 +79,10 @@ class ManageCategoryImplTest {
         fun rejectDuplicateNameCaseInsensitive() {
             `when`(categoryTagRepository.existsByOwnerUserIdAndNameIgnoreCase(1L, "groceries")).thenReturn(true)
 
-            val ex = assertThrows(ResponseStatusException::class.java) {
-                service.createCategory(CreateCategoryDto(name = "groceries"), ownerUser)
-            }
+            val ex =
+                assertThrows(ResponseStatusException::class.java) {
+                    service.createCategory(CreateCategoryDto(name = "groceries"), ownerUser)
+                }
             assertEquals(409, ex.statusCode.value())
             assertTrue(ex.reason!!.contains("already exists"))
         }
@@ -135,14 +137,14 @@ class ManageCategoryImplTest {
     @Nested
     @DisplayName("listCategories")
     inner class ListCategories {
-
         @Test
         @DisplayName("should return all categories for owner")
         fun returnAllCategoriesForOwner() {
-            val tags = listOf(
-                CategoryTag(id = UUID.randomUUID(), owner = ownerUser, name = "Groceries"),
-                CategoryTag(id = UUID.randomUUID(), owner = ownerUser, name = "Electricity"),
-            )
+            val tags =
+                listOf(
+                    CategoryTag(id = UUID.randomUUID(), owner = ownerUser, name = "Groceries"),
+                    CategoryTag(id = UUID.randomUUID(), owner = ownerUser, name = "Electricity"),
+                )
             `when`(categoryTagRepository.findByOwnerUserId(1L)).thenReturn(tags)
 
             val result = service.listCategories(ownerUser)
@@ -164,7 +166,6 @@ class ManageCategoryImplTest {
     @Nested
     @DisplayName("updateCategory")
     inner class UpdateCategory {
-
         private val categoryId = UUID.randomUUID()
         private lateinit var existingTag: CategoryTag
 
@@ -190,9 +191,10 @@ class ManageCategoryImplTest {
             `when`(categoryTagRepository.findById(categoryId)).thenReturn(Optional.of(existingTag))
             `when`(categoryTagRepository.existsByOwnerUserIdAndNameIgnoreCase(1L, "Electricity")).thenReturn(true)
 
-            val ex = assertThrows(ResponseStatusException::class.java) {
-                service.updateCategory(categoryId, UpdateCategoryDto(name = "Electricity"), ownerUser)
-            }
+            val ex =
+                assertThrows(ResponseStatusException::class.java) {
+                    service.updateCategory(categoryId, UpdateCategoryDto(name = "Electricity"), ownerUser)
+                }
             assertEquals(409, ex.statusCode.value())
         }
 
@@ -202,9 +204,10 @@ class ManageCategoryImplTest {
             `when`(categoryTagRepository.findById(categoryId)).thenReturn(Optional.of(existingTag))
             `when`(categoryTagRepository.existsByOwnerUserIdAndNameIgnoreCase(1L, "electricity")).thenReturn(true)
 
-            val ex = assertThrows(ResponseStatusException::class.java) {
-                service.updateCategory(categoryId, UpdateCategoryDto(name = "electricity"), ownerUser)
-            }
+            val ex =
+                assertThrows(ResponseStatusException::class.java) {
+                    service.updateCategory(categoryId, UpdateCategoryDto(name = "electricity"), ownerUser)
+                }
             assertEquals(409, ex.statusCode.value())
         }
 
@@ -224,9 +227,10 @@ class ManageCategoryImplTest {
         fun rejectUpdateByNonOwner() {
             `when`(categoryTagRepository.findById(categoryId)).thenReturn(Optional.of(existingTag))
 
-            val ex = assertThrows(ForbiddenException::class.java) {
-                service.updateCategory(categoryId, UpdateCategoryDto(name = "Stolen"), otherUser)
-            }
+            val ex =
+                assertThrows(ForbiddenException::class.java) {
+                    service.updateCategory(categoryId, UpdateCategoryDto(name = "Stolen"), otherUser)
+                }
         }
 
         @Test
@@ -235,9 +239,10 @@ class ManageCategoryImplTest {
             val missingId = UUID.randomUUID()
             `when`(categoryTagRepository.findById(missingId)).thenReturn(Optional.empty())
 
-            val ex = assertThrows(ResponseStatusException::class.java) {
-                service.updateCategory(missingId, UpdateCategoryDto(name = "X"), ownerUser)
-            }
+            val ex =
+                assertThrows(ResponseStatusException::class.java) {
+                    service.updateCategory(missingId, UpdateCategoryDto(name = "X"), ownerUser)
+                }
             assertEquals(404, ex.statusCode.value())
         }
 
@@ -256,7 +261,6 @@ class ManageCategoryImplTest {
     @Nested
     @DisplayName("deleteCategory")
     inner class DeleteCategory {
-
         private val categoryId = UUID.randomUUID()
         private lateinit var existingTag: CategoryTag
 
@@ -279,9 +283,10 @@ class ManageCategoryImplTest {
         fun rejectDeleteByNonOwner() {
             `when`(categoryTagRepository.findById(categoryId)).thenReturn(Optional.of(existingTag))
 
-            val ex = assertThrows(ForbiddenException::class.java) {
-                service.deleteCategory(categoryId, otherUser)
-            }
+            val ex =
+                assertThrows(ForbiddenException::class.java) {
+                    service.deleteCategory(categoryId, otherUser)
+                }
             verify(categoryTagRepository, never()).delete(any())
         }
 
@@ -291,9 +296,10 @@ class ManageCategoryImplTest {
             val missingId = UUID.randomUUID()
             `when`(categoryTagRepository.findById(missingId)).thenReturn(Optional.empty())
 
-            val ex = assertThrows(ResponseStatusException::class.java) {
-                service.deleteCategory(missingId, ownerUser)
-            }
+            val ex =
+                assertThrows(ResponseStatusException::class.java) {
+                    service.deleteCategory(missingId, ownerUser)
+                }
             assertEquals(404, ex.statusCode.value())
         }
     }

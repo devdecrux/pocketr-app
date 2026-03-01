@@ -7,12 +7,21 @@ import com.decrux.pocketr_api.entities.dtos.UpdateCategoryDto
 import java.util.UUID
 
 interface ManageCategory {
-
-    fun createCategory(dto: CreateCategoryDto, owner: User): CategoryDto
+    fun createCategory(
+        dto: CreateCategoryDto,
+        owner: User,
+    ): CategoryDto
 
     fun listCategories(owner: User): List<CategoryDto>
 
-    fun updateCategory(id: UUID, dto: UpdateCategoryDto, owner: User): CategoryDto
+    fun updateCategory(
+        id: UUID,
+        dto: UpdateCategoryDto,
+        owner: User,
+    ): CategoryDto
 
-    fun deleteCategory(id: UUID, owner: User)
+    fun deleteCategory(
+        id: UUID,
+        owner: User,
+    )
 }

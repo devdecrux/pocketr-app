@@ -1,6 +1,8 @@
 package com.decrux.pocketr_api.config.security
 
-enum class SecurityConstants(val value: String) {
+enum class SecurityConstants(
+    val value: String,
+) {
     BACKEND_LOGIN_PROCESSING_URL("/v1/user/login"),
     BACKEND_LOGOUT_PROCESSING_URL("/v1/user/logout"),
     BACKEND_REGISTER_ENDPOINT("/v1/user/register"),

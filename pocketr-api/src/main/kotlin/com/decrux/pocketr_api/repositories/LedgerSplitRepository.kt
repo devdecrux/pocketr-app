@@ -10,7 +10,6 @@ import java.util.UUID
 
 @Repository
 interface LedgerSplitRepository : JpaRepository<LedgerSplit, UUID> {
-
     @Query(
         """
         SELECT COALESCE(SUM(CASE WHEN ls.side = :debit THEN ls.amountMinor ELSE 0 END), 0)
@@ -20,7 +19,12 @@ interface LedgerSplitRepository : JpaRepository<LedgerSplit, UUID> {
           AND ls.transaction.txnDate <= :asOf
         """,
     )
-    fun computeBalance(accountId: UUID, asOf: LocalDate, debit: SplitSide, credit: SplitSide): Long
+    fun computeBalance(
+        accountId: UUID,
+        asOf: LocalDate,
+        debit: SplitSide,
+        credit: SplitSide,
+    ): Long
 
     @Query(
         """

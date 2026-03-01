@@ -11,11 +11,15 @@ import org.springframework.stereotype.Repository
 import java.util.UUID
 
 @Repository
-interface LedgerTxnRepository : JpaRepository<LedgerTxn, UUID>, JpaSpecificationExecutor<LedgerTxn> {
-
+interface LedgerTxnRepository :
+    JpaRepository<LedgerTxn, UUID>,
+    JpaSpecificationExecutor<LedgerTxn> {
     @EntityGraph(attributePaths = ["splits", "splits.account", "splits.categoryTag", "createdBy"])
     override fun findAll(spec: Specification<LedgerTxn>): List<LedgerTxn>
 
     @EntityGraph(attributePaths = ["splits", "splits.account", "splits.categoryTag", "createdBy"])
-    override fun findAll(spec: Specification<LedgerTxn>, pageable: Pageable): Page<LedgerTxn>
+    override fun findAll(
+        spec: Specification<LedgerTxn>,
+        pageable: Pageable,
+    ): Page<LedgerTxn>
 }

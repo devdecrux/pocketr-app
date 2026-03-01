@@ -7,5 +7,5 @@ import org.springframework.boot.runApplication
 class PocketrApiApplication
 
 fun main(args: Array<String>) {
-	runApplication<PocketrApiApplication>(*args)
+    runApplication<PocketrApiApplication>(*args)
 }

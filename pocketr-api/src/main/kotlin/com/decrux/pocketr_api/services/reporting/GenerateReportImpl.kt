@@ -25,7 +25,6 @@ class GenerateReportImpl(
     private val accountRepository: AccountRepository,
     private val manageHousehold: ManageHousehold,
 ) : GenerateReport {
-
     @Transactional(readOnly = true)
     override fun getMonthlyExpenses(
         user: User,
@@ -36,24 +35,28 @@ class GenerateReportImpl(
         val monthStart = period.atDay(1)
         val monthEnd = period.plusMonths(1).atDay(1)
 
-        val rows = when (mode.uppercase()) {
-            MODE_INDIVIDUAL -> {
-                val userId = requireNotNull(user.userId) { "User ID must not be null" }
-                ledgerSplitRepository.monthlyExpensesByUser(userId, monthStart, monthEnd, SplitSide.DEBIT, SplitSide.CREDIT)
-            }
-
-            MODE_HOUSEHOLD -> {
-                val hId = householdId
-                    ?: throw BadRequestException("householdId is required for household mode")
-                val userId = requireNotNull(user.userId) { "User ID must not be null" }
-                if (!manageHousehold.isActiveMember(hId, userId)) {
-                    throw ForbiddenException("Not an active member of this household")
+        val rows =
+            when (mode.uppercase()) {
+                MODE_INDIVIDUAL -> {
+                    val userId = requireNotNull(user.userId) { "User ID must not be null" }
+                    ledgerSplitRepository.monthlyExpensesByUser(userId, monthStart, monthEnd, SplitSide.DEBIT, SplitSide.CREDIT)
                 }
-                ledgerSplitRepository.monthlyExpensesByHousehold(hId, monthStart, monthEnd, SplitSide.DEBIT, SplitSide.CREDIT)
-            }
 
-            else -> throw BadRequestException("Invalid mode: $mode. Must be INDIVIDUAL or HOUSEHOLD")
-        }
+                MODE_HOUSEHOLD -> {
+                    val hId =
+                        householdId
+                            ?: throw BadRequestException("householdId is required for household mode")
+                    val userId = requireNotNull(user.userId) { "User ID must not be null" }
+                    if (!manageHousehold.isActiveMember(hId, userId)) {
+                        throw ForbiddenException("Not an active member of this household")
+                    }
+                    ledgerSplitRepository.monthlyExpensesByHousehold(hId, monthStart, monthEnd, SplitSide.DEBIT, SplitSide.CREDIT)
+                }
+
+                else -> {
+                    throw BadRequestException("Invalid mode: $mode. Must be INDIVIDUAL or HOUSEHOLD")
+                }
+            }
 
         return rows.map { row ->
             MonthlyExpenseDto(
@@ -68,18 +71,22 @@ class GenerateReportImpl(
     }
 
     @Transactional(readOnly = true)
-    override fun getAllAccountBalances(user: User, asOf: LocalDate): List<AccountBalanceSummaryDto> {
+    override fun getAllAccountBalances(
+        user: User,
+        asOf: LocalDate,
+    ): List<AccountBalanceSummaryDto> {
         val userId = requireNotNull(user.userId) { "User ID must not be null" }
         val accounts = accountRepository.findByOwnerUserId(userId)
 
         return accounts.map { account ->
             val accountId = requireNotNull(account.id)
             val isDebitNormal = account.type in DEBIT_NORMAL_TYPES
-            val balanceMinor = if (isDebitNormal) {
-                ledgerSplitRepository.computeBalance(accountId, asOf, SplitSide.DEBIT, SplitSide.CREDIT)
-            } else {
-                ledgerSplitRepository.computeBalance(accountId, asOf, SplitSide.CREDIT, SplitSide.DEBIT)
-            }
+            val balanceMinor =
+                if (isDebitNormal) {
+                    ledgerSplitRepository.computeBalance(accountId, asOf, SplitSide.DEBIT, SplitSide.CREDIT)
+                } else {
+                    ledgerSplitRepository.computeBalance(accountId, asOf, SplitSide.CREDIT, SplitSide.DEBIT)
+                }
 
             AccountBalanceSummaryDto(
                 accountId = accountId,
@@ -104,8 +111,10 @@ class GenerateReportImpl(
 
         val userId = requireNotNull(user.userId) { "User ID must not be null" }
 
-        val account = accountRepository.findById(accountId)
-            .orElseThrow { NotFoundException("Account not found") }
+        val account =
+            accountRepository
+                .findById(accountId)
+                .orElseThrow { NotFoundException("Account not found") }
 
         if (account.owner?.userId != userId) {
             throw ForbiddenException("Not the owner of this account")
@@ -116,14 +125,23 @@ class GenerateReportImpl(
         val negative = if (isDebitNormal) SplitSide.CREDIT else SplitSide.DEBIT
 
         // Get opening balance (everything before dateFrom)
-        val openingBalance = ledgerSplitRepository.computeBalance(
-            accountId, dateFrom.minusDays(1), positive, negative,
-        )
+        val openingBalance =
+            ledgerSplitRepository.computeBalance(
+                accountId,
+                dateFrom.minusDays(1),
+                positive,
+                negative,
+            )
 
         // Get daily net changes within the range
-        val dailyNets = ledgerSplitRepository.dailyNetByAccount(
-            accountId, dateFrom, dateTo, positive, negative,
-        )
+        val dailyNets =
+            ledgerSplitRepository.dailyNetByAccount(
+                accountId,
+                dateFrom,
+                dateTo,
+                positive,
+                negative,
+            )
         val dailyNetMap = dailyNets.associate { it.txnDate to it.netMinor }
 
         // Build cumulative timeseries
