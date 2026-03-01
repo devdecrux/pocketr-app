@@ -335,10 +335,9 @@ class HouseholdAccountShareIntegrationTest {
                 )
             `when`(shareRepository.findByHouseholdIdAndAccountId(householdId, checkingId)).thenReturn(share)
 
-            val ex =
-                assertThrows(ForbiddenException::class.java) {
-                    service.unshareAccount(householdId, checkingId, userB)
-                }
+            assertThrows(ForbiddenException::class.java) {
+                service.unshareAccount(householdId, checkingId, userB)
+            }
         }
 
         @Test

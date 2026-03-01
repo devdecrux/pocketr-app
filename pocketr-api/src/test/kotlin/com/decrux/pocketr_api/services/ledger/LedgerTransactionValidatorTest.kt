@@ -71,10 +71,9 @@ class LedgerTransactionValidatorTest {
         @Test
         @DisplayName("should reject empty splits")
         fun rejectEmpty() {
-            val ex =
-                assertThrows(BadRequestException::class.java) {
-                    validator.validateSplits(emptyList())
-                }
+            assertThrows(BadRequestException::class.java) {
+                validator.validateSplits(emptyList())
+            }
         }
 
         @Test

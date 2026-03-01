@@ -174,10 +174,9 @@ class LedgerTransactionValidationTest {
                     splits = emptyList(),
                 )
 
-            val ex =
-                assertThrows(BadRequestException::class.java) {
-                    service.createTransaction(dto, userA)
-                }
+            assertThrows(BadRequestException::class.java) {
+                service.createTransaction(dto, userA)
+            }
         }
 
         @Test

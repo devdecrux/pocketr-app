@@ -346,10 +346,9 @@ class ReportingTest {
         fun rejectTimeseriesForNonOwnedAccount() {
             `when`(accountRepository.findById(checkingId)).thenReturn(Optional.of(checking))
 
-            val ex =
-                assertThrows(ForbiddenException::class.java) {
-                    service.getBalanceTimeseries(checkingId, LocalDate.now(), LocalDate.now(), userB)
-                }
+            assertThrows(ForbiddenException::class.java) {
+                service.getBalanceTimeseries(checkingId, LocalDate.now(), LocalDate.now(), userB)
+            }
         }
 
         @Test
@@ -358,10 +357,9 @@ class ReportingTest {
             val missingId = UUID.randomUUID()
             `when`(accountRepository.findById(missingId)).thenReturn(Optional.empty())
 
-            val ex =
-                assertThrows(NotFoundException::class.java) {
-                    service.getBalanceTimeseries(missingId, LocalDate.now(), LocalDate.now(), userA)
-                }
+            assertThrows(NotFoundException::class.java) {
+                service.getBalanceTimeseries(missingId, LocalDate.now(), LocalDate.now(), userA)
+            }
         }
 
         @Test

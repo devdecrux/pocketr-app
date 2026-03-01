@@ -55,8 +55,6 @@ class LedgerTxn(
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "currency", nullable = false)
     var currency: Currency? = null,
-    @Column(name = "fx_group_id")
-    var fxGroupId: UUID? = null,
     @OneToMany(mappedBy = "transaction", cascade = [CascadeType.ALL], orphanRemoval = true)
     var splits: MutableList<LedgerSplit> = mutableListOf(),
     @Column(name = "created_at", nullable = false, updatable = false)

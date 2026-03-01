@@ -153,10 +153,9 @@ class OpeningBalanceServiceImplTest {
                 currency = eur,
             )
 
-        val ex =
-            assertThrows(BadRequestException::class.java) {
-                service.createForNewAssetAccount(owner, liability, 1000, LocalDate.parse("2026-02-15"))
-            }
+        assertThrows(BadRequestException::class.java) {
+            service.createForNewAssetAccount(owner, liability, 1000, LocalDate.parse("2026-02-15"))
+        }
         verifyNoInteractions(userRepository)
         assertEquals(0, manageLedger.calls.size)
     }
@@ -179,10 +178,9 @@ class OpeningBalanceServiceImplTest {
                 currency = eur,
             )
 
-        val ex =
-            assertThrows(ForbiddenException::class.java) {
-                service.createForNewAssetAccount(owner, assetAccount, 1000, LocalDate.parse("2026-02-15"))
-            }
+        assertThrows(ForbiddenException::class.java) {
+            service.createForNewAssetAccount(owner, assetAccount, 1000, LocalDate.parse("2026-02-15"))
+        }
         verifyNoInteractions(userRepository)
         assertEquals(0, manageLedger.calls.size)
     }

@@ -337,10 +337,9 @@ class ManageAccountImplTest {
         fun rejectUpdateByNonOwner() {
             `when`(accountRepository.findById(accountId)).thenReturn(Optional.of(existingAccount))
 
-            val ex =
-                assertThrows(ForbiddenException::class.java) {
-                    service.updateAccount(accountId, UpdateAccountDto(name = "Stolen"), otherUser)
-                }
+            assertThrows(ForbiddenException::class.java) {
+                service.updateAccount(accountId, UpdateAccountDto(name = "Stolen"), otherUser)
+            }
         }
 
         @Test
@@ -349,10 +348,9 @@ class ManageAccountImplTest {
             val missingId = UUID.randomUUID()
             `when`(accountRepository.findById(missingId)).thenReturn(Optional.empty())
 
-            val ex =
-                assertThrows(NotFoundException::class.java) {
-                    service.updateAccount(missingId, UpdateAccountDto(name = "X"), ownerUser)
-                }
+            assertThrows(NotFoundException::class.java) {
+                service.updateAccount(missingId, UpdateAccountDto(name = "X"), ownerUser)
+            }
         }
 
         @Test
@@ -458,29 +456,26 @@ class ManageAccountImplTest {
         fun householdModeRejectsNonMember() {
             `when`(manageHousehold.isActiveMember(householdId, 1L)).thenReturn(false)
 
-            val ex =
-                assertThrows(ForbiddenException::class.java) {
-                    service.listAccounts(ownerUser, "HOUSEHOLD", householdId)
-                }
+            assertThrows(ForbiddenException::class.java) {
+                service.listAccounts(ownerUser, "HOUSEHOLD", householdId)
+            }
             verify(accountRepository, never()).findByOwnerUserId(anyLong())
         }
 
         @Test
         @DisplayName("HOUSEHOLD mode without householdId returns 400")
         fun householdModeWithoutHouseholdId() {
-            val ex =
-                assertThrows(BadRequestException::class.java) {
-                    service.listAccounts(ownerUser, "HOUSEHOLD", null)
-                }
+            assertThrows(BadRequestException::class.java) {
+                service.listAccounts(ownerUser, "HOUSEHOLD", null)
+            }
         }
 
         @Test
         @DisplayName("Invalid mode returns 400")
         fun invalidModeReturns400() {
-            val ex =
-                assertThrows(BadRequestException::class.java) {
-                    service.listAccounts(ownerUser, "INVALID", null)
-                }
+            assertThrows(BadRequestException::class.java) {
+                service.listAccounts(ownerUser, "INVALID", null)
+            }
         }
     }
 

@@ -233,10 +233,9 @@ class ManageCategoryImplTest {
         fun rejectUpdateByNonOwner() {
             `when`(categoryTagRepository.findById(categoryId)).thenReturn(Optional.of(existingTag))
 
-            val ex =
-                assertThrows(ForbiddenException::class.java) {
-                    service.updateCategory(categoryId, UpdateCategoryDto(name = "Stolen"), otherUser)
-                }
+            assertThrows(ForbiddenException::class.java) {
+                service.updateCategory(categoryId, UpdateCategoryDto(name = "Stolen"), otherUser)
+            }
         }
 
         @Test
@@ -289,10 +288,9 @@ class ManageCategoryImplTest {
         fun rejectDeleteByNonOwner() {
             `when`(categoryTagRepository.findById(categoryId)).thenReturn(Optional.of(existingTag))
 
-            val ex =
-                assertThrows(ForbiddenException::class.java) {
-                    service.deleteCategory(categoryId, otherUser)
-                }
+            assertThrows(ForbiddenException::class.java) {
+                service.deleteCategory(categoryId, otherUser)
+            }
             verify(categoryTagRepository, never()).delete(any())
         }
 
