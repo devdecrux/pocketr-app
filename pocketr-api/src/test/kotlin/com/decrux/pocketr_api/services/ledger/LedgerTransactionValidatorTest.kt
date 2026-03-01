@@ -5,7 +5,7 @@ import com.decrux.pocketr_api.entities.db.ledger.Account
 import com.decrux.pocketr_api.entities.db.ledger.AccountType
 import com.decrux.pocketr_api.entities.db.ledger.Currency
 import com.decrux.pocketr_api.entities.dtos.CreateSplitDto
-import com.decrux.pocketr_api.exceptions.DomainHttpException
+import com.decrux.pocketr_api.exceptions.BadRequestException
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
@@ -58,20 +58,18 @@ class LedgerTransactionValidatorTest {
             val splits = listOf(
                 CreateSplitDto(accountId = UUID.randomUUID(), side = "DEBIT", amountMinor = 1000),
             )
-            val ex = assertThrows(DomainHttpException::class.java) {
+            val ex = assertThrows(BadRequestException::class.java) {
                 validator.validateSplits(splits)
             }
-            assertEquals(400, ex.status.value())
             assertTrue(ex.message!!.contains("at least 2 splits"))
         }
 
         @Test
         @DisplayName("should reject empty splits")
         fun rejectEmpty() {
-            val ex = assertThrows(DomainHttpException::class.java) {
+            val ex = assertThrows(BadRequestException::class.java) {
                 validator.validateSplits(emptyList())
             }
-            assertEquals(400, ex.status.value())
         }
 
         @Test
@@ -81,10 +79,9 @@ class LedgerTransactionValidatorTest {
                 CreateSplitDto(accountId = UUID.randomUUID(), side = "DEBIT", amountMinor = 0),
                 CreateSplitDto(accountId = UUID.randomUUID(), side = "CREDIT", amountMinor = 0),
             )
-            val ex = assertThrows(DomainHttpException::class.java) {
+            val ex = assertThrows(BadRequestException::class.java) {
                 validator.validateSplits(splits)
             }
-            assertEquals(400, ex.status.value())
             assertTrue(ex.message!!.contains("greater than 0"))
         }
 
@@ -95,10 +92,9 @@ class LedgerTransactionValidatorTest {
                 CreateSplitDto(accountId = UUID.randomUUID(), side = "DEBIT", amountMinor = -500),
                 CreateSplitDto(accountId = UUID.randomUUID(), side = "CREDIT", amountMinor = -500),
             )
-            val ex = assertThrows(DomainHttpException::class.java) {
+            val ex = assertThrows(BadRequestException::class.java) {
                 validator.validateSplits(splits)
             }
-            assertEquals(400, ex.status.value())
             assertTrue(ex.message!!.contains("greater than 0"))
         }
 
@@ -109,10 +105,9 @@ class LedgerTransactionValidatorTest {
                 CreateSplitDto(accountId = UUID.randomUUID(), side = "INVALID", amountMinor = 1000),
                 CreateSplitDto(accountId = UUID.randomUUID(), side = "CREDIT", amountMinor = 1000),
             )
-            val ex = assertThrows(DomainHttpException::class.java) {
+            val ex = assertThrows(BadRequestException::class.java) {
                 validator.validateSplits(splits)
             }
-            assertEquals(400, ex.status.value())
             assertTrue(ex.message!!.contains("Invalid split side"))
         }
 
@@ -123,10 +118,9 @@ class LedgerTransactionValidatorTest {
                 CreateSplitDto(accountId = UUID.randomUUID(), side = "DEBIT", amountMinor = 5000),
                 CreateSplitDto(accountId = UUID.randomUUID(), side = "CREDIT", amountMinor = 4500),
             )
-            val ex = assertThrows(DomainHttpException::class.java) {
+            val ex = assertThrows(BadRequestException::class.java) {
                 validator.validateSplits(splits)
             }
-            assertEquals(400, ex.status.value())
             assertTrue(ex.message!!.contains("Double-entry violation"))
         }
     }
@@ -152,10 +146,9 @@ class LedgerTransactionValidatorTest {
                 Account(id = UUID.randomUUID(), owner = owner, name = "EUR Acct", type = AccountType.ASSET, currency = eur),
                 Account(id = UUID.randomUUID(), owner = owner, name = "USD Acct", type = AccountType.ASSET, currency = usd),
             )
-            val ex = assertThrows(DomainHttpException::class.java) {
+            val ex = assertThrows(BadRequestException::class.java) {
                 validator.validateCurrencyConsistency(accounts, "EUR")
             }
-            assertEquals(400, ex.status.value())
             assertTrue(ex.message!!.contains("currency"))
         }
     }

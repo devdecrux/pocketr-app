@@ -4,7 +4,7 @@ import com.decrux.pocketr_api.entities.db.auth.User
 import com.decrux.pocketr_api.entities.db.ledger.CategoryTag
 import com.decrux.pocketr_api.entities.dtos.CreateCategoryDto
 import com.decrux.pocketr_api.entities.dtos.UpdateCategoryDto
-import com.decrux.pocketr_api.exceptions.DomainForbiddenException
+import com.decrux.pocketr_api.exceptions.ForbiddenException
 import com.decrux.pocketr_api.repositories.CategoryTagRepository
 import com.decrux.pocketr_api.services.OwnershipGuard
 import org.junit.jupiter.api.Assertions.*
@@ -224,10 +224,9 @@ class ManageCategoryImplTest {
         fun rejectUpdateByNonOwner() {
             `when`(categoryTagRepository.findById(categoryId)).thenReturn(Optional.of(existingTag))
 
-            val ex = assertThrows(DomainForbiddenException::class.java) {
+            val ex = assertThrows(ForbiddenException::class.java) {
                 service.updateCategory(categoryId, UpdateCategoryDto(name = "Stolen"), otherUser)
             }
-            assertEquals(403, ex.status.value())
         }
 
         @Test
@@ -280,10 +279,9 @@ class ManageCategoryImplTest {
         fun rejectDeleteByNonOwner() {
             `when`(categoryTagRepository.findById(categoryId)).thenReturn(Optional.of(existingTag))
 
-            val ex = assertThrows(DomainForbiddenException::class.java) {
+            val ex = assertThrows(ForbiddenException::class.java) {
                 service.deleteCategory(categoryId, otherUser)
             }
-            assertEquals(403, ex.status.value())
             verify(categoryTagRepository, never()).delete(any())
         }
 

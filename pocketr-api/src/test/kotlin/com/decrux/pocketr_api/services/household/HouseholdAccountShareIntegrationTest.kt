@@ -8,7 +8,7 @@ import com.decrux.pocketr_api.entities.db.ledger.Currency
 import com.decrux.pocketr_api.entities.dtos.CreateHouseholdDto
 import com.decrux.pocketr_api.entities.dtos.InviteMemberDto
 import com.decrux.pocketr_api.entities.dtos.ShareAccountDto
-import com.decrux.pocketr_api.exceptions.DomainForbiddenException
+import com.decrux.pocketr_api.exceptions.ForbiddenException
 import com.decrux.pocketr_api.repositories.*
 import com.decrux.pocketr_api.services.OwnershipGuard
 import org.junit.jupiter.api.Assertions.*
@@ -300,11 +300,9 @@ class HouseholdAccountShareIntegrationTest {
             `when`(householdRepository.findById(householdId)).thenReturn(Optional.of(household))
             `when`(accountRepository.findById(checkingId)).thenReturn(Optional.of(checkingAccount))
 
-            val ex = assertThrows(DomainForbiddenException::class.java) {
+            val ex = assertThrows(ForbiddenException::class.java) {
                 service.shareAccount(householdId, ShareAccountDto(checkingId), userB)
             }
-
-            assertEquals(403, ex.status.value())
             assertTrue(ex.message!!.contains("owner"))
         }
 
@@ -334,11 +332,9 @@ class HouseholdAccountShareIntegrationTest {
             )
             `when`(shareRepository.findByHouseholdIdAndAccountId(householdId, checkingId)).thenReturn(share)
 
-            val ex = assertThrows(DomainForbiddenException::class.java) {
+            val ex = assertThrows(ForbiddenException::class.java) {
                 service.unshareAccount(householdId, checkingId, userB)
             }
-
-            assertEquals(403, ex.status.value())
         }
 
         @Test

@@ -8,8 +8,8 @@ import com.decrux.pocketr_api.entities.dtos.BalanceDto
 import com.decrux.pocketr_api.entities.dtos.CreateTransactionDto
 import com.decrux.pocketr_api.entities.dtos.PagedTransactionsDto
 import com.decrux.pocketr_api.entities.dtos.TransactionDto
-import com.decrux.pocketr_api.exceptions.DomainBadRequestException
-import com.decrux.pocketr_api.exceptions.DomainForbiddenException
+import com.decrux.pocketr_api.exceptions.BadRequestException
+import com.decrux.pocketr_api.exceptions.ForbiddenException
 import com.decrux.pocketr_api.repositories.AccountRepository
 import com.decrux.pocketr_api.repositories.UserRepository
 import com.decrux.pocketr_api.services.OwnershipGuard
@@ -144,11 +144,9 @@ class OpeningBalanceServiceImplTest {
             currency = eur,
         )
 
-        val ex = assertThrows(DomainBadRequestException::class.java) {
+        val ex = assertThrows(BadRequestException::class.java) {
             service.createForNewAssetAccount(owner, liability, 1000, LocalDate.parse("2026-02-15"))
         }
-
-        assertEquals(400, ex.status.value())
         verifyNoInteractions(userRepository)
         assertEquals(0, manageLedger.calls.size)
     }
@@ -169,11 +167,9 @@ class OpeningBalanceServiceImplTest {
             currency = eur,
         )
 
-        val ex = assertThrows(DomainForbiddenException::class.java) {
+        val ex = assertThrows(ForbiddenException::class.java) {
             service.createForNewAssetAccount(owner, assetAccount, 1000, LocalDate.parse("2026-02-15"))
         }
-
-        assertEquals(403, ex.status.value())
         verifyNoInteractions(userRepository)
         assertEquals(0, manageLedger.calls.size)
     }

@@ -4,7 +4,9 @@ import com.decrux.pocketr_api.entities.db.auth.User
 import com.decrux.pocketr_api.entities.db.ledger.*
 import com.decrux.pocketr_api.entities.dtos.CreateSplitDto
 import com.decrux.pocketr_api.entities.dtos.CreateTransactionDto
-import com.decrux.pocketr_api.exceptions.DomainHttpException
+import com.decrux.pocketr_api.exceptions.BadRequestException
+import com.decrux.pocketr_api.exceptions.ForbiddenException
+import com.decrux.pocketr_api.exceptions.NotFoundException
 import com.decrux.pocketr_api.repositories.*
 import com.decrux.pocketr_api.services.household.ManageHousehold
 import com.decrux.pocketr_api.services.user_avatar.UserAvatarService
@@ -128,10 +130,9 @@ class LedgerTransactionValidationTest {
                 splits = listOf(CreateSplitDto(accountId = checkingId, side = "DEBIT", amountMinor = 1000)),
             )
 
-            val ex = assertThrows(DomainHttpException::class.java) {
+            val ex = assertThrows(BadRequestException::class.java) {
                 service.createTransaction(dto, userA)
             }
-            assertEquals(400, ex.status.value())
             assertTrue(ex.message!!.contains("at least 2 splits"))
         }
 
@@ -143,10 +144,9 @@ class LedgerTransactionValidationTest {
                 splits = emptyList(),
             )
 
-            val ex = assertThrows(DomainHttpException::class.java) {
+            val ex = assertThrows(BadRequestException::class.java) {
                 service.createTransaction(dto, userA)
             }
-            assertEquals(400, ex.status.value())
         }
 
         @Test
@@ -160,10 +160,9 @@ class LedgerTransactionValidationTest {
                 ),
             )
 
-            val ex = assertThrows(DomainHttpException::class.java) {
+            val ex = assertThrows(BadRequestException::class.java) {
                 service.createTransaction(dto, userA)
             }
-            assertEquals(400, ex.status.value())
             assertTrue(ex.message!!.contains("Double-entry violation"))
         }
 
@@ -178,10 +177,9 @@ class LedgerTransactionValidationTest {
                 ),
             )
 
-            val ex = assertThrows(DomainHttpException::class.java) {
+            val ex = assertThrows(BadRequestException::class.java) {
                 service.createTransaction(dto, userA)
             }
-            assertEquals(400, ex.status.value())
             assertTrue(ex.message!!.contains("greater than 0"))
         }
 
@@ -196,10 +194,9 @@ class LedgerTransactionValidationTest {
                 ),
             )
 
-            val ex = assertThrows(DomainHttpException::class.java) {
+            val ex = assertThrows(BadRequestException::class.java) {
                 service.createTransaction(dto, userA)
             }
-            assertEquals(400, ex.status.value())
             assertTrue(ex.message!!.contains("greater than 0"))
         }
 
@@ -214,10 +211,9 @@ class LedgerTransactionValidationTest {
                 ),
             )
 
-            val ex = assertThrows(DomainHttpException::class.java) {
+            val ex = assertThrows(BadRequestException::class.java) {
                 service.createTransaction(dto, userA)
             }
-            assertEquals(400, ex.status.value())
             assertTrue(ex.message!!.contains("Invalid split side"))
         }
     }
@@ -238,10 +234,9 @@ class LedgerTransactionValidationTest {
                 ),
             )
 
-            val ex = assertThrows(DomainHttpException::class.java) {
+            val ex = assertThrows(BadRequestException::class.java) {
                 service.createTransaction(dto, userA)
             }
-            assertEquals(400, ex.status.value())
             assertTrue(ex.message!!.contains("currency"))
         }
 
@@ -257,10 +252,9 @@ class LedgerTransactionValidationTest {
                 ),
             )
 
-            val ex = assertThrows(DomainHttpException::class.java) {
+            val ex = assertThrows(BadRequestException::class.java) {
                 service.createTransaction(dto, userA)
             }
-            assertEquals(400, ex.status.value())
             assertTrue(ex.message!!.contains("Invalid currency"))
         }
     }
@@ -281,10 +275,9 @@ class LedgerTransactionValidationTest {
                 ),
             )
 
-            val ex = assertThrows(DomainHttpException::class.java) {
+            val ex = assertThrows(ForbiddenException::class.java) {
                 service.createTransaction(dto, userA)
             }
-            assertEquals(403, ex.status.value())
             assertTrue(ex.message!!.contains("not owned by current user"))
         }
 
@@ -316,10 +309,9 @@ class LedgerTransactionValidationTest {
                 ),
             )
 
-            val ex = assertThrows(DomainHttpException::class.java) {
+            val ex = assertThrows(ForbiddenException::class.java) {
                 service.createTransaction(dto, userA)
             }
-            assertEquals(403, ex.status.value())
             assertTrue(ex.message!!.contains("not owned by current user"))
         }
 
@@ -338,10 +330,9 @@ class LedgerTransactionValidationTest {
                 ),
             )
 
-            val ex = assertThrows(DomainHttpException::class.java) {
+            val ex = assertThrows(BadRequestException::class.java) {
                 service.createTransaction(dto, userA)
             }
-            assertEquals(400, ex.status.value())
             assertTrue(ex.message!!.contains("Category tags not found"))
         }
 
@@ -359,10 +350,9 @@ class LedgerTransactionValidationTest {
                 ),
             )
 
-            val ex = assertThrows(DomainHttpException::class.java) {
+            val ex = assertThrows(BadRequestException::class.java) {
                 service.createTransaction(dto, userA)
             }
-            assertEquals(400, ex.status.value())
             assertTrue(ex.message!!.contains("Accounts not found"))
         }
     }
@@ -559,11 +549,9 @@ class LedgerTransactionValidationTest {
             val ids = listOf(checkingId, userBSavingsId)
             `when`(accountRepository.findAllById(ids)).thenReturn(listOf(checking, userBSavings))
 
-            val ex = assertThrows(DomainHttpException::class.java) {
+            val ex = assertThrows(ForbiddenException::class.java) {
                 service.getAccountBalances(ids, LocalDate.now(), userA, null)
             }
-
-            assertEquals(403, ex.status.value())
             assertTrue(ex.message!!.contains("Not the owner"))
             verifyNoInteractions(ledgerSplitRepository)
         }
@@ -577,11 +565,9 @@ class LedgerTransactionValidationTest {
             `when`(manageHousehold.isActiveMember(householdId, userA.userId!!)).thenReturn(true)
             `when`(manageHousehold.getSharedAccountIds(householdId)).thenReturn(setOf(checkingId))
 
-            val ex = assertThrows(DomainHttpException::class.java) {
+            val ex = assertThrows(ForbiddenException::class.java) {
                 service.getAccountBalances(ids, LocalDate.now(), userA, householdId)
             }
-
-            assertEquals(403, ex.status.value())
             assertTrue(ex.message!!.contains("not shared"))
             verifyNoInteractions(ledgerSplitRepository)
         }
@@ -593,11 +579,9 @@ class LedgerTransactionValidationTest {
             val ids = listOf(checkingId, missingId)
             `when`(accountRepository.findAllById(ids)).thenReturn(listOf(checking))
 
-            val ex = assertThrows(DomainHttpException::class.java) {
+            assertThrows(NotFoundException::class.java) {
                 service.getAccountBalances(ids, LocalDate.now(), userA, null)
             }
-
-            assertEquals(404, ex.status.value())
             verifyNoInteractions(ledgerSplitRepository)
         }
 
@@ -681,10 +665,9 @@ class LedgerTransactionValidationTest {
         fun rejectBalanceForNonOwnedAccount() {
             `when`(accountRepository.findById(checkingId)).thenReturn(Optional.of(checking))
 
-            val ex = assertThrows(DomainHttpException::class.java) {
+            assertThrows(ForbiddenException::class.java) {
                 service.getAccountBalance(checkingId, LocalDate.now(), userB, null)
             }
-            assertEquals(403, ex.status.value())
         }
 
         @Test
@@ -693,10 +676,9 @@ class LedgerTransactionValidationTest {
             val missingId = UUID.randomUUID()
             `when`(accountRepository.findById(missingId)).thenReturn(Optional.empty())
 
-            val ex = assertThrows(DomainHttpException::class.java) {
+            assertThrows(NotFoundException::class.java) {
                 service.getAccountBalance(missingId, LocalDate.now(), userA, null)
             }
-            assertEquals(404, ex.status.value())
         }
     }
 }

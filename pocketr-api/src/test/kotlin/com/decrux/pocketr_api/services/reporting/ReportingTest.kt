@@ -5,9 +5,9 @@ import com.decrux.pocketr_api.entities.db.ledger.Account
 import com.decrux.pocketr_api.entities.db.ledger.AccountType
 import com.decrux.pocketr_api.entities.db.ledger.Currency
 import com.decrux.pocketr_api.entities.db.ledger.SplitSide
-import com.decrux.pocketr_api.exceptions.DomainBadRequestException
-import com.decrux.pocketr_api.exceptions.DomainForbiddenException
-import com.decrux.pocketr_api.exceptions.DomainNotFoundException
+import com.decrux.pocketr_api.exceptions.BadRequestException
+import com.decrux.pocketr_api.exceptions.ForbiddenException
+import com.decrux.pocketr_api.exceptions.NotFoundException
 import com.decrux.pocketr_api.repositories.AccountRepository
 import com.decrux.pocketr_api.repositories.DailyNetProjection
 import com.decrux.pocketr_api.repositories.LedgerSplitRepository
@@ -206,10 +206,9 @@ class ReportingTest {
         @Test
         @DisplayName("household mode requires householdId")
         fun householdModeRequiresHouseholdId() {
-            val ex = assertThrows(DomainBadRequestException::class.java) {
+            val ex = assertThrows(BadRequestException::class.java) {
                 service.getMonthlyExpenses(userA, jan2026, "HOUSEHOLD", null)
             }
-            assertEquals(400, ex.status.value())
             assertTrue(ex.message!!.contains("householdId is required"))
         }
 
@@ -219,10 +218,9 @@ class ReportingTest {
             val householdId = UUID.randomUUID()
             `when`(manageHousehold.isActiveMember(householdId, 1L)).thenReturn(false)
 
-            val ex = assertThrows(DomainForbiddenException::class.java) {
+            val ex = assertThrows(ForbiddenException::class.java) {
                 service.getMonthlyExpenses(userA, jan2026, "HOUSEHOLD", householdId)
             }
-            assertEquals(403, ex.status.value())
             assertTrue(ex.message!!.contains("Not an active member"))
         }
 
@@ -244,10 +242,9 @@ class ReportingTest {
         @Test
         @DisplayName("invalid mode is rejected")
         fun invalidModeRejected() {
-            val ex = assertThrows(DomainBadRequestException::class.java) {
+            val ex = assertThrows(BadRequestException::class.java) {
                 service.getMonthlyExpenses(userA, jan2026, "INVALID", null)
             }
-            assertEquals(400, ex.status.value())
             assertTrue(ex.message!!.contains("Invalid mode"))
         }
 
@@ -335,10 +332,9 @@ class ReportingTest {
         fun rejectTimeseriesForNonOwnedAccount() {
             `when`(accountRepository.findById(checkingId)).thenReturn(Optional.of(checking))
 
-            val ex = assertThrows(DomainForbiddenException::class.java) {
+            val ex = assertThrows(ForbiddenException::class.java) {
                 service.getBalanceTimeseries(checkingId, LocalDate.now(), LocalDate.now(), userB)
             }
-            assertEquals(403, ex.status.value())
         }
 
         @Test
@@ -347,10 +343,9 @@ class ReportingTest {
             val missingId = UUID.randomUUID()
             `when`(accountRepository.findById(missingId)).thenReturn(Optional.empty())
 
-            val ex = assertThrows(DomainNotFoundException::class.java) {
+            val ex = assertThrows(NotFoundException::class.java) {
                 service.getBalanceTimeseries(missingId, LocalDate.now(), LocalDate.now(), userA)
             }
-            assertEquals(404, ex.status.value())
         }
 
         @Test

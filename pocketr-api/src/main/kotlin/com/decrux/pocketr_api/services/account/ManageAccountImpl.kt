@@ -6,9 +6,9 @@ import com.decrux.pocketr_api.entities.db.ledger.AccountType
 import com.decrux.pocketr_api.entities.dtos.AccountDto
 import com.decrux.pocketr_api.entities.dtos.CreateAccountDto
 import com.decrux.pocketr_api.entities.dtos.UpdateAccountDto
-import com.decrux.pocketr_api.exceptions.DomainBadRequestException
-import com.decrux.pocketr_api.exceptions.DomainForbiddenException
-import com.decrux.pocketr_api.exceptions.DomainNotFoundException
+import com.decrux.pocketr_api.exceptions.BadRequestException
+import com.decrux.pocketr_api.exceptions.ForbiddenException
+import com.decrux.pocketr_api.exceptions.NotFoundException
 import com.decrux.pocketr_api.repositories.AccountRepository
 import com.decrux.pocketr_api.repositories.CurrencyRepository
 import com.decrux.pocketr_api.repositories.HouseholdAccountShareRepository
@@ -34,25 +34,25 @@ class ManageAccountImpl(
         val accountType = try {
             AccountType.valueOf(dto.type)
         } catch (_: IllegalArgumentException) {
-            throw DomainBadRequestException("Invalid account type: ${dto.type}")
+            throw BadRequestException("Invalid account type: ${dto.type}")
         }
         if (accountType == AccountType.EQUITY) {
-            throw DomainBadRequestException(
+            throw BadRequestException(
                 "EQUITY accounts are system-managed and cannot be created manually",
             )
         }
 
         val currency = currencyRepository.findById(dto.currency)
-            .orElseThrow { DomainBadRequestException("Invalid currency: ${dto.currency}") }
+            .orElseThrow { BadRequestException("Invalid currency: ${dto.currency}") }
 
         val openingBalanceMinor = dto.openingBalanceMinor ?: 0L
         if (openingBalanceMinor != 0L && accountType != AccountType.ASSET) {
-            throw DomainBadRequestException(
+            throw BadRequestException(
                 "openingBalanceMinor is supported only for ASSET accounts",
             )
         }
         if (openingBalanceMinor == 0L && dto.openingBalanceDate != null) {
-            throw DomainBadRequestException(
+            throw BadRequestException(
                 "openingBalanceDate requires non-zero openingBalanceMinor",
             )
         }
@@ -94,14 +94,14 @@ class ManageAccountImpl(
         }
 
         if (mode != "HOUSEHOLD") {
-            throw DomainBadRequestException("Invalid mode: $mode")
+            throw BadRequestException("Invalid mode: $mode")
         }
 
         val hhId = householdId
-            ?: throw DomainBadRequestException("householdId is required for HOUSEHOLD mode")
+            ?: throw BadRequestException("householdId is required for HOUSEHOLD mode")
 
         if (!manageHousehold.isActiveMember(hhId, userId)) {
-            throw DomainForbiddenException("Not an active member of this household")
+            throw ForbiddenException("Not an active member of this household")
         }
 
         val ownedAccounts = accountRepository.findByOwnerUserId(userId)
@@ -127,7 +127,7 @@ class ManageAccountImpl(
     @Transactional
     override fun updateAccount(id: UUID, dto: UpdateAccountDto, owner: User): AccountDto {
         val account = accountRepository.findById(id)
-            .orElseThrow { DomainNotFoundException("Account not found") }
+            .orElseThrow { NotFoundException("Account not found") }
 
         ownershipGuard.requireOwner(account.owner?.userId, requireNotNull(owner.userId), "Not the owner of this account")
 

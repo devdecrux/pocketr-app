@@ -2,7 +2,8 @@ package com.decrux.pocketr_api.services.ledger
 
 import com.decrux.pocketr_api.entities.db.auth.User
 import com.decrux.pocketr_api.entities.db.ledger.*
-import com.decrux.pocketr_api.exceptions.DomainHttpException
+import com.decrux.pocketr_api.exceptions.BadRequestException
+import com.decrux.pocketr_api.exceptions.ForbiddenException
 import com.decrux.pocketr_api.repositories.*
 import com.decrux.pocketr_api.services.household.ManageHousehold
 import com.decrux.pocketr_api.services.user_avatar.UserAvatarService
@@ -221,14 +222,13 @@ class HouseholdTransactionVisibilityTest {
         fun forbiddenForNonMember() {
             `when`(manageHousehold.isActiveMember(householdId, outsider.userId!!)).thenReturn(false)
 
-            val ex = assertThrows(DomainHttpException::class.java) {
+            val ex = assertThrows(ForbiddenException::class.java) {
                 service.listTransactions(
                     user = outsider, mode = "HOUSEHOLD", householdId = householdId,
                     dateFrom = null, dateTo = null, accountId = null, categoryId = null, page = 0, size = 50,
                 )
             }
 
-            assertEquals(403, ex.status.value())
             assertTrue(ex.message!!.contains("Not an active member"))
             verify(manageHousehold, never()).getSharedAccountIds(any() ?: UUID.randomUUID())
         }
@@ -236,14 +236,13 @@ class HouseholdTransactionVisibilityTest {
         @Test
         @DisplayName("should throw 400 when householdId is missing in household mode")
         fun badRequestWhenHouseholdIdMissing() {
-            val ex = assertThrows(DomainHttpException::class.java) {
+            val ex = assertThrows(BadRequestException::class.java) {
                 service.listTransactions(
                     user = alice, mode = "HOUSEHOLD", householdId = null,
                     dateFrom = null, dateTo = null, accountId = null, categoryId = null, page = 0, size = 50,
                 )
             }
 
-            assertEquals(400, ex.status.value())
             assertTrue(ex.message!!.contains("householdId is required"))
         }
 

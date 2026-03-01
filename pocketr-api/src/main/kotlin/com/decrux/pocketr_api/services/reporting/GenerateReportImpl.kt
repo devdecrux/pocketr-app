@@ -7,9 +7,9 @@ import com.decrux.pocketr_api.entities.dtos.AccountBalanceSummaryDto
 import com.decrux.pocketr_api.entities.dtos.AccountBalanceTimeseriesDto
 import com.decrux.pocketr_api.entities.dtos.BalanceTimeseriesPointDto
 import com.decrux.pocketr_api.entities.dtos.MonthlyExpenseDto
-import com.decrux.pocketr_api.exceptions.DomainBadRequestException
-import com.decrux.pocketr_api.exceptions.DomainForbiddenException
-import com.decrux.pocketr_api.exceptions.DomainNotFoundException
+import com.decrux.pocketr_api.exceptions.BadRequestException
+import com.decrux.pocketr_api.exceptions.ForbiddenException
+import com.decrux.pocketr_api.exceptions.NotFoundException
 import com.decrux.pocketr_api.repositories.AccountRepository
 import com.decrux.pocketr_api.repositories.LedgerSplitRepository
 import com.decrux.pocketr_api.services.household.ManageHousehold
@@ -44,15 +44,15 @@ class GenerateReportImpl(
 
             MODE_HOUSEHOLD -> {
                 val hId = householdId
-                    ?: throw DomainBadRequestException("householdId is required for household mode")
+                    ?: throw BadRequestException("householdId is required for household mode")
                 val userId = requireNotNull(user.userId) { "User ID must not be null" }
                 if (!manageHousehold.isActiveMember(hId, userId)) {
-                    throw DomainForbiddenException("Not an active member of this household")
+                    throw ForbiddenException("Not an active member of this household")
                 }
                 ledgerSplitRepository.monthlyExpensesByHousehold(hId, monthStart, monthEnd, SplitSide.DEBIT, SplitSide.CREDIT)
             }
 
-            else -> throw DomainBadRequestException("Invalid mode: $mode. Must be INDIVIDUAL or HOUSEHOLD")
+            else -> throw BadRequestException("Invalid mode: $mode. Must be INDIVIDUAL or HOUSEHOLD")
         }
 
         return rows.map { row ->
@@ -99,16 +99,16 @@ class GenerateReportImpl(
         user: User,
     ): AccountBalanceTimeseriesDto {
         if (dateFrom.isAfter(dateTo)) {
-            throw DomainBadRequestException("dateFrom must be before or equal to dateTo")
+            throw BadRequestException("dateFrom must be before or equal to dateTo")
         }
 
         val userId = requireNotNull(user.userId) { "User ID must not be null" }
 
         val account = accountRepository.findById(accountId)
-            .orElseThrow { DomainNotFoundException("Account not found") }
+            .orElseThrow { NotFoundException("Account not found") }
 
         if (account.owner?.userId != userId) {
-            throw DomainForbiddenException("Not the owner of this account")
+            throw ForbiddenException("Not the owner of this account")
         }
 
         val isDebitNormal = account.type in DEBIT_NORMAL_TYPES

@@ -3,9 +3,9 @@ package com.decrux.pocketr_api.services.ledger
 import com.decrux.pocketr_api.entities.db.auth.User
 import com.decrux.pocketr_api.entities.db.ledger.*
 import com.decrux.pocketr_api.entities.dtos.*
-import com.decrux.pocketr_api.exceptions.DomainBadRequestException
-import com.decrux.pocketr_api.exceptions.DomainForbiddenException
-import com.decrux.pocketr_api.exceptions.DomainNotFoundException
+import com.decrux.pocketr_api.exceptions.BadRequestException
+import com.decrux.pocketr_api.exceptions.ForbiddenException
+import com.decrux.pocketr_api.exceptions.NotFoundException
 import com.decrux.pocketr_api.repositories.*
 import com.decrux.pocketr_api.services.household.ManageHousehold
 import com.decrux.pocketr_api.services.user_avatar.UserAvatarService
@@ -40,7 +40,7 @@ class ManageLedgerImpl(
 
         // 5. Validate currency exists
         val currency = currencyRepository.findById(dto.currency)
-            .orElseThrow { DomainBadRequestException("Invalid currency: ${dto.currency}") }
+            .orElseThrow { BadRequestException("Invalid currency: ${dto.currency}") }
 
         // 6. Load and validate all accounts
         val accountIds = dto.splits.map { it.accountId }.distinct()
@@ -48,7 +48,7 @@ class ManageLedgerImpl(
         if (accounts.size != accountIds.size) {
             val foundIds = accounts.map { it.id }.toSet()
             val missingIds = accountIds.filter { it !in foundIds }
-            throw DomainBadRequestException("Accounts not found: $missingIds")
+            throw BadRequestException("Accounts not found: $missingIds")
         }
         val accountMap = accounts.associateBy { requireNotNull(it.id) }
 
@@ -65,11 +65,11 @@ class ManageLedgerImpl(
             if (tags.size != categoryTagIds.size) {
                 val foundIds = tags.map { it.id }.toSet()
                 val missingIds = categoryTagIds.filter { it !in foundIds }
-                throw DomainBadRequestException("Category tags not found: $missingIds")
+                throw BadRequestException("Category tags not found: $missingIds")
             }
             tags.forEach { tag ->
                 if (tag.owner?.userId != userId) {
-                    throw DomainForbiddenException(
+                    throw ForbiddenException(
                         "Category tag '${tag.name}' is not owned by current user",
                     )
                 }
@@ -120,9 +120,9 @@ class ManageLedgerImpl(
 
         var spec: Specification<LedgerTxn> = if (isHouseholdMode) {
             val hhId = householdId
-                ?: throw DomainBadRequestException("householdId is required for household mode")
+                ?: throw BadRequestException("householdId is required for household mode")
             if (!manageHousehold.isActiveMember(hhId, userId)) {
-                throw DomainForbiddenException("Not an active member of this household")
+                throw ForbiddenException("Not an active member of this household")
             }
             val sharedAccountIds = manageHousehold.getSharedAccountIds(hhId)
             if (sharedAccountIds.isEmpty()) {
@@ -169,19 +169,19 @@ class ManageLedgerImpl(
         val uniqueAccountIds = accountIds.distinct()
         val accounts = accountRepository.findAllById(uniqueAccountIds)
         if (accounts.size != uniqueAccountIds.size) {
-            throw DomainNotFoundException("Account not found")
+            throw NotFoundException("Account not found")
         }
 
         if (householdId != null) {
             if (!manageHousehold.isActiveMember(householdId, userId)) {
-                throw DomainForbiddenException("Not an active member of this household")
+                throw ForbiddenException("Not an active member of this household")
             }
             val sharedAccountIds = manageHousehold.getSharedAccountIds(householdId)
             if (uniqueAccountIds.any { it !in sharedAccountIds }) {
-                throw DomainForbiddenException("Account is not shared into this household")
+                throw ForbiddenException("Account is not shared into this household")
             }
         } else if (accounts.any { it.owner?.userId != userId }) {
-            throw DomainForbiddenException("Not the owner of this account")
+            throw ForbiddenException("Not the owner of this account")
         }
 
         val rawBalancesByAccountId = ledgerSplitRepository.computeRawBalancesByAccountIds(
@@ -213,18 +213,18 @@ class ManageLedgerImpl(
         val userId = requireNotNull(user.userId) { "User ID must not be null" }
 
         val account = accountRepository.findById(accountId)
-            .orElseThrow { DomainNotFoundException("Account not found") }
+            .orElseThrow { NotFoundException("Account not found") }
 
         // In household mode, allow viewing shared accounts; otherwise require ownership
         if (householdId != null) {
             if (!manageHousehold.isActiveMember(householdId, userId)) {
-                throw DomainForbiddenException("Not an active member of this household")
+                throw ForbiddenException("Not an active member of this household")
             }
             if (!manageHousehold.isAccountShared(householdId, accountId)) {
-                throw DomainForbiddenException("Account is not shared into this household")
+                throw ForbiddenException("Account is not shared into this household")
             }
         } else if (account.owner?.userId != userId) {
-            throw DomainForbiddenException("Not the owner of this account")
+            throw ForbiddenException("Not the owner of this account")
         }
 
         val isDebitNormal = account.type in setOf(AccountType.ASSET, AccountType.EXPENSE)

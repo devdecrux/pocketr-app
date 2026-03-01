@@ -2,8 +2,8 @@ package com.decrux.pocketr_api.services.ledger
 
 import com.decrux.pocketr_api.entities.db.ledger.Account
 import com.decrux.pocketr_api.entities.db.ledger.AccountType
-import com.decrux.pocketr_api.exceptions.DomainBadRequestException
-import com.decrux.pocketr_api.exceptions.DomainForbiddenException
+import com.decrux.pocketr_api.exceptions.BadRequestException
+import com.decrux.pocketr_api.exceptions.ForbiddenException
 import com.decrux.pocketr_api.services.household.ManageHousehold
 import org.springframework.stereotype.Component
 import java.util.UUID
@@ -24,22 +24,22 @@ class LedgerTransactionPolicy(
         if (nonOwnedAccounts.isEmpty()) return
 
         if (!isHouseholdMode) {
-            throw DomainForbiddenException(
+            throw ForbiddenException(
                 "Cannot post to accounts not owned by current user in individual mode",
             )
         }
 
         val hhId = householdId
-            ?: throw DomainBadRequestException("householdId is required for household mode")
+            ?: throw BadRequestException("householdId is required for household mode")
 
         if (!manageHousehold.isActiveMember(hhId, userId)) {
-            throw DomainForbiddenException("Not an active member of this household")
+            throw ForbiddenException("Not an active member of this household")
         }
 
         nonOwnedAccounts.forEach { account ->
             val accountId = requireNotNull(account.id)
             if (!manageHousehold.isAccountShared(hhId, accountId)) {
-                throw DomainForbiddenException(
+                throw ForbiddenException(
                     "Account '${account.name}' is not shared into household",
                 )
             }
@@ -47,7 +47,7 @@ class LedgerTransactionPolicy(
 
         accounts.forEach { account ->
             if (account.type != AccountType.ASSET) {
-                throw DomainBadRequestException(
+                throw BadRequestException(
                     "Cross-user transfers only allow ASSET accounts (v1), but '${account.name}' is ${account.type}",
                 )
             }

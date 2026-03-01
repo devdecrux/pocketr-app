@@ -6,8 +6,8 @@ import com.decrux.pocketr_api.entities.db.ledger.AccountType
 import com.decrux.pocketr_api.entities.db.ledger.Currency
 import com.decrux.pocketr_api.entities.dtos.CreateSplitDto
 import com.decrux.pocketr_api.entities.dtos.CreateTransactionDto
-import com.decrux.pocketr_api.exceptions.DomainBadRequestException
-import com.decrux.pocketr_api.exceptions.DomainNotFoundException
+import com.decrux.pocketr_api.exceptions.BadRequestException
+import com.decrux.pocketr_api.exceptions.NotFoundException
 import com.decrux.pocketr_api.repositories.AccountRepository
 import com.decrux.pocketr_api.repositories.UserRepository
 import com.decrux.pocketr_api.services.OwnershipGuard
@@ -37,14 +37,14 @@ class OpeningBalanceServiceImpl(
         val currencyCode = currency.code
 
         if (assetAccount.type != AccountType.ASSET) {
-            throw DomainBadRequestException("Opening balance is supported only for ASSET accounts")
+            throw BadRequestException("Opening balance is supported only for ASSET accounts")
         }
         ownershipGuard.requireOwner(assetAccount.owner?.userId, ownerId, "Not the owner of this account")
         if (openingBalanceMinor == 0L) {
-            throw DomainBadRequestException("openingBalanceMinor must not be zero")
+            throw BadRequestException("openingBalanceMinor must not be zero")
         }
         if (openingBalanceMinor == Long.MIN_VALUE) {
-            throw DomainBadRequestException("openingBalanceMinor is out of supported range")
+            throw BadRequestException("openingBalanceMinor is out of supported range")
         }
 
         val openingEquity = getOrCreateOpeningEquityAccount(owner, currencyCode, currency)
@@ -83,7 +83,7 @@ class OpeningBalanceServiceImpl(
 
         // Serialize Opening Equity creation per user without introducing broad account-name constraints.
         userRepository.findByUserIdForUpdate(ownerId)
-            .orElseThrow { DomainNotFoundException("User not found") }
+            .orElseThrow { NotFoundException("User not found") }
 
         accountRepository.findByOwnerUserIdAndTypeAndCurrencyCodeAndName(
             userId = ownerId,
