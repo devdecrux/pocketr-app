@@ -19,6 +19,16 @@ import com.decrux.pocketr.api.repositories.LedgerSplitRepository
 import com.decrux.pocketr.api.repositories.LedgerTxnRepository
 import com.decrux.pocketr.api.repositories.projections.AccountRawBalanceProjection
 import com.decrux.pocketr.api.services.household.ManageHousehold
+import com.decrux.pocketr.api.services.ledger.validations.CrossUserAssetAccountTypeValidator
+import com.decrux.pocketr.api.services.ledger.validations.DoubleEntryBalanceValidator
+import com.decrux.pocketr.api.services.ledger.validations.HouseholdIdPresenceValidator
+import com.decrux.pocketr.api.services.ledger.validations.HouseholdMembershipValidator
+import com.decrux.pocketr.api.services.ledger.validations.HouseholdSharedAccountValidator
+import com.decrux.pocketr.api.services.ledger.validations.IndividualModeOwnershipValidator
+import com.decrux.pocketr.api.services.ledger.validations.MinimumSplitCountValidator
+import com.decrux.pocketr.api.services.ledger.validations.PositiveSplitAmountValidator
+import com.decrux.pocketr.api.services.ledger.validations.SplitSideValueValidator
+import com.decrux.pocketr.api.services.ledger.validations.TransactionAccountCurrencyValidator
 import com.decrux.pocketr.api.services.user_avatar.UserAvatarService
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotNull
@@ -58,8 +68,6 @@ class LedgerTransactionValidationTest {
     private lateinit var categoryTagRepository: CategoryTagRepository
     private lateinit var manageHousehold: ManageHousehold
     private lateinit var userAvatarService: UserAvatarService
-    private lateinit var transactionValidator: LedgerTransactionValidator
-    private lateinit var transactionPolicy: LedgerTransactionPolicy
     private lateinit var service: ManageLedgerImpl
 
     private val eur = Currency(code = "EUR", minorUnit = 2, name = "Euro")
@@ -97,8 +105,6 @@ class LedgerTransactionValidationTest {
         categoryTagRepository = mock(CategoryTagRepository::class.java)
         manageHousehold = mock(ManageHousehold::class.java)
         userAvatarService = mock(UserAvatarService::class.java)
-        transactionValidator = LedgerTransactionValidator()
-        transactionPolicy = LedgerTransactionPolicy(manageHousehold)
 
         service =
             ManageLedgerImpl(
@@ -109,8 +115,16 @@ class LedgerTransactionValidationTest {
                 categoryTagRepository,
                 manageHousehold,
                 userAvatarService,
-                transactionValidator,
-                transactionPolicy,
+                MinimumSplitCountValidator(),
+                PositiveSplitAmountValidator(),
+                SplitSideValueValidator(),
+                DoubleEntryBalanceValidator(),
+                TransactionAccountCurrencyValidator(),
+                IndividualModeOwnershipValidator(),
+                HouseholdIdPresenceValidator(),
+                HouseholdMembershipValidator(),
+                HouseholdSharedAccountValidator(),
+                CrossUserAssetAccountTypeValidator(),
             )
 
         `when`(currencyRepository.findById("EUR")).thenReturn(Optional.of(eur))

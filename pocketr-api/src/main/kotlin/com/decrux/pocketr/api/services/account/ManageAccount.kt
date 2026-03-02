@@ -12,9 +12,9 @@ interface ManageAccount {
         owner: User,
     ): AccountDto
 
-    fun listAccounts(owner: User): List<AccountDto>
+    fun listIndividualAccounts(owner: User): List<AccountDto>
 
-    fun listAccounts(
+    fun listAccountsByMode(
         user: User,
         mode: String,
         householdId: UUID?,

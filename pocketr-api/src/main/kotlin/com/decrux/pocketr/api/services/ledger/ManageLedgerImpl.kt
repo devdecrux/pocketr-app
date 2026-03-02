@@ -21,6 +21,16 @@ import com.decrux.pocketr.api.repositories.CurrencyRepository
 import com.decrux.pocketr.api.repositories.LedgerSplitRepository
 import com.decrux.pocketr.api.repositories.LedgerTxnRepository
 import com.decrux.pocketr.api.services.household.ManageHousehold
+import com.decrux.pocketr.api.services.ledger.validations.CrossUserAssetAccountTypeValidator
+import com.decrux.pocketr.api.services.ledger.validations.DoubleEntryBalanceValidator
+import com.decrux.pocketr.api.services.ledger.validations.HouseholdIdPresenceValidator
+import com.decrux.pocketr.api.services.ledger.validations.HouseholdMembershipValidator
+import com.decrux.pocketr.api.services.ledger.validations.HouseholdSharedAccountValidator
+import com.decrux.pocketr.api.services.ledger.validations.IndividualModeOwnershipValidator
+import com.decrux.pocketr.api.services.ledger.validations.MinimumSplitCountValidator
+import com.decrux.pocketr.api.services.ledger.validations.PositiveSplitAmountValidator
+import com.decrux.pocketr.api.services.ledger.validations.SplitSideValueValidator
+import com.decrux.pocketr.api.services.ledger.validations.TransactionAccountCurrencyValidator
 import com.decrux.pocketr.api.services.user_avatar.UserAvatarService
 import org.springframework.data.domain.PageRequest
 import org.springframework.data.domain.Sort
@@ -39,9 +49,18 @@ class ManageLedgerImpl(
     private val categoryTagRepository: CategoryTagRepository,
     private val manageHousehold: ManageHousehold,
     private val userAvatarService: UserAvatarService,
-    private val transactionValidator: LedgerTransactionValidator,
-    private val transactionPolicy: LedgerTransactionPolicy,
+    private val minimumSplitCountValidator: MinimumSplitCountValidator,
+    private val positiveSplitAmountValidator: PositiveSplitAmountValidator,
+    private val splitSideValueValidator: SplitSideValueValidator,
+    private val doubleEntryBalanceValidator: DoubleEntryBalanceValidator,
+    private val transactionAccountCurrencyValidator: TransactionAccountCurrencyValidator,
+    private val individualModeOwnershipValidator: IndividualModeOwnershipValidator,
+    private val householdIdPresenceValidator: HouseholdIdPresenceValidator,
+    private val householdMembershipValidator: HouseholdMembershipValidator,
+    private val householdSharedAccountValidator: HouseholdSharedAccountValidator,
+    private val crossUserAssetAccountTypeValidator: CrossUserAssetAccountTypeValidator,
 ) : ManageLedger {
+
     @Transactional
     override fun createTransaction(
         dto: CreateTransactionDto,
@@ -51,7 +70,10 @@ class ManageLedgerImpl(
         val isHouseholdMode = dto.mode?.uppercase() == "HOUSEHOLD"
 
         // 1-4. Validate splits (count, amounts, sides, double-entry balance)
-        transactionValidator.validateSplits(dto.splits)
+        minimumSplitCountValidator.validate(dto.splits)
+        positiveSplitAmountValidator.validate(dto.splits)
+        splitSideValueValidator.validate(dto.splits)
+        doubleEntryBalanceValidator.validate(dto.splits)
 
         // 5. Validate currency exists
         val currency =
@@ -70,10 +92,17 @@ class ManageLedgerImpl(
         val accountMap = accounts.associateBy { requireNotNull(it.id) }
 
         // 7. Currency consistency
-        transactionValidator.validateCurrencyConsistency(accounts, dto.currency)
+        transactionAccountCurrencyValidator.validate(accounts, dto.currency)
 
         // 8. Permission check: individual vs household mode
-        transactionPolicy.checkAccountAccess(accounts, userId, isHouseholdMode, dto.householdId)
+        val nonOwnedAccounts = accounts.filter { it.owner?.userId != userId }
+        if (nonOwnedAccounts.isNotEmpty()) {
+            individualModeOwnershipValidator.validate(nonOwnedAccounts, isHouseholdMode)
+            val hhId = householdIdPresenceValidator.validate(dto.householdId)
+            householdMembershipValidator.validate(manageHousehold, hhId, userId)
+            householdSharedAccountValidator.validate(nonOwnedAccounts, manageHousehold, hhId)
+            crossUserAssetAccountTypeValidator.validate(accounts)
+        }
 
         // 9. Validate category tags
         val categoryTagIds = dto.splits.mapNotNull { it.categoryTagId }.distinct()

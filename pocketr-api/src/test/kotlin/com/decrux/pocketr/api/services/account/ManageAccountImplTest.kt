@@ -290,7 +290,7 @@ class ManageAccountImplTest {
                 )
             `when`(accountRepository.findByOwnerUserId(1L)).thenReturn(accounts)
 
-            val result = service.listAccounts(ownerUser)
+            val result = service.listIndividualAccounts(ownerUser)
             assertEquals(2, result.size)
             assertEquals(1L, result[0].ownerUserId)
             assertEquals(1L, result[1].ownerUserId)
@@ -304,7 +304,7 @@ class ManageAccountImplTest {
         fun returnEmptyListWhenNoAccounts() {
             `when`(accountRepository.findByOwnerUserId(1L)).thenReturn(emptyList())
 
-            val result = service.listAccounts(ownerUser)
+            val result = service.listIndividualAccounts(ownerUser)
             assertTrue(result.isEmpty())
         }
     }
@@ -389,7 +389,7 @@ class ManageAccountImplTest {
                 )
             `when`(accountRepository.findByOwnerUserId(1L)).thenReturn(accounts)
 
-            val result = service.listAccounts(ownerUser, "INDIVIDUAL", null)
+            val result = service.listAccountsByMode(ownerUser, "INDIVIDUAL", null)
             assertEquals(1, result.size)
             assertEquals("Checking", result[0].name)
             verify(accountRepository).findByOwnerUserId(1L)
@@ -411,7 +411,7 @@ class ManageAccountImplTest {
                 .thenReturn(setOf(sharedAccount.id!!))
             doReturn(listOf(sharedAccount)).`when`(accountRepository).findAllById(any())
 
-            val result = service.listAccounts(ownerUser, "HOUSEHOLD", householdId)
+            val result = service.listAccountsByMode(ownerUser, "HOUSEHOLD", householdId)
             assertEquals(2, result.size)
             val names = result.map { it.name }.toSet()
             assertTrue(names.contains("My Checking"))
@@ -430,7 +430,7 @@ class ManageAccountImplTest {
                 .thenReturn(setOf(sharedOwnedAccount.id!!))
             doReturn(listOf(sharedOwnedAccount)).`when`(accountRepository).findAllById(any())
 
-            val result = service.listAccounts(ownerUser, "HOUSEHOLD", householdId)
+            val result = service.listAccountsByMode(ownerUser, "HOUSEHOLD", householdId)
             assertEquals(1, result.size)
             assertEquals("Shared Checking", result[0].name)
         }
@@ -446,7 +446,7 @@ class ManageAccountImplTest {
             `when`(householdAccountShareRepository.findSharedAccountIdsByHouseholdId(householdId))
                 .thenReturn(emptySet())
 
-            val result = service.listAccounts(ownerUser, "HOUSEHOLD", householdId)
+            val result = service.listAccountsByMode(ownerUser, "HOUSEHOLD", householdId)
             assertEquals(1, result.size)
             assertEquals("Checking", result[0].name)
         }
@@ -457,7 +457,7 @@ class ManageAccountImplTest {
             `when`(manageHousehold.isActiveMember(householdId, 1L)).thenReturn(false)
 
             assertThrows(ForbiddenException::class.java) {
-                service.listAccounts(ownerUser, "HOUSEHOLD", householdId)
+                service.listAccountsByMode(ownerUser, "HOUSEHOLD", householdId)
             }
             verify(accountRepository, never()).findByOwnerUserId(anyLong())
         }
@@ -466,7 +466,7 @@ class ManageAccountImplTest {
         @DisplayName("HOUSEHOLD mode without householdId returns 400")
         fun householdModeWithoutHouseholdId() {
             assertThrows(BadRequestException::class.java) {
-                service.listAccounts(ownerUser, "HOUSEHOLD", null)
+                service.listAccountsByMode(ownerUser, "HOUSEHOLD", null)
             }
         }
 
@@ -474,7 +474,7 @@ class ManageAccountImplTest {
         @DisplayName("Invalid mode returns 400")
         fun invalidModeReturns400() {
             assertThrows(BadRequestException::class.java) {
-                service.listAccounts(ownerUser, "INVALID", null)
+                service.listAccountsByMode(ownerUser, "INVALID", null)
             }
         }
     }

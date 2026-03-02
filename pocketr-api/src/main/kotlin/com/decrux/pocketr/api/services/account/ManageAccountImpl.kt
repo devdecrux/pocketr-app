@@ -85,14 +85,14 @@ class ManageAccountImpl(
     }
 
     @Transactional(readOnly = true)
-    override fun listAccounts(owner: User): List<AccountDto> {
+    override fun listIndividualAccounts(owner: User): List<AccountDto> {
         val userId = requireNotNull(owner.userId) { "User ID must not be null" }
         val accounts = accountRepository.findByOwnerUserId(userId)
         return accounts.map { it.toDto() }
     }
 
     @Transactional(readOnly = true)
-    override fun listAccounts(
+    override fun listAccountsByMode(
         user: User,
         mode: String,
         householdId: UUID?,
@@ -100,7 +100,7 @@ class ManageAccountImpl(
         val userId = requireNotNull(user.userId) { "User ID must not be null" }
 
         if (mode == "INDIVIDUAL") {
-            return listAccounts(user)
+            return listIndividualAccounts(user)
         }
 
         if (mode != "HOUSEHOLD") {
