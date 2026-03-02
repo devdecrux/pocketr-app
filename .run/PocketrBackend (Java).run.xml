@@ -1,10 +1,10 @@
 <component name="ProjectRunConfigurationManager">
-  <configuration default="false" name="PocketrBackend" type="SpringBootApplicationConfigurationType" factoryName="Spring Boot">
+  <configuration default="false" name="PocketrBackend (Java)" type="SpringBootApplicationConfigurationType" factoryName="Spring Boot">
     <envs>
       <env name="SPRING_PROFILES_ACTIVE" value="dev" />
     </envs>
-    <module name="pocketr-api.main" />
-    <option name="SPRING_BOOT_MAIN_CLASS" value="com.decrux.pocketr.api.PocketrApiApplicationKt" />
+    <module name="pocketr-java.api.main" />
+    <option name="SPRING_BOOT_MAIN_CLASS" value="com.decrux.pocketr.api.PocketrApiApplication" />
     <method v="2">
       <option name="Make" enabled="true" />
       <option name="RunConfigurationTask" enabled="true" run_configuration_name="pocketr external dependencies" run_configuration_type="docker-deploy" />

@@ -1,0 +1,15 @@
+# Alpha Reset Profile
+# Drops and recreates all tables on startup. ALL DATA WILL BE LOST.
+#
+# Usage (with dev profile):
+#   mvn spring-boot:run -Dspring-boot.run.profiles=dev,alpha-reset
+#
+# After reset, restart without alpha-reset to return to normal ddl-auto: update.
+
+spring:
+  config:
+    activate:
+      on-profile: alpha-reset
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
