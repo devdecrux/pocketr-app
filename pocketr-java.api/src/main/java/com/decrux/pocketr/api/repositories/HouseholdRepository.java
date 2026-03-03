@@ -1,10 +1,17 @@
 package com.decrux.pocketr.api.repositories;
 
 import com.decrux.pocketr.api.entities.db.household.Household;
-import java.util.UUID;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
+import java.util.Optional;
+import java.util.UUID;
+
 @Repository
 public interface HouseholdRepository extends JpaRepository<Household, UUID> {
+
+    @EntityGraph(attributePaths = {"members", "members.user"})
+    @Override
+    Optional<Household> findById(UUID id);
 }

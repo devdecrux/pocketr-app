@@ -33,6 +33,11 @@ import com.decrux.pocketr.api.services.ledger.validations.PositiveSplitAmountVal
 import com.decrux.pocketr.api.services.ledger.validations.SplitSideValueValidator;
 import com.decrux.pocketr.api.services.ledger.validations.TransactionAccountCurrencyValidator;
 import com.decrux.pocketr.api.services.user_avatar.UserAvatarService;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Test;
+
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -44,10 +49,6 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Nested;
-import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -188,32 +189,35 @@ class LedgerTransactionValidationTest {
         @Test
         @DisplayName("should reject transaction with fewer than 2 splits")
         void rejectFewerThan2Splits() {
-            CreateTransactionDto dto = new CreateTransactionDto(
-                null,
-                null,
-                LocalDate.now(),
-                "EUR",
-                "Test",
-                List.of(new CreateSplitDto(checkingId, "DEBIT", 1000L, null))
+            IllegalArgumentException ex = assertThrows(
+                IllegalArgumentException.class,
+                () -> new CreateTransactionDto(
+                    null,
+                    null,
+                    LocalDate.of(2026, 1, 5),
+                    "EUR",
+                    "Test",
+                    List.of(new CreateSplitDto(checkingId, "DEBIT", 1000L, null))
+                )
             );
-
-            BadRequestException ex = assertThrows(BadRequestException.class, () -> service.createTransaction(dto, userA));
-            assertTrue(ex.getMessage().contains("at least 2 splits"));
+            assertTrue(ex.getMessage().contains("at least 2"));
         }
 
         @Test
         @DisplayName("should reject transaction with 0 splits")
         void rejectZeroSplits() {
-            CreateTransactionDto dto = new CreateTransactionDto(
-                null,
-                null,
-                LocalDate.now(),
-                "EUR",
-                "Test",
-                List.of()
+            IllegalArgumentException ex = assertThrows(
+                IllegalArgumentException.class,
+                () -> new CreateTransactionDto(
+                    null,
+                    null,
+                    LocalDate.of(2026, 1, 6),
+                    "EUR",
+                    "Test",
+                    List.of()
+                )
             );
-
-            assertThrows(BadRequestException.class, () -> service.createTransaction(dto, userA));
+            assertTrue(ex.getMessage().contains("at least 2"));
         }
 
         @Test
@@ -238,38 +242,40 @@ class LedgerTransactionValidationTest {
         @Test
         @DisplayName("should reject transaction where any split amount is zero")
         void rejectZeroAmount() {
-            CreateTransactionDto dto = new CreateTransactionDto(
-                null,
-                null,
-                LocalDate.now(),
-                "EUR",
-                "Zero",
-                List.of(
-                    new CreateSplitDto(checkingId, "CREDIT", 0L, null),
-                    new CreateSplitDto(expenseId, "DEBIT", 0L, null)
+            IllegalArgumentException ex = assertThrows(
+                IllegalArgumentException.class,
+                () -> new CreateTransactionDto(
+                    null,
+                    null,
+                    LocalDate.of(2026, 1, 7),
+                    "EUR",
+                    "Zero",
+                    List.of(
+                        new CreateSplitDto(checkingId, "CREDIT", 0L, null),
+                        new CreateSplitDto(expenseId, "DEBIT", 0L, null)
+                    )
                 )
             );
-
-            BadRequestException ex = assertThrows(BadRequestException.class, () -> service.createTransaction(dto, userA));
             assertTrue(ex.getMessage().contains("greater than 0"));
         }
 
         @Test
         @DisplayName("should reject transaction where any split amount is negative")
         void rejectNegativeAmount() {
-            CreateTransactionDto dto = new CreateTransactionDto(
-                null,
-                null,
-                LocalDate.now(),
-                "EUR",
-                "Negative",
-                List.of(
-                    new CreateSplitDto(checkingId, "CREDIT", -1000L, null),
-                    new CreateSplitDto(expenseId, "DEBIT", -1000L, null)
+            IllegalArgumentException ex = assertThrows(
+                IllegalArgumentException.class,
+                () -> new CreateTransactionDto(
+                    null,
+                    null,
+                    LocalDate.of(2026, 1, 8),
+                    "EUR",
+                    "Negative",
+                    List.of(
+                        new CreateSplitDto(checkingId, "CREDIT", -1000L, null),
+                        new CreateSplitDto(expenseId, "DEBIT", -1000L, null)
+                    )
                 )
             );
-
-            BadRequestException ex = assertThrows(BadRequestException.class, () -> service.createTransaction(dto, userA));
             assertTrue(ex.getMessage().contains("greater than 0"));
         }
 
@@ -441,6 +447,63 @@ class LedgerTransactionValidationTest {
 
             BadRequestException ex = assertThrows(BadRequestException.class, () -> service.createTransaction(dto, userA));
             assertTrue(ex.getMessage().contains("Accounts not found"));
+        }
+    }
+
+    @Nested
+    @DisplayName("Household mode permissions")
+    class HouseholdModePermissions {
+
+        @Test
+        @DisplayName("should require active household membership even when all split accounts are owned")
+        void requireMembershipEvenWhenAllAccountsOwned() {
+            UUID householdId = UUID.randomUUID();
+            stubAccounts(checking, expenseAcct);
+            when(manageHousehold.isActiveMember(householdId, userA.getUserId())).thenReturn(false);
+
+            CreateTransactionDto dto = new CreateTransactionDto(
+                "HOUSEHOLD",
+                householdId,
+                LocalDate.of(2026, 1, 15),
+                "EUR",
+                "Household expense",
+                List.of(
+                    new CreateSplitDto(checkingId, "CREDIT", 4500L, null),
+                    new CreateSplitDto(expenseId, "DEBIT", 4500L, null)
+                )
+            );
+
+            ForbiddenException ex = assertThrows(ForbiddenException.class, () -> service.createTransaction(dto, userA));
+            assertTrue(ex.getMessage().contains("Not an active member"));
+            verify(manageHousehold).isActiveMember(householdId, userA.getUserId());
+            verify(manageHousehold, never()).getSharedAccountIds(any(UUID.class));
+            verify(ledgerTxnRepository, never()).save(any(LedgerTxn.class));
+        }
+
+        @Test
+        @DisplayName("should allow household mode transaction for active member with owned accounts")
+        void allowActiveMemberWhenAllAccountsOwned() {
+            UUID householdId = UUID.randomUUID();
+            stubAccounts(checking, expenseAcct);
+            when(manageHousehold.isActiveMember(householdId, userA.getUserId())).thenReturn(true);
+
+            CreateTransactionDto dto = new CreateTransactionDto(
+                "HOUSEHOLD",
+                householdId,
+                LocalDate.of(2026, 1, 16),
+                "EUR",
+                "Household expense",
+                List.of(
+                    new CreateSplitDto(checkingId, "CREDIT", 4500L, null),
+                    new CreateSplitDto(expenseId, "DEBIT", 4500L, null)
+                )
+            );
+
+            TransactionDto result = service.createTransaction(dto, userA);
+            assertNotNull(result.getId());
+            verify(manageHousehold).isActiveMember(householdId, userA.getUserId());
+            verify(manageHousehold, never()).getSharedAccountIds(any(UUID.class));
+            verify(ledgerTxnRepository).save(any(LedgerTxn.class));
         }
     }
 

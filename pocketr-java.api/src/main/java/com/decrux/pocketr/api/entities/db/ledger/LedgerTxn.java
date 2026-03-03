@@ -17,6 +17,7 @@ import jakarta.persistence.OneToMany;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
+
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -91,8 +92,9 @@ public class LedgerTxn {
     ) {
         this.id = id;
         this.createdBy = createdBy;
-        this.householdId = householdId;
         this.household = household;
+        this.householdId = householdId;
+        synchronizeHouseholdReference();
         this.txnDate = txnDate;
         this.description = description;
         this.currency = currency;
@@ -103,11 +105,13 @@ public class LedgerTxn {
 
     @PrePersist
     public void onCreate() {
+        synchronizeHouseholdReference();
         updatedAt = Instant.now();
     }
 
     @PreUpdate
     public void onUpdate() {
+        synchronizeHouseholdReference();
         updatedAt = Instant.now();
     }
 
@@ -133,6 +137,7 @@ public class LedgerTxn {
 
     public void setHouseholdId(UUID householdId) {
         this.householdId = householdId;
+        synchronizeHouseholdReference();
     }
 
     public Household getHousehold() {
@@ -141,6 +146,23 @@ public class LedgerTxn {
 
     public void setHousehold(Household household) {
         this.household = household;
+        this.householdId = household != null ? household.getId() : null;
+    }
+
+    private void synchronizeHouseholdReference() {
+        if (household == null) {
+            return;
+        }
+
+        UUID relationId = household.getId();
+        if (householdId == null) {
+            householdId = relationId;
+            return;
+        }
+
+        if (relationId != null && !householdId.equals(relationId)) {
+            household = null;
+        }
     }
 
     public LocalDate getTxnDate() {

@@ -34,6 +34,13 @@ import com.decrux.pocketr.api.services.ledger.validations.PositiveSplitAmountVal
 import com.decrux.pocketr.api.services.ledger.validations.SplitSideValueValidator;
 import com.decrux.pocketr.api.services.ledger.validations.TransactionAccountCurrencyValidator;
 import com.decrux.pocketr.api.services.user_avatar.UserAvatarService;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -45,12 +52,6 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Sort;
-import org.springframework.data.jpa.domain.Specification;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class ManageLedgerImpl implements ManageLedger {
@@ -153,12 +154,19 @@ public class ManageLedgerImpl implements ManageLedger {
             .filter(account -> !Objects.equals(account.getOwner() != null ? account.getOwner().getUserId() : null, userId))
             .toList();
 
+        UUID householdId = null;
+        if (isHouseholdMode) {
+            householdId = householdIdPresenceValidator.validate(dto.getHouseholdId());
+            householdMembershipValidator.validate(manageHousehold, householdId, userId);
+        }
+
         if (!nonOwnedAccounts.isEmpty()) {
             individualModeOwnershipValidator.validate(nonOwnedAccounts, isHouseholdMode);
-            UUID householdId = householdIdPresenceValidator.validate(dto.getHouseholdId());
-            householdMembershipValidator.validate(manageHousehold, householdId, userId);
-            householdSharedAccountValidator.validate(nonOwnedAccounts, manageHousehold, householdId);
-            crossUserAssetAccountTypeValidator.validate(accounts);
+            if (isHouseholdMode) {
+                Set<UUID> sharedAccountIds = manageHousehold.getSharedAccountIds(householdId);
+                householdSharedAccountValidator.validate(nonOwnedAccounts, sharedAccountIds);
+                crossUserAssetAccountTypeValidator.validate(accounts);
+            }
         }
 
         List<UUID> categoryTagIds = dto
@@ -193,7 +201,7 @@ public class ManageLedgerImpl implements ManageLedger {
 
         LedgerTxn txn = new LedgerTxn();
         txn.setCreatedBy(creator);
-        txn.setHouseholdId(isHouseholdMode ? dto.getHouseholdId() : null);
+        txn.setHouseholdId(isHouseholdMode ? householdId : null);
         txn.setTxnDate(dto.getTxnDate());
         txn.setDescription(dto.getDescription().trim());
         txn.setCurrency(currency);
@@ -344,7 +352,8 @@ public class ManageLedgerImpl implements ManageLedger {
             if (!manageHousehold.isActiveMember(householdId, userId)) {
                 throw new ForbiddenException("Not an active member of this household");
             }
-            if (!manageHousehold.isAccountShared(householdId, accountId)) {
+            Set<UUID> sharedAccountIds = manageHousehold.getSharedAccountIds(householdId);
+            if (!sharedAccountIds.contains(accountId)) {
                 throw new ForbiddenException("Account is not shared into this household");
             }
         } else if (!Objects.equals(account.getOwner() != null ? account.getOwner().getUserId() : null, userId)) {

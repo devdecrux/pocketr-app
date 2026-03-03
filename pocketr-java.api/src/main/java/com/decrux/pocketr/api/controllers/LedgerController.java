@@ -6,9 +6,6 @@ import com.decrux.pocketr.api.entities.dtos.CreateTransactionDto;
 import com.decrux.pocketr.api.entities.dtos.PagedTransactionsDto;
 import com.decrux.pocketr.api.entities.dtos.TransactionDto;
 import com.decrux.pocketr.api.services.ledger.ManageLedger;
-import java.time.LocalDate;
-import java.util.List;
-import java.util.UUID;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -21,9 +18,15 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.time.LocalDate;
+import java.util.List;
+import java.util.UUID;
+
 @RestController
 @RequestMapping("/v1/ledger")
 public class LedgerController {
+
+    private static final int MAX_PAGE_SIZE = 200;
 
     private final ManageLedger manageLedger;
 
@@ -43,6 +46,12 @@ public class LedgerController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "15") int size
     ) {
+        if (page < 0) {
+            throw new IllegalArgumentException("page must be greater than or equal to 0");
+        }
+        if (size < 1 || size > MAX_PAGE_SIZE) {
+            throw new IllegalArgumentException("size must be between 1 and " + MAX_PAGE_SIZE);
+        }
         return manageLedger.listTransactions(user, mode, householdId, dateFrom, dateTo, accountId, categoryId, page, size);
     }
 

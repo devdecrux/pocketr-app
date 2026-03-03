@@ -6,6 +6,12 @@ public record RegisterUserDto(
     String firstName,
     String lastName
 ) {
+    public RegisterUserDto {
+        RequestDtoValidator.requireNotBlank(password, "password");
+        RequestDtoValidator.requireEmail(email, "email");
+        RequestDtoValidator.requireMaxLength(email, 255, "email");
+    }
+
     public String getPassword() {
         return password;
     }

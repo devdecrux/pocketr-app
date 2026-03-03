@@ -9,9 +9,13 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
+
 import java.time.Instant;
+import java.util.Locale;
 import java.util.UUID;
 
 @Entity
@@ -49,6 +53,14 @@ public class CategoryTag {
         this.name = name;
         this.color = color;
         this.createdAt = createdAt;
+    }
+
+    @PrePersist
+    @PreUpdate
+    public void normalizeName() {
+        if (name != null) {
+            name = name.trim().toLowerCase(Locale.ROOT);
+        }
     }
 
     public UUID getId() {

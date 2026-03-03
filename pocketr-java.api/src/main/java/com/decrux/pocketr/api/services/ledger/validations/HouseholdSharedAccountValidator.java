@@ -2,18 +2,19 @@ package com.decrux.pocketr.api.services.ledger.validations;
 
 import com.decrux.pocketr.api.entities.db.ledger.Account;
 import com.decrux.pocketr.api.exceptions.ForbiddenException;
-import com.decrux.pocketr.api.services.household.ManageHousehold;
-import java.util.List;
-import java.util.UUID;
 import org.springframework.stereotype.Component;
+
+import java.util.List;
+import java.util.Set;
+import java.util.UUID;
 
 @Component
 public class HouseholdSharedAccountValidator {
 
-    public void validate(List<Account> nonOwnedAccounts, ManageHousehold manageHousehold, UUID householdId) {
+    public void validate(List<Account> nonOwnedAccounts, Set<UUID> sharedAccountIds) {
         for (Account account : nonOwnedAccounts) {
             UUID accountId = requireNotNull(account.getId());
-            if (!manageHousehold.isAccountShared(householdId, accountId)) {
+            if (!sharedAccountIds.contains(accountId)) {
                 throw new ForbiddenException("Account '" + account.getName() + "' is not shared into household");
             }
         }

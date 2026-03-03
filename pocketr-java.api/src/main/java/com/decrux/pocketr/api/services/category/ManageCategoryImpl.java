@@ -7,13 +7,15 @@ import com.decrux.pocketr.api.entities.dtos.CreateCategoryDto;
 import com.decrux.pocketr.api.entities.dtos.UpdateCategoryDto;
 import com.decrux.pocketr.api.repositories.CategoryTagRepository;
 import com.decrux.pocketr.api.services.OwnershipGuard;
-import java.util.List;
-import java.util.UUID;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
+
+import java.util.List;
+import java.util.Locale;
+import java.util.UUID;
 
 @Service
 public class ManageCategoryImpl implements ManageCategory {
@@ -30,7 +32,7 @@ public class ManageCategoryImpl implements ManageCategory {
     @Transactional
     public CategoryDto createCategory(CreateCategoryDto dto, User owner) {
         long userId = requireNotNull(owner.getUserId(), "User ID must not be null");
-        String name = dto.getName().trim();
+        String name = normalizeCategoryName(dto.getName());
 
         if (categoryTagRepository.existsByOwnerUserIdAndNameIgnoreCase(userId, name)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Category '" + name + "' already exists");
@@ -69,7 +71,7 @@ public class ManageCategoryImpl implements ManageCategory {
         );
 
         long userId = requireNotNull(owner.getUserId(), "User ID must not be null");
-        String newName = dto.getName().trim();
+        String newName = normalizeCategoryName(dto.getName());
 
         if (
             !newName.equalsIgnoreCase(tag.getName())
@@ -123,5 +125,9 @@ public class ManageCategoryImpl implements ManageCategory {
             throw new IllegalArgumentException(message);
         }
         return value;
+    }
+
+    private static String normalizeCategoryName(String rawName) {
+        return rawName.trim().toLowerCase(Locale.ROOT);
     }
 }

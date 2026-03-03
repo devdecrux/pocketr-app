@@ -12,6 +12,18 @@ public record CreateTransactionDto(
     String description,
     List<CreateSplitDto> splits
 ) {
+    public CreateTransactionDto {
+        RequestDtoValidator.requireNotNull(txnDate, "txnDate");
+        RequestDtoValidator.requireCurrencyCode(currency, "currency");
+        RequestDtoValidator.requireNotBlank(description, "description");
+        RequestDtoValidator.requireMaxLength(description, 255, "description");
+        RequestDtoValidator.requireMinSize(splits, 2, "splits");
+
+        for (CreateSplitDto split : splits) {
+            RequestDtoValidator.requireNotNull(split, "splits item");
+        }
+    }
+
     public String getMode() {
         return mode;
     }

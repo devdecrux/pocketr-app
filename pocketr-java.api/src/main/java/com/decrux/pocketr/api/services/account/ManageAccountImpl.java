@@ -15,14 +15,18 @@ import com.decrux.pocketr.api.repositories.CurrencyRepository;
 import com.decrux.pocketr.api.repositories.HouseholdAccountShareRepository;
 import com.decrux.pocketr.api.services.OwnershipGuard;
 import com.decrux.pocketr.api.services.household.ManageHousehold;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
+
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class ManageAccountImpl implements ManageAccount {
@@ -53,6 +57,7 @@ public class ManageAccountImpl implements ManageAccount {
     @Override
     @Transactional
     public AccountDto createAccount(CreateAccountDto dto, User owner) {
+        long ownerId = requireNotNull(owner.getUserId(), "User ID must not be null");
         AccountType accountType;
         try {
             accountType = AccountType.valueOf(dto.getType());
@@ -76,13 +81,29 @@ public class ManageAccountImpl implements ManageAccount {
             throw new BadRequestException("openingBalanceDate requires non-zero openingBalanceMinor");
         }
 
+        String normalizedName = dto.getName().trim();
+        Account existingAccount = accountRepository.findByOwnerUserIdAndTypeAndCurrencyCodeAndName(
+            ownerId,
+            accountType,
+            currency.getCode(),
+            normalizedName
+        );
+        if (existingAccount != null) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Account '" + normalizedName + "' already exists");
+        }
+
         Account account = new Account();
         account.setOwner(owner);
-        account.setName(dto.getName().trim());
+        account.setName(normalizedName);
         account.setType(accountType);
         account.setCurrency(currency);
 
-        Account savedAccount = accountRepository.save(account);
+        Account savedAccount;
+        try {
+            savedAccount = accountRepository.saveAndFlush(account);
+        } catch (DataIntegrityViolationException ignored) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Account '" + normalizedName + "' already exists");
+        }
 
         if (openingBalanceMinor != 0L) {
             openingBalanceService.createForNewAssetAccount(

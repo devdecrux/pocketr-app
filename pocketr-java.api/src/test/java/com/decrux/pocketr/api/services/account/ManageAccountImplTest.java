@@ -1,17 +1,5 @@
 package com.decrux.pocketr.api.services.account;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.Mockito.doReturn;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoInteractions;
-import static org.mockito.Mockito.when;
-
 import com.decrux.pocketr.api.entities.db.auth.User;
 import com.decrux.pocketr.api.entities.db.ledger.Account;
 import com.decrux.pocketr.api.entities.db.ledger.AccountType;
@@ -27,6 +15,15 @@ import com.decrux.pocketr.api.repositories.CurrencyRepository;
 import com.decrux.pocketr.api.repositories.HouseholdAccountShareRepository;
 import com.decrux.pocketr.api.services.OwnershipGuard;
 import com.decrux.pocketr.api.services.household.ManageHousehold;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentMatchers;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
+
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
@@ -34,11 +31,18 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Nested;
-import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentMatchers;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
 
 @DisplayName("ManageAccountImpl")
 class ManageAccountImplTest {
@@ -86,7 +90,7 @@ class ManageAccountImplTest {
             CreateAccountDto dto = new CreateAccountDto("Checking", "ASSET", "EUR", null, null);
             UUID savedId = UUID.randomUUID();
 
-            when(accountRepository.save(any(Account.class))).thenAnswer(invocation -> {
+            when(accountRepository.saveAndFlush(any(Account.class))).thenAnswer(invocation -> {
                 Account account = invocation.getArgument(0);
                 account.setId(savedId);
                 return account;
@@ -112,7 +116,7 @@ class ManageAccountImplTest {
                 AccountType.EXPENSE
             );
 
-            when(accountRepository.save(any(Account.class))).thenAnswer(invocation -> {
+            when(accountRepository.saveAndFlush(any(Account.class))).thenAnswer(invocation -> {
                 Account account = invocation.getArgument(0);
                 account.setId(UUID.randomUUID());
                 return account;
@@ -133,7 +137,7 @@ class ManageAccountImplTest {
 
             BadRequestException ex = assertThrows(BadRequestException.class, () -> service.createAccount(dto, ownerUser));
             assertTrue(ex.getMessage().contains("system-managed"));
-            verify(accountRepository, never()).save(any(Account.class));
+            verify(accountRepository, never()).saveAndFlush(any(Account.class));
             assertTrue(openingBalanceService.calls.isEmpty());
         }
 
@@ -160,7 +164,7 @@ class ManageAccountImplTest {
         @DisplayName("should trim whitespace from account name")
         void trimAccountName() {
             CreateAccountDto dto = new CreateAccountDto("  Checking  ", "ASSET", "EUR", null, null);
-            when(accountRepository.save(any(Account.class))).thenAnswer(invocation -> {
+            when(accountRepository.saveAndFlush(any(Account.class))).thenAnswer(invocation -> {
                 Account account = invocation.getArgument(0);
                 account.setId(UUID.randomUUID());
                 return account;
@@ -175,7 +179,7 @@ class ManageAccountImplTest {
         @DisplayName("should set owner to the authenticated user")
         void setOwnerToAuthenticatedUser() {
             CreateAccountDto dto = new CreateAccountDto("Checking", "ASSET", "EUR", null, null);
-            when(accountRepository.save(any(Account.class))).thenAnswer(invocation -> {
+            when(accountRepository.saveAndFlush(any(Account.class))).thenAnswer(invocation -> {
                 Account account = invocation.getArgument(0);
                 account.setId(UUID.randomUUID());
                 assertEquals(ownerUser.getUserId(), account.getOwner().getUserId());
@@ -183,7 +187,7 @@ class ManageAccountImplTest {
             });
 
             service.createAccount(dto, ownerUser);
-            verify(accountRepository).save(any(Account.class));
+            verify(accountRepository).saveAndFlush(any(Account.class));
             assertTrue(openingBalanceService.calls.isEmpty());
         }
 
@@ -194,7 +198,7 @@ class ManageAccountImplTest {
             LocalDate date = LocalDate.parse("2026-02-15");
             CreateAccountDto dto = new CreateAccountDto("Checking", "ASSET", "EUR", 100_000L, date);
 
-            when(accountRepository.save(any(Account.class))).thenAnswer(invocation -> {
+            when(accountRepository.saveAndFlush(any(Account.class))).thenAnswer(invocation -> {
                 Account account = invocation.getArgument(0);
                 account.setId(accountId);
                 return account;
@@ -218,7 +222,7 @@ class ManageAccountImplTest {
 
             BadRequestException ex = assertThrows(BadRequestException.class, () -> service.createAccount(dto, ownerUser));
             assertTrue(ex.getMessage().contains("ASSET"));
-            verify(accountRepository, never()).save(any(Account.class));
+            verify(accountRepository, never()).saveAndFlush(any(Account.class));
             assertTrue(openingBalanceService.calls.isEmpty());
         }
 
@@ -229,8 +233,38 @@ class ManageAccountImplTest {
 
             BadRequestException ex = assertThrows(BadRequestException.class, () -> service.createAccount(dto, ownerUser));
             assertTrue(ex.getMessage().contains("openingBalanceDate"));
-            verify(accountRepository, never()).save(any(Account.class));
+            verify(accountRepository, never()).saveAndFlush(any(Account.class));
             assertTrue(openingBalanceService.calls.isEmpty());
+        }
+
+        @Test
+        @DisplayName("should return conflict when duplicate account exists")
+        void rejectDuplicateAccountByPrecheck() {
+            CreateAccountDto dto = new CreateAccountDto("Checking", "ASSET", "EUR", null, null);
+            when(accountRepository.findByOwnerUserIdAndTypeAndCurrencyCodeAndName(1L, AccountType.ASSET, "EUR", "Checking"))
+                .thenReturn(account(UUID.randomUUID(), ownerUser, "Checking", AccountType.ASSET, eur));
+
+            ResponseStatusException ex = assertThrows(
+                ResponseStatusException.class,
+                () -> service.createAccount(dto, ownerUser)
+            );
+            assertEquals(HttpStatus.CONFLICT, ex.getStatusCode());
+            assertTrue(ex.getReason().contains("already exists"));
+            verify(accountRepository, never()).saveAndFlush(any(Account.class));
+        }
+
+        @Test
+        @DisplayName("should return conflict when unique constraint is hit on save")
+        void rejectDuplicateAccountByDbConstraint() {
+            CreateAccountDto dto = new CreateAccountDto("Checking", "ASSET", "EUR", null, null);
+            when(accountRepository.saveAndFlush(any(Account.class))).thenThrow(new DataIntegrityViolationException("duplicate"));
+
+            ResponseStatusException ex = assertThrows(
+                ResponseStatusException.class,
+                () -> service.createAccount(dto, ownerUser)
+            );
+            assertEquals(HttpStatus.CONFLICT, ex.getStatusCode());
+            assertTrue(ex.getReason().contains("already exists"));
         }
     }
 

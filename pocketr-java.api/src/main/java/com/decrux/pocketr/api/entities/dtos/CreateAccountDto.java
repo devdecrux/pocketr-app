@@ -9,6 +9,13 @@ public record CreateAccountDto(
     Long openingBalanceMinor,
     LocalDate openingBalanceDate
 ) {
+    public CreateAccountDto {
+        RequestDtoValidator.requireNotBlank(name, "name");
+        RequestDtoValidator.requireMaxLength(name, 255, "name");
+        RequestDtoValidator.requireNotBlank(type, "type");
+        RequestDtoValidator.requireCurrencyCode(currency, "currency");
+    }
+
     public String getName() {
         return name;
     }

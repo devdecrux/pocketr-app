@@ -3,7 +3,7 @@
     <envs>
       <env name="SPRING_PROFILES_ACTIVE" value="dev" />
     </envs>
-    <module name="pocketr-java.api.main" />
+    <module name="pocketr-java.api" />
     <option name="SPRING_BOOT_MAIN_CLASS" value="com.decrux.pocketr.api.PocketrApiApplication" />
     <method v="2">
       <option name="Make" enabled="true" />

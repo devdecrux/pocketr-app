@@ -8,6 +8,12 @@ public record CreateSplitDto(
     long amountMinor,
     UUID categoryTagId
 ) {
+    public CreateSplitDto {
+        RequestDtoValidator.requireNotNull(accountId, "accountId");
+        RequestDtoValidator.requireNotBlank(side, "side");
+        RequestDtoValidator.requirePositive(amountMinor, "amountMinor");
+    }
+
     public UUID getAccountId() {
         return accountId;
     }

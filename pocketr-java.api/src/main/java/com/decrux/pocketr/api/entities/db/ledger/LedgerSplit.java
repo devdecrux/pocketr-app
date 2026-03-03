@@ -12,6 +12,7 @@ import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+
 import java.util.UUID;
 
 @Entity
@@ -19,7 +20,8 @@ import java.util.UUID;
     name = "ledger_split",
     indexes = {
         @Index(name = "idx_split_txn", columnList = "txn_id"),
-        @Index(name = "idx_split_account", columnList = "account_id")
+        @Index(name = "idx_split_account", columnList = "account_id"),
+        @Index(name = "idx_split_category_tag", columnList = "category_tag_id")
     }
 )
 public class LedgerSplit {
