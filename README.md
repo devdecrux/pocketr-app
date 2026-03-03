@@ -7,7 +7,7 @@ Simple on the surface. Solid underneath.
 In local development, only infrastructure runs in Docker:
 
 - `db` (PostgreSQL) and `traefik-reverse-proxy` run in Compose.
-- `pocketr-api` and `pocketr-ui` run on the host (IntelliJ/terminal).
+- `pocketr-java.api` and `pocketr-ui` run on the host (IntelliJ/terminal).
 
 ### 1) Prepare environment variables (optional)
 
@@ -35,8 +35,8 @@ docker compose down
 ### 3) Start backend on host (`localhost:8081`)
 
 ```bash
-cd pocketr-api
-./gradlew bootRun
+cd pocketr-java.api
+./mvnw spring-boot:run
 ```
 
 ### 4) Start frontend on host (`localhost:5173`)

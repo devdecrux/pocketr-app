@@ -1,9 +1,9 @@
 # Repository Guidelines
 
 ## Project Structure & Module Organization
-- `pocketr-api/`: Kotlin + Spring Boot backend.
-  - Main code: `pocketr-api/src/main/kotlin/com/decrux/pocketr/api`
-  - Tests: `pocketr-api/src/test/kotlin`
+- `pocketr-java.api/`: Java + Spring Boot backend.
+  - Main code: `pocketr-java.api/src/main/java/com/decrux/pocketr/api`
+  - Tests: `pocketr-java.api/src/test/java`
 - `pocketr-ui/`: Vue 3 + TypeScript frontend.
   - App code: `pocketr-ui/src` (`api/`, `stores/`, `components/`, `utils/`)
   - Unit tests: `pocketr-ui/src/__tests__`
@@ -15,12 +15,10 @@
 ## Build, Test, and Development Commands
 - Start local infra (root): `docker compose up -d db traefik-reverse-proxy`
 - Stop infra: `docker compose down`
-- Backend dev server: `cd pocketr-api && ./gradlew bootRun`
+- Backend dev server: `cd pocketr-java.api && ./mvnw spring-boot:run`
 - Backend checks:
-  - `./gradlew build` (compile, test, and package backend)
-  - `./gradlew test` (all tests)
-  - `./gradlew lint` (ktlint check)
-  - `./gradlew lintFix` (auto-format Kotlin)
+  - `./mvnw verify` (compile, test, and package backend)
+  - `./mvnw test` (all tests)
 - Frontend dev server: `cd pocketr-ui && npm run dev`
 - Frontend checks:
   - `npm run type-check`
@@ -30,7 +28,7 @@
   - `npm run build`
 
 ## Coding Style & Naming Conventions
-- Kotlin: 4-space indentation, `PascalCase` classes, `camelCase` methods/properties.
+- Java: 4-space indentation, `PascalCase` classes, `camelCase` methods/properties.
 - Prefer constructor injection and focused services with explicit validation/authorization boundaries.
 - Make the smallest possible, reversible patches to existing functionality; avoid breaking changes.
 - Do not mix unrelated changes in the same patch/commit.
@@ -45,7 +43,7 @@
 - Vue/TS:
   - Components: `PascalCase.vue` (example: `DateRangePicker.vue`)
   - Composables: `useX.ts` (example: `useSessionManager.ts`)
-  - Tests: `*.spec.ts` / `*Test.kt`
+  - Tests: `*.spec.ts` / `*Test.java`
 - Run format/lint tools before opening a PR.
 
 ## Agent Startup, Context & Output
@@ -59,7 +57,7 @@
 - Backend: JUnit 5 + Mockito (`spring-boot-starter-*-test`).
 - Frontend: Vitest (unit) + Playwright (e2e).
 - Add/adjust tests for changed behavior, especially service-layer validation and permission logic.
-- Use targeted runs for speed, e.g. `./gradlew test --tests "com.decrux.pocketr.api.services.ledger.*"`.
+- Use targeted runs for speed, e.g. `./mvnw test -Dtest=ManageLedgerImplTest`.
 
 ## Commit & Pull Request Guidelines
 - History favors concise messages; use clear, scoped subjects, preferably `type: summary` (example: `chore: split ledger validators`).

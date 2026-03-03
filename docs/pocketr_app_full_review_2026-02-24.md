@@ -2,7 +2,7 @@
 
 Date: February 24, 2026  
 Project: `pocketr-app`  
-Scope: Backend (`Spring Boot`/`Kotlin`), Frontend (`Vue 3`), Infrastructure (`Docker`/`Traefik`/runtime config)
+Scope: Backend (`Spring Boot`/`Java`), Frontend (`Vue 3`), Infrastructure (`Docker`/`Traefik`/runtime config)
 
 ## Review Team
 
@@ -35,8 +35,8 @@ Main maintainability risks are concentrated in service/store coupling:
 
 - Severity: High
 - Evidence:
-    - `pocketr-api/src/main/kotlin/com/decrux/pocketr.api/services/reporting/GenerateReportImpl.kt:42-46`
-    - `pocketr-api/src/main/kotlin/com/decrux/pocketr.api/controllers/ReportingController.kt:24-31`
+    - `pocketr-java.api/src/main/java/com/decrux/pocketr.api/services/reporting/GenerateReportImpl.java:42-46`
+    - `pocketr-java.api/src/main/java/com/decrux/pocketr.api/controllers/ReportingController.java:24-31`
 - Why this matters: Any authenticated user can request household reports for arbitrary `householdId` values.
 - Pattern/Principle: Policy Object + Guard Clause (centralized authorization)
 - Steps to address:
@@ -170,7 +170,7 @@ await router.push(redirectTarget)
 
 - Severity: Medium
 - Evidence:
-    - `pocketr-api/src/main/kotlin/com/decrux/pocketr.api/services/ledger/ManageLedgerImpl.kt:31-177`
+    - `pocketr-java.api/src/main/java/com/decrux/pocketr.api/services/ledger/ManageLedgerImpl.java:31-177`
 - Why this matters: Large sequential logic is hard to test, reason about, and safely change.
 - Pattern/Principle: SRP + Application Service + Validator/Policy collaborators
 - Steps to address:
@@ -199,10 +199,10 @@ override fun createTransaction(dto: CreateTransactionDto, creator: User): Transa
 
 - Severity: Low
 - Evidence:
-    - `pocketr-api/src/main/kotlin/com/decrux/pocketr.api/services/account/ManageAccountImpl.kt:89-91`
-    - `pocketr-api/src/main/kotlin/com/decrux/pocketr.api/services/category/ManageCategoryImpl.kt:54-56`
-    - `pocketr-api/src/main/kotlin/com/decrux/pocketr.api/services/category/ManageCategoryImpl.kt:81-83`
-    - `pocketr-api/src/main/kotlin/com/decrux/pocketr.api/services/household/ManageHouseholdImpl.kt:190-192`
+    - `pocketr-java.api/src/main/java/com/decrux/pocketr.api/services/account/ManageAccountImpl.java:89-91`
+    - `pocketr-java.api/src/main/java/com/decrux/pocketr.api/services/category/ManageCategoryImpl.java:54-56`
+    - `pocketr-java.api/src/main/java/com/decrux/pocketr.api/services/category/ManageCategoryImpl.java:81-83`
+    - `pocketr-java.api/src/main/java/com/decrux/pocketr.api/services/household/ManageHouseholdImpl.java:190-192`
 - Why this matters: Duplicated authorization guard logic drifts over time and weakens consistency.
 - Pattern/Principle: Policy Object / shared guard abstraction
 - Steps to address:
@@ -281,8 +281,8 @@ export function getAccountBalance(accountId: string, asOf?: string, householdId?
 - Severity: Medium
 - Evidence:
     - `pocketr-ui/src/stores/account.ts:40-43` (sends mode/householdId)
-    - `pocketr-api/src/main/kotlin/com/decrux/pocketr.api/controllers/AccountController.kt:28-33` (ignores mode/householdId)
-    - `pocketr-api/src/main/kotlin/com/decrux/pocketr.api/services/account/ManageAccountImpl.kt:78-81` (owner-only query)
+    - `pocketr-java.api/src/main/java/com/decrux/pocketr.api/controllers/AccountController.java:28-33` (ignores mode/householdId)
+    - `pocketr-java.api/src/main/java/com/decrux/pocketr.api/services/account/ManageAccountImpl.java:78-81` (owner-only query)
 - Impact: Household-shared accounts may not appear in selectors and account-driven flows.
 - Root cause: Backend list endpoint always returns owner accounts only.
 - Steps to address:
@@ -307,7 +307,7 @@ fun listAccounts(
 
 - Severity: High
 - Evidence:
-    - Same issue as `SEC-01` (`GenerateReportImpl.kt:42-46`)
+    - Same issue as `SEC-01` (`GenerateReportImpl.java:42-46`)
 - Impact: Functional behavior is incorrect (returns data for unauthorized household scope).
 - Steps to address:
 
@@ -331,7 +331,7 @@ if (!manageHousehold.isActiveMember(hId, userId)) {
 
 - Severity: Medium
 - Evidence:
-    - `pocketr-api/src/main/kotlin/com/decrux/pocketr.api/services/ledger/ManageLedgerImpl.kt:31-177`
+    - `pocketr-java.api/src/main/java/com/decrux/pocketr.api/services/ledger/ManageLedgerImpl.java:31-177`
 - Why this matters: Domain logic is tightly coupled to transport concerns (`ResponseStatusException`), reducing reuse and testability.
 - Pattern/Principle: Hexagonal architecture + domain exceptions + controller advice mapping
 - Steps to address:
@@ -407,7 +407,7 @@ services:
 
 - Severity: Medium
 - Evidence:
-    - `pocketr-api/src/main/resources/application.yaml:15-17`
+    - `pocketr-java.api/src/main/resources/application.yaml:15-17`
 - Why this matters: In alpha, breaking schema changes are acceptable, but `update` can still create inconsistent local states and hide model/schema
   mismatch issues.
 - Pattern/Principle: Explicit alpha schema policy (profile-based behavior)

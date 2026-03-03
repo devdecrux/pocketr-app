@@ -12,7 +12,7 @@ Purpose: give Claude Code a compact, high-signal map of this repo so changes are
 
 ## 2. Repo Map
 
-- `pocketr-api`: Spring Boot 4 + Kotlin + JPA backend.
+- `pocketr-java.api`: Spring Boot 4 + Java + JPA backend.
 - `pocketr-ui`: Vue 3 + Vite + Pinia frontend.
 - `config/traefik`: Traefik static/dynamic config.
 - `docker-compose.yaml`: local infra (Postgres + Traefik).
@@ -32,9 +32,9 @@ docker compose down
 Backend:
 
 ```bash
-cd pocketr-api
-./gradlew test
-./gradlew bootRun
+cd pocketr-java.api
+./mvnw test
+./mvnw spring-boot:run
 ```
 
 Frontend:
@@ -47,13 +47,13 @@ npm run dev
 ```
 
 Notes:
-- Backend toolchain: Java 25 / Kotlin 2.3.x.
+- Backend toolchain: Java 25.
 - Frontend engine: Node `^20.19.0 || >=22.12.0`.
 
 ## 4. Architecture Snapshot
 
-Backend (`pocketr-api`):
-- Controllers in `controllers/*Controller.kt`.
+Backend (`pocketr-java.api`):
+- Controllers in `controllers/*Controller.java`.
 - Business logic in `services/**`.
 - Persistence in `repositories/**`.
 - Security config in `config/security/**` with session auth + CSRF cookie/header flow.
@@ -89,9 +89,9 @@ If your task touches any hotspot, run stricter verification and avoid broad refa
 ## 6. Testing Reality (Important)
 
 Backend tests exist and are meaningful:
-- `services/reporting/ReportingTest.kt`
-- `services/ledger/LedgerTransactionValidationTest.kt`
-- `services/ledger/HouseholdTransactionVisibilityTest.kt`
+- `services/reporting/ReportingTest.java`
+- `services/ledger/LedgerTransactionValidationTest.java`
+- `services/ledger/HouseholdTransactionVisibilityTest.java`
 - account/category/household service tests
 
 Frontend unit test coverage is minimal (`src/__tests__/App.spec.ts`).
@@ -106,7 +106,7 @@ Practical rule:
 ## 7. Alpha Database Policy
 
 Current state:
-- `pocketr-api/src/main/resources/application.yaml` uses `spring.jpa.hibernate.ddl-auto: update`.
+- `pocketr-java.api/src/main/resources/application.yaml` uses `spring.jpa.hibernate.ddl-auto: update`.
 
 Policy for this alpha phase:
 1. Breaking schema changes are allowed.
@@ -120,7 +120,7 @@ Policy for this alpha phase:
 2. Apply one logical fix/refactor at a time.
 3. Run targeted tests.
 4. Run broader project gates:
-   - `cd pocketr-api && ./gradlew test`
+   - `cd pocketr-java.api && ./mvnw test`
    - `cd pocketr-ui && npm run test:unit && npm run build`
 5. Summarize:
    - files changed
@@ -142,4 +142,3 @@ For full prioritized findings and implementation sequencing:
 - `docs/pocketr_app_claude_execution_playbook_2026-02-24.md`
 
 Use this `CLAUDE.md` as the fast-start layer; use the docs above for deep execution detail.
-

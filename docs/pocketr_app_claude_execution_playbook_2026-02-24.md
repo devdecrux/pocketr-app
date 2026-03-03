@@ -53,8 +53,8 @@ docker compose up -d db traefik-reverse-proxy
 Backend baseline:
 
 ```bash
-cd pocketr-api
-./gradlew test
+cd pocketr-java.api
+./mvnw test
 ```
 
 Frontend baseline:
@@ -157,8 +157,8 @@ Block unauthorized household monthly report access.
 
 Primary files:
 
-1. `pocketr-api/src/main/kotlin/com/decrux/pocketr.api/services/reporting/GenerateReportImpl.kt`
-2. `pocketr-api/src/test/kotlin/com/decrux/pocketr.api/services/reporting/ReportingTest.kt`
+1. `pocketr-java.api/src/main/java/com/decrux/pocketr.api/services/reporting/GenerateReportImpl.java`
+2. `pocketr-java.api/src/test/java/com/decrux/pocketr.api/services/reporting/ReportingTest.java`
 
 Implementation steps:
 
@@ -176,9 +176,9 @@ Acceptance criteria:
 Verification commands:
 
 ```bash
-cd pocketr-api
-./gradlew test --tests '*ReportingTest*'
-./gradlew test
+cd pocketr-java.api
+./mvnw test -Dtest='*ReportingTest*'
+./mvnw test
 ```
 
 ### Card SEC-04
@@ -249,9 +249,9 @@ Make household shared accounts visible through a consistent contract.
 
 Primary files:
 
-1. `pocketr-api/src/main/kotlin/com/decrux/pocketr.api/controllers/AccountController.kt`
-2. `pocketr-api/src/main/kotlin/com/decrux/pocketr.api/services/account/ManageAccount.kt`
-3. `pocketr-api/src/main/kotlin/com/decrux/pocketr.api/services/account/ManageAccountImpl.kt`
+1. `pocketr-java.api/src/main/java/com/decrux/pocketr.api/controllers/AccountController.java`
+2. `pocketr-java.api/src/main/java/com/decrux/pocketr.api/services/account/ManageAccount.java`
+3. `pocketr-java.api/src/main/java/com/decrux/pocketr.api/services/account/ManageAccountImpl.java`
 4. `pocketr-ui/src/stores/account.ts`
 5. Related tests in account/household/ledger packages
 
@@ -269,8 +269,8 @@ Acceptance criteria:
 Verification commands:
 
 ```bash
-cd pocketr-api
-./gradlew test
+cd pocketr-java.api
+./mvnw test
 cd ../pocketr-ui
 npm run test:unit
 npm run build
@@ -283,10 +283,10 @@ Refactor `ManageLedgerImpl.createTransaction` without behavior changes.
 
 Primary files:
 
-1. `pocketr-api/src/main/kotlin/com/decrux/pocketr.api/services/ledger/ManageLedgerImpl.kt`
+1. `pocketr-java.api/src/main/java/com/decrux/pocketr.api/services/ledger/ManageLedgerImpl.java`
 2. New collaborators under `services/ledger/` (validator/policy/factory)
-3. `pocketr-api/src/test/kotlin/com/decrux/pocketr.api/services/ledger/LedgerTransactionValidationTest.kt`
-4. `pocketr-api/src/test/kotlin/com/decrux/pocketr.api/services/ledger/HouseholdTransactionVisibilityTest.kt`
+3. `pocketr-java.api/src/test/java/com/decrux/pocketr.api/services/ledger/LedgerTransactionValidationTest.java`
+4. `pocketr-java.api/src/test/java/com/decrux/pocketr.api/services/ledger/HouseholdTransactionVisibilityTest.java`
 
 Implementation steps:
 
@@ -304,10 +304,10 @@ Acceptance criteria:
 Verification commands:
 
 ```bash
-cd pocketr-api
-./gradlew test --tests '*LedgerTransactionValidationTest*'
-./gradlew test --tests '*HouseholdTransactionVisibilityTest*'
-./gradlew test
+cd pocketr-java.api
+./mvnw test -Dtest='*LedgerTransactionValidationTest*'
+./mvnw test -Dtest='*HouseholdTransactionVisibilityTest*'
+./mvnw test
 ```
 
 ### Card ARCH-02
@@ -348,7 +348,7 @@ Apply alpha-safe schema strategy without introducing migration tooling.
 
 Primary files:
 
-1. `pocketr-api/src/main/resources/application.yaml`
+1. `pocketr-java.api/src/main/resources/application.yaml`
 2. Optional profile config file(s) for alpha reset behavior
 
 Implementation steps:
@@ -367,8 +367,8 @@ Acceptance criteria:
 Verification commands:
 
 ```bash
-cd pocketr-api
-./gradlew test
+cd pocketr-java.api
+./mvnw test
 ```
 
 ## 6. Global Regression Gates (Must Pass Per Phase)
@@ -376,8 +376,8 @@ cd pocketr-api
 After each phase:
 
 ```bash
-cd pocketr-api
-./gradlew test
+cd pocketr-java.api
+./mvnw test
 cd ../pocketr-ui
 npm run test:unit
 npm run build
