@@ -14,7 +14,7 @@ spring:
       max-request-size: 5MB
   jpa:
     hibernate:
-      # Dev default: 'update' preserves local data. Use --spring.profiles.active=alpha-reset for clean schema rebuild.
+      # Dev default: 'update' preserves local data.
       ddl-auto: update
 
 server:

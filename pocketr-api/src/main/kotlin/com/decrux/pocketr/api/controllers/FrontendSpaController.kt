@@ -5,11 +5,10 @@ import org.springframework.web.bind.annotation.GetMapping
 
 @Controller
 class FrontendSpaController {
-    @GetMapping(value = ["/frontend", "/frontend/"])
-    fun forwardFrontendRootToIndex(): String = "forward:/frontend/index.html"
-
     @GetMapping(
         value = [
+            "/frontend",
+            "/frontend/",
             "/frontend/{path:^(?!assets$)[^.]+}",
             "/frontend/{path:^(?!assets$)[^.]+}/**/{subpath:[^.]+}",
         ],
