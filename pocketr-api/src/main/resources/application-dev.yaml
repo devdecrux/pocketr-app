@@ -22,4 +22,4 @@ app:
 
 pocketr:
   avatar:
-    storage-dir: storage/avatars
+    storage-dir: ${AVATAR_STORAGE_DIR:storage/avatars}
