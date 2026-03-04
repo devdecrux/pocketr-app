@@ -13,10 +13,10 @@ import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 import java.time.LocalDate
 import java.time.YearMonth
-import java.util.UUID
+import java.util.*
 
 @RestController
-@RequestMapping("/v1/ledger/reports")
+@RequestMapping("/api/v1/ledger/reports")
 class ReportingController(
     private val generateReport: GenerateReport,
 ) {

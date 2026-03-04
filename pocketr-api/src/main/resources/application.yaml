@@ -21,4 +21,3 @@ server:
   servlet:
     session:
       timeout: 5m
-    context-path: /api

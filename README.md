@@ -49,7 +49,7 @@ npm run dev
 ### Access points through Traefik
 
 - `http://localhost/frontend` -> frontend dev server
-- `http://localhost/api/...` -> backend API
+- `http://localhost/api/v1/...` -> backend API
 
 ### Traefik dev hardening notes
 

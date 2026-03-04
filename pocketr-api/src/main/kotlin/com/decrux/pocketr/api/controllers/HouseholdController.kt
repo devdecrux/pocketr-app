@@ -20,10 +20,10 @@ import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.ResponseStatus
 import org.springframework.web.bind.annotation.RestController
-import java.util.UUID
+import java.util.*
 
 @RestController
-@RequestMapping("/v1/households")
+@RequestMapping("/api/v1/households")
 class HouseholdController(
     private val manageHousehold: ManageHousehold,
 ) {
