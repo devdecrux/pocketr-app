@@ -21,3 +21,7 @@ server:
   servlet:
     session:
       timeout: 5m
+
+ledger:
+  current-balance:
+    fast-path-enabled: true

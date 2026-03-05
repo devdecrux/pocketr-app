@@ -15,6 +15,7 @@ import com.decrux.pocketr.api.entities.dtos.TxnCreatorDto
 import com.decrux.pocketr.api.exceptions.BadRequestException
 import com.decrux.pocketr.api.exceptions.ForbiddenException
 import com.decrux.pocketr.api.exceptions.NotFoundException
+import com.decrux.pocketr.api.repositories.AccountCurrentBalanceRepository
 import com.decrux.pocketr.api.repositories.AccountRepository
 import com.decrux.pocketr.api.repositories.CategoryTagRepository
 import com.decrux.pocketr.api.repositories.CurrencyRepository
@@ -32,18 +33,23 @@ import com.decrux.pocketr.api.services.ledger.validations.PositiveSplitAmountVal
 import com.decrux.pocketr.api.services.ledger.validations.SplitSideValueValidator
 import com.decrux.pocketr.api.services.ledger.validations.TransactionAccountCurrencyValidator
 import com.decrux.pocketr.api.services.user_avatar.UserAvatarService
+import org.slf4j.LoggerFactory
+import org.springframework.beans.factory.annotation.Value
+import org.springframework.dao.DataAccessException
 import org.springframework.data.domain.PageRequest
 import org.springframework.data.domain.Sort
 import org.springframework.data.jpa.domain.Specification
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import java.time.Clock
 import java.time.LocalDate
-import java.util.UUID
+import java.util.*
 
 @Service
 class ManageLedgerImpl(
     private val ledgerTxnRepository: LedgerTxnRepository,
     private val ledgerSplitRepository: LedgerSplitRepository,
+    private val accountCurrentBalanceRepository: AccountCurrentBalanceRepository,
     private val accountRepository: AccountRepository,
     private val currencyRepository: CurrencyRepository,
     private val categoryTagRepository: CategoryTagRepository,
@@ -59,6 +65,9 @@ class ManageLedgerImpl(
     private val householdMembershipValidator: HouseholdMembershipValidator,
     private val householdSharedAccountValidator: HouseholdSharedAccountValidator,
     private val crossUserAssetAccountTypeValidator: CrossUserAssetAccountTypeValidator,
+    @Value("\${ledger.current-balance.fast-path-enabled:false}")
+    private val currentBalanceFastPathEnabled: Boolean,
+    private val clock: Clock = Clock.systemDefaultZone(),
 ) : ManageLedger {
 
     @Transactional
@@ -149,6 +158,7 @@ class ManageLedgerImpl(
         txn.splits = splits.toMutableList()
 
         val savedTxn = ledgerTxnRepository.save(txn)
+        applyCurrentBalanceProjection(savedTxn.splits)
         return savedTxn.toDto(userAvatarService)
     }
 
@@ -236,14 +246,7 @@ class ManageLedgerImpl(
             throw ForbiddenException("Not the owner of this account")
         }
 
-        val rawBalancesByAccountId =
-            ledgerSplitRepository
-                .computeRawBalancesByAccountIds(
-                    uniqueAccountIds,
-                    asOf,
-                    SplitSide.DEBIT,
-                    SplitSide.CREDIT,
-                ).associate { it.accountId to it.rawBalance }
+        val rawBalancesByAccountId = resolveRawBalances(uniqueAccountIds, asOf)
 
         val accountById = accounts.associateBy { requireNotNull(it.id) }
         return uniqueAccountIds.map { accountId ->
@@ -288,13 +291,8 @@ class ManageLedgerImpl(
             throw ForbiddenException("Not the owner of this account")
         }
 
-        val isDebitNormal = account.type in setOf(AccountType.ASSET, AccountType.EXPENSE)
-        val balanceMinor =
-            if (isDebitNormal) {
-                ledgerSplitRepository.computeBalance(accountId, asOf, SplitSide.DEBIT, SplitSide.CREDIT)
-            } else {
-                ledgerSplitRepository.computeBalance(accountId, asOf, SplitSide.CREDIT, SplitSide.DEBIT)
-            }
+        val rawBalance = resolveRawBalance(accountId, asOf)
+        val balanceMinor = if (account.type in DEBIT_NORMAL_TYPES) rawBalance else -rawBalance
 
         return BalanceDto(
             accountId = requireNotNull(account.id),
@@ -306,7 +304,115 @@ class ManageLedgerImpl(
         )
     }
 
+    private fun applyCurrentBalanceProjection(splits: List<LedgerSplit>) {
+        val deltasByAccountId = mutableMapOf<UUID, Long>()
+
+        splits.forEach { split ->
+            val accountId = requireNotNull(split.account?.id) { "Split account ID must not be null" }
+            val signedDelta =
+                when (split.side) {
+                    SplitSide.DEBIT -> split.amountMinor
+                    SplitSide.CREDIT -> -split.amountMinor
+                }
+            val currentDelta = deltasByAccountId[accountId] ?: 0L
+            deltasByAccountId[accountId] = Math.addExact(currentDelta, signedDelta)
+        }
+
+        val nonZeroDeltas =
+            deltasByAccountId.entries
+                .sortedBy { it.key }
+                .filter { it.value != 0L }
+
+        nonZeroDeltas.forEach { (accountId, delta) ->
+            accountCurrentBalanceRepository.addDelta(accountId, delta)
+        }
+
+        logger.info(
+            "projection_delta_accounts={} total_split_count={}",
+            nonZeroDeltas.size,
+            splits.size,
+        )
+    }
+
+    private fun resolveRawBalances(
+        accountIds: Collection<UUID>,
+        asOf: LocalDate,
+    ): Map<UUID, Long> {
+        if (!shouldUseFastPath(asOf)) {
+            logger.info(
+                "balance_path=aggregate endpoint=getAccountBalances account_count={} as_of={}",
+                accountIds.size,
+                asOf,
+            )
+            return computeAggregateRawBalances(accountIds, asOf)
+        }
+
+        return try {
+            logger.info(
+                "balance_path=fast endpoint=getAccountBalances account_count={} as_of={}",
+                accountIds.size,
+                asOf,
+            )
+            accountCurrentBalanceRepository
+                .findAllByAccountIdIn(accountIds)
+                .associate { requireNotNull(it.accountId) to it.rawBalanceMinor }
+        } catch (ex: DataAccessException) {
+            logger.warn(
+                "balance_path=aggregate endpoint=getAccountBalances account_count={} as_of={} fallback_reason=projection_read_error",
+                accountIds.size,
+                asOf,
+                ex,
+            )
+            computeAggregateRawBalances(accountIds, asOf)
+        }
+    }
+
+    private fun resolveRawBalance(
+        accountId: UUID,
+        asOf: LocalDate,
+    ): Long {
+        if (!shouldUseFastPath(asOf)) {
+            logger.info("balance_path=aggregate endpoint=getAccountBalance account_count=1 as_of={}", asOf)
+            return computeAggregateRawBalance(accountId, asOf)
+        }
+
+        return try {
+            logger.info("balance_path=fast endpoint=getAccountBalance account_count=1 as_of={}", asOf)
+            accountCurrentBalanceRepository.findById(accountId)
+                .map { it.rawBalanceMinor }
+                .orElse(0L)
+        } catch (ex: DataAccessException) {
+            logger.warn(
+                "balance_path=aggregate endpoint=getAccountBalance account_count=1 as_of={} fallback_reason=projection_read_error",
+                asOf,
+                ex,
+            )
+            computeAggregateRawBalance(accountId, asOf)
+        }
+    }
+
+    private fun computeAggregateRawBalances(
+        accountIds: Collection<UUID>,
+        asOf: LocalDate,
+    ): Map<UUID, Long> =
+        ledgerSplitRepository
+            .computeRawBalancesByAccountIds(
+                accountIds,
+                asOf,
+                SplitSide.DEBIT,
+                SplitSide.CREDIT,
+            ).associate { it.accountId to it.rawBalance }
+
+    private fun computeAggregateRawBalance(
+        accountId: UUID,
+        asOf: LocalDate,
+    ): Long = ledgerSplitRepository.computeBalance(accountId, asOf, SplitSide.DEBIT, SplitSide.CREDIT)
+
+    private fun shouldUseFastPath(asOf: LocalDate): Boolean =
+        currentBalanceFastPathEnabled && asOf == LocalDate.now(clock)
+
     private companion object {
+        private val logger = LoggerFactory.getLogger(ManageLedgerImpl::class.java)
         val DEBIT_NORMAL_TYPES = setOf(AccountType.ASSET, AccountType.EXPENSE)
         val TRANSFER_TYPES = setOf(AccountType.ASSET, AccountType.LIABILITY, AccountType.EQUITY)
 
