@@ -26,5 +26,23 @@ interface AccountCurrentBalanceRepository : JpaRepository<AccountCurrentBalance,
         @Param("delta") delta: Long,
     ): Int
 
+    @Query(
+        value = """
+            WITH ledger_calc AS (
+              SELECT
+                ls.account_id,
+                COALESCE(SUM(CASE WHEN ls.side = 'DEBIT' THEN ls.amount_minor ELSE -ls.amount_minor END), 0) AS raw_balance_minor
+              FROM ledger_split ls
+              GROUP BY ls.account_id
+            )
+            SELECT COUNT(*)
+            FROM ledger_calc l
+            FULL OUTER JOIN account_current_balance c ON c.account_id = l.account_id
+            WHERE COALESCE(l.raw_balance_minor, 0) <> COALESCE(c.raw_balance_minor, 0)
+        """,
+        nativeQuery = true,
+    )
+    fun countReconciliationMismatches(): Long
+
     fun findAllByAccountIdIn(accountIds: Collection<UUID>): List<AccountCurrentBalance>
 }

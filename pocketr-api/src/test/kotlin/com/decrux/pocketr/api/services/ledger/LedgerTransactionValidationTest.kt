@@ -150,8 +150,9 @@ class LedgerTransactionValidationTest {
             HouseholdMembershipValidator(),
             HouseholdSharedAccountValidator(),
             CrossUserAssetAccountTypeValidator(),
-            fastPathEnabled,
-            fixedClock,
+            currentBalanceFastPathEnabled = fastPathEnabled,
+            currentBalanceFastPathReadiness = CurrentBalanceFastPathReadiness.AlwaysAllowed,
+            clock = fixedClock,
         )
 
     private fun stubAccounts(vararg accounts: Account) {

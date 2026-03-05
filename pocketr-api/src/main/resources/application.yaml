@@ -25,3 +25,4 @@ server:
 ledger:
   current-balance:
     fast-path-enabled: true
+    reconciliation-log-on-startup: true

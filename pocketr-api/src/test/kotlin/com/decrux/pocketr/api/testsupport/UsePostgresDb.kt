@@ -10,6 +10,11 @@ import kotlin.annotation.AnnotationTarget.CLASS
 @Retention(RUNTIME)
 @MustBeDocumented
 @ActiveProfiles("test")
-@TestPropertySource(properties = ["spring.test.database.replace=NONE"])
+@TestPropertySource(
+    properties = [
+        "spring.test.database.replace=NONE",
+        "app.security.csrf-cookie-path=/",
+    ],
+)
 @ContextConfiguration(initializers = [PostgresTestContainerInitializer::class])
 annotation class UsePostgresDb

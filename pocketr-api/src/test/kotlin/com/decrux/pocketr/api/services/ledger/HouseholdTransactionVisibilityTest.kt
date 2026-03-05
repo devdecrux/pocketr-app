@@ -142,8 +142,9 @@ class HouseholdTransactionVisibilityTest {
                 HouseholdMembershipValidator(),
                 HouseholdSharedAccountValidator(),
                 CrossUserAssetAccountTypeValidator(),
-                false,
-                Clock.fixed(Instant.parse("2026-02-20T00:00:00Z"), ZoneOffset.UTC),
+                currentBalanceFastPathEnabled = false,
+                currentBalanceFastPathReadiness = CurrentBalanceFastPathReadiness.AlwaysAllowed,
+                clock = Clock.fixed(Instant.parse("2026-02-20T00:00:00Z"), ZoneOffset.UTC),
             )
     }
 
