@@ -34,3 +34,9 @@ _Planned ahead:_
 2. Open the project root in IntelliJ IDEA.
 3. IntelliJ will automatically load the `.run` configurations from the repository.
 4. Run the `Pocketr Local Dev` run configuration.
+
+## Runtime Contract (LXC/Production)
+
+- Frontend URL: `http://<HOST>:8081/frontend`
+- API base URL: `http://<HOST>:8081/api/v1`
+- App port: `SERVER_PORT` (defaults to `8081`)
