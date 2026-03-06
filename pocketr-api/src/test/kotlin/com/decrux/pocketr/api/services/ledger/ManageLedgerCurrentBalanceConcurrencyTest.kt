@@ -30,7 +30,7 @@ import java.util.concurrent.atomic.AtomicInteger
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE)
 @UsePostgresDb
-@TestPropertySource(properties = ["ledger.current-balance.fast-path-enabled=true"])
+@TestPropertySource(properties = ["ledger.current-balance.snapshot-enabled=true"])
 @DisplayName("ManageLedger current balance concurrency")
 class ManageLedgerCurrentBalanceConcurrencyTest
     @Autowired
@@ -137,7 +137,7 @@ class ManageLedgerCurrentBalanceConcurrencyTest
                 .findAllByAccountIdIn(accountIds)
                 .associate { requireNotNull(it.accountId) to it.rawBalanceMinor }
 
-        val aggregateById =
+        val computedById =
             ledgerSplitRepository
                 .computeRawBalancesByAccountIds(
                     accountIds,
@@ -148,9 +148,9 @@ class ManageLedgerCurrentBalanceConcurrencyTest
 
         accountIds.forEach { id ->
             assertEquals(
-                aggregateById[id] ?: 0L,
+                computedById[id] ?: 0L,
                 projectionById[id] ?: 0L,
-                "Projection must match ledger aggregate for account $id",
+                "Projection must match ledger computed value for account $id",
             )
         }
     }
@@ -225,7 +225,7 @@ class ManageLedgerCurrentBalanceConcurrencyTest
                 .findAllByAccountIdIn(accountIds)
                 .associate { requireNotNull(it.accountId) to it.rawBalanceMinor }
 
-        val aggregateById =
+        val computedById =
             ledgerSplitRepository
                 .computeRawBalancesByAccountIds(
                     accountIds,
@@ -236,9 +236,9 @@ class ManageLedgerCurrentBalanceConcurrencyTest
 
         accountIds.forEach { id ->
             assertEquals(
-                aggregateById[id] ?: 0L,
+                computedById[id] ?: 0L,
                 projectionById[id] ?: 0L,
-                "Projection must match ledger aggregate for account $id",
+                "Projection must match ledger computed value for account $id",
             )
         }
 

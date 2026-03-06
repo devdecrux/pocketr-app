@@ -28,7 +28,7 @@ import java.util.*
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE)
 @UsePostgresDb
-@TestPropertySource(properties = ["ledger.current-balance.fast-path-enabled=true"])
+@TestPropertySource(properties = ["ledger.current-balance.snapshot-enabled=true"])
 @DisplayName("ManageLedger current balance integration")
 class ManageLedgerCurrentBalanceIntegrationTest
     @Autowired
@@ -62,8 +62,8 @@ class ManageLedgerCurrentBalanceIntegrationTest
     }
 
     @Test
-    @DisplayName("posting updates projection and balances match aggregate baseline")
-    fun postingUpdatesProjectionAndMatchesAggregate() {
+    @DisplayName("posting updates projection and balances match computed baseline")
+    fun postingUpdatesProjectionAndMatchesComputed() {
         val user = persistUser("integration-balance")
         val cash = persistAccount(user, "Cash", AccountType.ASSET)
         val expense = persistAccount(user, "Expense", AccountType.EXPENSE)
@@ -91,7 +91,7 @@ class ManageLedgerCurrentBalanceIntegrationTest
         assertEquals(-1_200L, projectionById.getValue(requireNotNull(cash.id)))
         assertEquals(1_200L, projectionById.getValue(requireNotNull(expense.id)))
 
-        val aggregateById =
+        val computedById =
             ledgerSplitRepository
                 .computeRawBalancesByAccountIds(
                     listOf(requireNotNull(cash.id), requireNotNull(expense.id)),
@@ -99,7 +99,7 @@ class ManageLedgerCurrentBalanceIntegrationTest
                     SplitSide.DEBIT,
                     SplitSide.CREDIT,
                 ).associate { it.accountId to it.rawBalance }
-        assertEquals(aggregateById, projectionById)
+        assertEquals(computedById, projectionById)
 
         val cashBalance = manageLedger.getAccountBalance(requireNotNull(cash.id), today, user, null)
         val expenseBalance = manageLedger.getAccountBalance(requireNotNull(expense.id), today, user, null)
@@ -108,10 +108,10 @@ class ManageLedgerCurrentBalanceIntegrationTest
     }
 
     @Test
-    @DisplayName("today request prefers fast path over aggregate")
+    @DisplayName("today request prefers snapshot balance over computed balance")
     @Transactional
-    fun todayRequestPrefersFastPath() {
-        val user = persistUser("integration-fast-path")
+    fun todayRequestPrefersSnapshotBalance() {
+        val user = persistUser("integration-snapshot-balance")
         val cash = persistAccount(user, "Cash Fast", AccountType.ASSET)
         val expense = persistAccount(user, "Expense Fast", AccountType.EXPENSE)
         val cashId = requireNotNull(cash.id)
@@ -140,10 +140,10 @@ class ManageLedgerCurrentBalanceIntegrationTest
     }
 
     @Test
-    @DisplayName("today multi-account request prefers fast path over aggregate")
+    @DisplayName("today multi-account request prefers snapshot balance over computed balance")
     @Transactional
-    fun todayMultiAccountRequestPrefersFastPath() {
-        val user = persistUser("integration-fast-path-list")
+    fun todayMultiAccountRequestPrefersSnapshotBalance() {
+        val user = persistUser("integration-snapshot-balance-list")
         val cash = persistAccount(user, "Cash Fast List", AccountType.ASSET)
         val expense = persistAccount(user, "Expense Fast List", AccountType.EXPENSE)
         val cashId = requireNotNull(cash.id)
@@ -176,8 +176,8 @@ class ManageLedgerCurrentBalanceIntegrationTest
     }
 
     @Test
-    @DisplayName("historical asOf stays on aggregate behavior")
-    fun historicalAsOfUsesAggregateBehavior() {
+    @DisplayName("historical asOf stays on computed behavior")
+    fun historicalAsOfUsesComputedBehavior() {
         val user = persistUser("integration-historical")
         val cash = persistAccount(user, "Cash Hist", AccountType.ASSET)
         val expense = persistAccount(user, "Expense Hist", AccountType.EXPENSE)
@@ -231,10 +231,10 @@ class ManageLedgerCurrentBalanceIntegrationTest
     }
 
     @Test
-    @DisplayName("reconciliation mismatch disables fast path and falls back to aggregate")
+    @DisplayName("reconciliation mismatch disables snapshot balance and falls back to computed balance")
     @Transactional
-    fun reconciliationMismatchDisablesFastPath() {
-        val user = persistUser("integration-fast-path-gate")
+    fun reconciliationMismatchDisablesSnapshotBalance() {
+        val user = persistUser("integration-snapshot-balance-gate")
         val cash = persistAccount(user, "Cash Gate", AccountType.ASSET)
         val expense = persistAccount(user, "Expense Gate", AccountType.EXPENSE)
         val cashId = requireNotNull(cash.id)
@@ -264,8 +264,8 @@ class ManageLedgerCurrentBalanceIntegrationTest
     }
 
     @Test
-    @DisplayName("same-account multi-split deltas are aggregated correctly")
-    fun sameAccountMultiSplitDeltasAreAggregated() {
+    @DisplayName("same-account multi-split deltas are computed correctly")
+    fun sameAccountMultiSplitDeltasAreComputed() {
         val user = persistUser("integration-multi-split")
         val cash = persistAccount(user, "Cash Multi", AccountType.ASSET)
         val groceries = persistAccount(user, "Groceries Multi", AccountType.EXPENSE)

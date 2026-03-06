@@ -130,7 +130,7 @@ class LedgerTransactionValidationTest {
         }
     }
 
-    private fun buildService(fastPathEnabled: Boolean = false): ManageLedgerImpl =
+    private fun buildService(snapshotBalanceEnabled: Boolean = false): ManageLedgerImpl =
         ManageLedgerImpl(
             ledgerTxnRepository,
             ledgerSplitRepository,
@@ -150,8 +150,8 @@ class LedgerTransactionValidationTest {
             HouseholdMembershipValidator(),
             HouseholdSharedAccountValidator(),
             CrossUserAssetAccountTypeValidator(),
-            currentBalanceFastPathEnabled = fastPathEnabled,
-            currentBalanceFastPathReadiness = CurrentBalanceFastPathReadiness.AlwaysAllowed,
+            currentBalanceSnapshotEnabled = snapshotBalanceEnabled,
+            currentBalanceSnapshotReadiness = CurrentBalanceSnapshotReadiness.AlwaysAllowed,
             clock = fixedClock,
         )
 
@@ -674,8 +674,8 @@ class LedgerTransactionValidationTest {
         }
 
         @Test
-        @DisplayName("should aggregate deltas and skip zero-net accounts")
-        fun aggregateAndSkipZeroNetDeltas() {
+        @DisplayName("should compute deltas and skip zero-net accounts")
+        fun computeAndSkipZeroNetDeltas() {
             val aId = UUID.randomUUID()
             val bId = UUID.randomUUID()
             val cId = UUID.randomUUID()
@@ -906,9 +906,9 @@ class LedgerTransactionValidationTest {
         }
 
         @Test
-        @DisplayName("should use fast path for today's single-account balance when enabled")
-        fun useFastPathForSingleAccountToday() {
-            service = buildService(fastPathEnabled = true)
+        @DisplayName("should use snapshot balance for today's single-account balance when enabled")
+        fun useSnapshotBalanceForSingleAccountToday() {
+            service = buildService(snapshotBalanceEnabled = true)
             `when`(accountRepository.findById(checkingId)).thenReturn(Optional.of(checking))
             `when`(accountCurrentBalanceRepository.findById(checkingId))
                 .thenReturn(Optional.of(AccountCurrentBalance(accountId = checkingId, rawBalanceMinor = 12345L)))
@@ -920,9 +920,9 @@ class LedgerTransactionValidationTest {
         }
 
         @Test
-        @DisplayName("should return zero when fast-path row is missing")
-        fun fastPathMissingRowReturnsZero() {
-            service = buildService(fastPathEnabled = true)
+        @DisplayName("should return zero when snapshot-balance row is missing")
+        fun snapshotBalanceMissingRowReturnsZero() {
+            service = buildService(snapshotBalanceEnabled = true)
             `when`(accountRepository.findById(checkingId)).thenReturn(Optional.of(checking))
             `when`(accountCurrentBalanceRepository.findById(checkingId)).thenReturn(Optional.empty())
 
@@ -933,9 +933,9 @@ class LedgerTransactionValidationTest {
         }
 
         @Test
-        @DisplayName("should use aggregate fallback when fast-path read fails")
-        fun fallbackToAggregateWhenFastPathFails() {
-            service = buildService(fastPathEnabled = true)
+        @DisplayName("should use computed-balance fallback when snapshot-balance read fails")
+        fun fallbackToComputedBalanceWhenSnapshotBalanceFails() {
+            service = buildService(snapshotBalanceEnabled = true)
             `when`(accountRepository.findById(checkingId)).thenReturn(Optional.of(checking))
             `when`(accountCurrentBalanceRepository.findById(checkingId))
                 .thenThrow(DataIntegrityViolationException("Projection read failed"))
@@ -948,9 +948,9 @@ class LedgerTransactionValidationTest {
         }
 
         @Test
-        @DisplayName("should keep historical requests on aggregate path even when fast path is enabled")
-        fun historicalRequestUsesAggregatePath() {
-            service = buildService(fastPathEnabled = true)
+        @DisplayName("should keep historical requests on computed-balance path even when snapshot balance is enabled")
+        fun historicalRequestUsesComputedBalancePath() {
+            service = buildService(snapshotBalanceEnabled = true)
             val historicalDate = LocalDate.of(2026, 2, 19)
             `when`(accountRepository.findById(checkingId)).thenReturn(Optional.of(checking))
             `when`(ledgerSplitRepository.computeBalance(checkingId, historicalDate, SplitSide.DEBIT, SplitSide.CREDIT))
@@ -963,9 +963,9 @@ class LedgerTransactionValidationTest {
         }
 
         @Test
-        @DisplayName("should use fast-path batch rows and treat missing rows as zero")
-        fun fastPathBatchWithMissingRowsAsZero() {
-            service = buildService(fastPathEnabled = true)
+        @DisplayName("should use snapshot-balance batch rows and treat missing rows as zero")
+        fun snapshotBalanceBatchWithMissingRowsAsZero() {
+            service = buildService(snapshotBalanceEnabled = true)
             val ids = listOf(checkingId, liabilityId, expenseId)
             `when`(accountRepository.findAllById(ids)).thenReturn(listOf(checking, liabilityAcct, expenseAcct))
             `when`(accountCurrentBalanceRepository.findAllByAccountIdIn(ids)).thenReturn(

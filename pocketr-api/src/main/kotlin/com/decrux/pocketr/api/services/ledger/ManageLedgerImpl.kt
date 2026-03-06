@@ -67,9 +67,9 @@ class ManageLedgerImpl(
     private val householdMembershipValidator: HouseholdMembershipValidator,
     private val householdSharedAccountValidator: HouseholdSharedAccountValidator,
     private val crossUserAssetAccountTypeValidator: CrossUserAssetAccountTypeValidator,
-    @Value("\${ledger.current-balance.fast-path-enabled:false}")
-    private val currentBalanceFastPathEnabled: Boolean,
-    private val currentBalanceFastPathReadiness: CurrentBalanceFastPathReadiness,
+    @Value("\${ledger.current-balance.snapshot-enabled:\${ledger.current-balance.fast-path-enabled:false}}")
+    private val currentBalanceSnapshotEnabled: Boolean,
+    private val currentBalanceSnapshotReadiness: CurrentBalanceSnapshotReadiness,
     private val clock: Clock = Clock.systemDefaultZone(),
 ) : ManageLedger {
     @Transactional
@@ -354,41 +354,41 @@ class ManageLedgerImpl(
         asOf: LocalDate,
     ): Map<UUID, Long> {
         val startedAt = System.nanoTime()
-        if (!shouldUseFastPath(asOf)) {
-            aggregatePathCount.increment()
+        if (!shouldUseSnapshotBalance(asOf)) {
+            computedBalancePathCount.increment()
             logger.info(
-                "balance_path=aggregate endpoint=getAccountBalances account_count={} as_of={} aggregate_path_count={} latency_ms={}",
+                "balance_path=computed_balance endpoint=getAccountBalances account_count={} as_of={} computed_balance_path_count={} latency_ms={}",
                 accountIds.size,
                 asOf,
-                aggregatePathCount.sum(),
+                computedBalancePathCount.sum(),
                 elapsedMillis(startedAt),
             )
-            return computeAggregateRawBalances(accountIds, asOf)
+            return computeComputedBalanceRawBalances(accountIds, asOf)
         }
 
         return try {
-            fastPathHitCount.increment()
+            snapshotBalanceHitCount.increment()
             logger.info(
-                "balance_path=fast endpoint=getAccountBalances account_count={} as_of={} fast_path_hit_count={} latency_ms={}",
+                "balance_path=snapshot endpoint=getAccountBalances account_count={} as_of={} snapshot_balance_hit_count={} latency_ms={}",
                 accountIds.size,
                 asOf,
-                fastPathHitCount.sum(),
+                snapshotBalanceHitCount.sum(),
                 elapsedMillis(startedAt),
             )
             accountCurrentBalanceRepository
                 .findAllByAccountIdIn(accountIds)
                 .associate { requireNotNull(it.accountId) to it.rawBalanceMinor }
         } catch (ex: DataAccessException) {
-            aggregateFallbackCount.increment()
+            computedBalanceFallbackCount.increment()
             logger.warn(
-                "balance_path=aggregate endpoint=getAccountBalances account_count={} as_of={} fallback_reason=projection_read_error aggregate_fallback_count={} latency_ms={}",
+                "balance_path=computed_balance endpoint=getAccountBalances account_count={} as_of={} fallback_reason=projection_read_error computed_balance_fallback_count={} latency_ms={}",
                 accountIds.size,
                 asOf,
-                aggregateFallbackCount.sum(),
+                computedBalanceFallbackCount.sum(),
                 elapsedMillis(startedAt),
                 ex,
             )
-            computeAggregateRawBalances(accountIds, asOf)
+            computeComputedBalanceRawBalances(accountIds, asOf)
         }
     }
 
@@ -397,23 +397,23 @@ class ManageLedgerImpl(
         asOf: LocalDate,
     ): Long {
         val startedAt = System.nanoTime()
-        if (!shouldUseFastPath(asOf)) {
-            aggregatePathCount.increment()
+        if (!shouldUseSnapshotBalance(asOf)) {
+            computedBalancePathCount.increment()
             logger.info(
-                "balance_path=aggregate endpoint=getAccountBalance account_count=1 as_of={} aggregate_path_count={} latency_ms={}",
+                "balance_path=computed_balance endpoint=getAccountBalance account_count=1 as_of={} computed_balance_path_count={} latency_ms={}",
                 asOf,
-                aggregatePathCount.sum(),
+                computedBalancePathCount.sum(),
                 elapsedMillis(startedAt),
             )
-            return computeAggregateRawBalance(accountId, asOf)
+            return computeComputedBalanceRawBalance(accountId, asOf)
         }
 
         return try {
-            fastPathHitCount.increment()
+            snapshotBalanceHitCount.increment()
             logger.info(
-                "balance_path=fast endpoint=getAccountBalance account_count=1 as_of={} fast_path_hit_count={} latency_ms={}",
+                "balance_path=snapshot endpoint=getAccountBalance account_count=1 as_of={} snapshot_balance_hit_count={} latency_ms={}",
                 asOf,
-                fastPathHitCount.sum(),
+                snapshotBalanceHitCount.sum(),
                 elapsedMillis(startedAt),
             )
             accountCurrentBalanceRepository
@@ -421,19 +421,19 @@ class ManageLedgerImpl(
                 .map { it.rawBalanceMinor }
                 .orElse(0L)
         } catch (ex: DataAccessException) {
-            aggregateFallbackCount.increment()
+            computedBalanceFallbackCount.increment()
             logger.warn(
-                "balance_path=aggregate endpoint=getAccountBalance account_count=1 as_of={} fallback_reason=projection_read_error aggregate_fallback_count={} latency_ms={}",
+                "balance_path=computed_balance endpoint=getAccountBalance account_count=1 as_of={} fallback_reason=projection_read_error computed_balance_fallback_count={} latency_ms={}",
                 asOf,
-                aggregateFallbackCount.sum(),
+                computedBalanceFallbackCount.sum(),
                 elapsedMillis(startedAt),
                 ex,
             )
-            computeAggregateRawBalance(accountId, asOf)
+            computeComputedBalanceRawBalance(accountId, asOf)
         }
     }
 
-    private fun computeAggregateRawBalances(
+    private fun computeComputedBalanceRawBalances(
         accountIds: Collection<UUID>,
         asOf: LocalDate,
     ): Map<UUID, Long> =
@@ -446,23 +446,23 @@ class ManageLedgerImpl(
             )
             .associate { it.accountId to it.rawBalance }
 
-    private fun computeAggregateRawBalance(
+    private fun computeComputedBalanceRawBalance(
         accountId: UUID,
         asOf: LocalDate,
     ): Long = ledgerSplitRepository.computeBalance(accountId, asOf, SplitSide.DEBIT, SplitSide.CREDIT)
 
-    private fun shouldUseFastPath(asOf: LocalDate): Boolean =
-        currentBalanceFastPathEnabled &&
-            currentBalanceFastPathReadiness.isFastPathAllowed() &&
+    private fun shouldUseSnapshotBalance(asOf: LocalDate): Boolean =
+        currentBalanceSnapshotEnabled &&
+            currentBalanceSnapshotReadiness.isSnapshotAllowed() &&
             asOf == LocalDate.now(clock)
 
     private fun elapsedMillis(startedAtNanos: Long): Long = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startedAtNanos)
 
     private companion object {
         private val logger = LoggerFactory.getLogger(ManageLedgerImpl::class.java)
-        private val fastPathHitCount = LongAdder()
-        private val aggregatePathCount = LongAdder()
-        private val aggregateFallbackCount = LongAdder()
+        private val snapshotBalanceHitCount = LongAdder()
+        private val computedBalancePathCount = LongAdder()
+        private val computedBalanceFallbackCount = LongAdder()
         private val projectionWriteFailureCount = LongAdder()
         val DEBIT_NORMAL_TYPES = setOf(AccountType.ASSET, AccountType.EXPENSE)
         val TRANSFER_TYPES = setOf(AccountType.ASSET, AccountType.LIABILITY, AccountType.EQUITY)

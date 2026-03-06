@@ -10,7 +10,7 @@ import org.springframework.stereotype.Component
 @Component
 class CurrentBalanceReconciliationMonitor(
     private val accountCurrentBalanceRepository: AccountCurrentBalanceRepository,
-    private val currentBalanceFastPathReadinessState: CurrentBalanceFastPathReadinessState,
+    private val currentBalanceSnapshotReadinessState: CurrentBalanceSnapshotReadinessState,
     @Value("\${ledger.current-balance.reconciliation-log-on-startup:true}")
     private val reconciliationLogOnStartup: Boolean,
 ) {
@@ -18,21 +18,21 @@ class CurrentBalanceReconciliationMonitor(
     fun logMismatchCountOnStartup() {
         try {
             val mismatchCount = accountCurrentBalanceRepository.countReconciliationMismatches()
-            currentBalanceFastPathReadinessState.updateFromMismatchCount(mismatchCount)
+            currentBalanceSnapshotReadinessState.updateFromMismatchCount(mismatchCount)
 
             if (reconciliationLogOnStartup || mismatchCount > 0) {
                 logger.info(
-                    "reconciliation_mismatch={} reconciliation_mismatch_count={} fast_path_allowed={}",
+                    "reconciliation_mismatch={} reconciliation_mismatch_count={} snapshot_allowed={}",
                     mismatchCount > 0,
                     mismatchCount,
-                    currentBalanceFastPathReadinessState.isFastPathAllowed(),
+                    currentBalanceSnapshotReadinessState.isSnapshotAllowed(),
                 )
             }
         } catch (ex: RuntimeException) {
-            currentBalanceFastPathReadinessState.markUnavailable()
+            currentBalanceSnapshotReadinessState.markUnavailable()
             logger.error(
-                "reconciliation_check_failed=true fast_path_allowed={}",
-                currentBalanceFastPathReadinessState.isFastPathAllowed(),
+                "reconciliation_check_failed=true snapshot_allowed={}",
+                currentBalanceSnapshotReadinessState.isSnapshotAllowed(),
                 ex,
             )
         }
