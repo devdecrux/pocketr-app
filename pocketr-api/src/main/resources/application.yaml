@@ -23,6 +23,9 @@ server:
       timeout: 5m
 
 ledger:
+  accounts:
+    snapshot:
+      balance:
+        enabled: true
   current-balance:
-    snapshot-enabled: true
     reconciliation-log-on-startup: true

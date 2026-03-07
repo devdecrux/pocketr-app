@@ -30,7 +30,7 @@ import java.util.concurrent.atomic.AtomicInteger
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE)
 @UsePostgresDb
-@TestPropertySource(properties = ["ledger.current-balance.snapshot-enabled=true"])
+@TestPropertySource(properties = ["ledger.accounts.snapshot.balance.enabled=true"])
 @DisplayName("ManageLedger current balance concurrency")
 class ManageLedgerCurrentBalanceConcurrencyTest
     @Autowired

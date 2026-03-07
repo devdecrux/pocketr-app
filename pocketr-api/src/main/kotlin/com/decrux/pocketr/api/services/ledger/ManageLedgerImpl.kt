@@ -67,7 +67,7 @@ class ManageLedgerImpl(
     private val householdMembershipValidator: HouseholdMembershipValidator,
     private val householdSharedAccountValidator: HouseholdSharedAccountValidator,
     private val crossUserAssetAccountTypeValidator: CrossUserAssetAccountTypeValidator,
-    @Value("\${ledger.current-balance.snapshot-enabled:\${ledger.current-balance.fast-path-enabled:false}}")
+    @Value("\${ledger.accounts.snapshot.balance.enabled:false}")
     private val currentBalanceSnapshotEnabled: Boolean,
     private val currentBalanceSnapshotReadiness: CurrentBalanceSnapshotReadiness,
     private val clock: Clock = Clock.systemDefaultZone(),

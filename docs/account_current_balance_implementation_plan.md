@@ -168,7 +168,7 @@ Missing rows should be treated as `0`.
 1. Create table `account_current_balance`.
 2. Add repository/entity/service projection code.
 3. Add config flag:
-   - `ledger.current-balance.snapshot-enabled=false`
+   - `ledger.accounts.snapshot.balance.enabled=false`
 
 ### Phase B - Backfill existing data
 
@@ -210,7 +210,7 @@ Expected result: zero rows.
 
 ### Phase D - Enable snapshot cache
 
-1. Turn on `ledger.current-balance.snapshot-enabled=true`.
+1. Turn on `ledger.accounts.snapshot.balance.enabled=true`.
 2. Monitor p95 latency and DB CPU.
 3. Keep fallback path available.
 
