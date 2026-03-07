@@ -231,7 +231,7 @@ class ManageLedgerCurrentBalanceIntegrationTest
     }
 
     @Test
-    @DisplayName("reconciliation mismatch disables snapshot balance and falls back to computed balance")
+    @DisplayName("reconciliation mismatch disables snapshot only for mismatched account")
     @Transactional
     fun reconciliationMismatchDisablesSnapshotBalance() {
         val user = persistUser("integration-snapshot-balance-gate")
@@ -259,8 +259,13 @@ class ManageLedgerCurrentBalanceIntegrationTest
         accountCurrentBalanceRepository.addDelta(cashId, 5_000L)
         currentAccountBalanceMonitor.logMismatchCountOnStartup()
 
-        val todayBalance = manageLedger.getAccountBalance(cashId, today, user, null)
-        assertEquals(-1_200L, todayBalance.balanceMinor)
+        // Tamper a healthy account after reconciliation to verify it still uses snapshot reads.
+        accountCurrentBalanceRepository.addDelta(expenseId, 700L)
+
+        val cashBalance = manageLedger.getAccountBalance(cashId, today, user, null)
+        val expenseBalance = manageLedger.getAccountBalance(expenseId, today, user, null)
+        assertEquals(-1_200L, cashBalance.balanceMinor)
+        assertEquals(1_900L, expenseBalance.balanceMinor)
     }
 
     @Test

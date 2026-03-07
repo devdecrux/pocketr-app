@@ -1,27 +1,40 @@
 package com.decrux.pocketr.api.services.ledger
 
 import org.springframework.stereotype.Component
+import java.util.*
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicReference
 
 interface CurrentBalanceSnapshotReadiness {
-    fun isSnapshotAllowed(): Boolean
+    fun isSnapshotAllowed(accountId: UUID): Boolean
 
     object AlwaysAllowed : CurrentBalanceSnapshotReadiness {
-        override fun isSnapshotAllowed(): Boolean = true
+        override fun isSnapshotAllowed(accountId: UUID): Boolean = true
     }
 }
 
 @Component
 class CurrentBalanceSnapshotReadinessState : CurrentBalanceSnapshotReadiness {
-    private val snapshotAllowed = AtomicBoolean(false)
+    private val snapshotAvailable = AtomicBoolean(false)
+    private val mismatchedAccountIds = AtomicReference<Set<UUID>>(emptySet())
 
-    override fun isSnapshotAllowed(): Boolean = snapshotAllowed.get()
+    override fun isSnapshotAllowed(accountId: UUID): Boolean =
+        snapshotAvailable.get() &&
+            accountId !in mismatchedAccountIds.get()
 
-    fun updateFromMismatchCount(mismatchCount: Long) {
-        snapshotAllowed.set(mismatchCount == 0L)
+    fun updateFromMismatchedAccounts(accountIds: Set<UUID>) {
+        mismatchedAccountIds.set(accountIds.toSet())
+        snapshotAvailable.set(true)
     }
 
     fun markUnavailable() {
-        snapshotAllowed.set(false)
+        snapshotAvailable.set(false)
+        mismatchedAccountIds.set(emptySet())
     }
+
+    fun mismatchedAccountCount(): Int = mismatchedAccountIds.get().size
+
+    fun isSnapshotAvailable(): Boolean = snapshotAvailable.get()
+
+    fun mismatchedAccountsSnapshot(): Set<UUID> = mismatchedAccountIds.get()
 }

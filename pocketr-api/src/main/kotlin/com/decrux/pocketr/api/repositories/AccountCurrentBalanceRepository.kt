@@ -55,5 +55,72 @@ interface AccountCurrentBalanceRepository : JpaRepository<AccountCurrentBalance,
     )
     fun countAccountsBalanceMismatch(): Long
 
+    /**
+     * Returns account IDs where snapshot balance differs from the value computed from ledger splits.
+     *
+     * Used to disable snapshot reads only for affected accounts while keeping snapshot reads enabled
+     * for accounts that are in sync.
+     */
+    @Query(
+        value = """
+            WITH ledger_calc AS (
+              SELECT
+                ls.account_id,
+                COALESCE(SUM(CASE WHEN ls.side = 'DEBIT' THEN ls.amount_minor ELSE -ls.amount_minor END), 0) AS raw_balance_minor
+              FROM ledger_split ls
+              GROUP BY ls.account_id
+            )
+            SELECT COALESCE(l.account_id, c.account_id)
+            FROM ledger_calc l
+            FULL OUTER JOIN account_current_balance c ON c.account_id = l.account_id
+            WHERE COALESCE(l.raw_balance_minor, 0) <> COALESCE(c.raw_balance_minor, 0)
+        """,
+        nativeQuery = true,
+    )
+    fun findAccountsBalanceMismatch(): List<UUID>
+
+    /**
+     * Recomputes and upserts snapshot balances from ledger data for the provided account IDs.
+     *
+     * Intended for operational reconciliation/repair flows after mismatch detection. This method is
+     * intentionally repository-internal for now and is not exposed through service/controller APIs.
+     */
+    @Modifying
+    @Query(
+        value = """
+            WITH target_accounts AS (
+              SELECT a.id AS account_id
+              FROM account a
+              WHERE a.id IN (:accountIds)
+            ),
+            ledger_calc AS (
+              SELECT
+                ls.account_id,
+                COALESCE(SUM(CASE WHEN ls.side = 'DEBIT' THEN ls.amount_minor ELSE -ls.amount_minor END), 0) AS raw_balance_minor
+              FROM ledger_split ls
+              WHERE ls.account_id IN (:accountIds)
+              GROUP BY ls.account_id
+            )
+            INSERT INTO account_current_balance(account_id, raw_balance_minor, updated_at)
+            SELECT
+              ta.account_id,
+              COALESCE(lc.raw_balance_minor, 0),
+              now()
+            FROM target_accounts ta
+            LEFT JOIN ledger_calc lc ON lc.account_id = ta.account_id
+            ON CONFLICT (account_id) DO UPDATE
+            SET raw_balance_minor = EXCLUDED.raw_balance_minor,
+                updated_at = now()
+        """,
+        nativeQuery = true,
+    )
+    fun synchronizeSnapshotWithComputedForAccounts(@Param("accountIds") accountIds: Collection<UUID>): Int
+
+    /**
+     * Convenience wrapper for repairing a single account snapshot from computed ledger values.
+     */
+    fun synchronizeSnapshotWithComputedForAccount(accountId: UUID): Int =
+        synchronizeSnapshotWithComputedForAccounts(listOf(accountId))
+
     fun findAllByAccountIdIn(accountIds: Collection<UUID>): List<AccountCurrentBalance>
 }

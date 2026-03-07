@@ -354,7 +354,7 @@ class ManageLedgerImpl(
         asOf: LocalDate,
     ): Map<UUID, Long> {
         val startedAt = System.nanoTime()
-        if (!shouldUseSnapshotBalance(asOf)) {
+        if (!isSnapshotFeatureEligible(asOf)) {
             computedBalancePathCount.increment()
             logger.info(
                 "balance_path=computed_balance endpoint=getAccountBalances account_count={} as_of={} computed_balance_path_count={} latency_ms={}",
@@ -366,18 +366,58 @@ class ManageLedgerImpl(
             return computeComputedBalanceRawBalances(accountIds, asOf)
         }
 
-        return try {
-            snapshotBalanceHitCount.increment()
+        val snapshotEligibleAccountIds =
+            accountIds
+                .asSequence()
+                .filter { accountId -> currentBalanceSnapshotReadiness.isSnapshotAllowed(accountId) }
+                .toList()
+        if (snapshotEligibleAccountIds.isEmpty()) {
+            computedBalancePathCount.increment()
             logger.info(
-                "balance_path=snapshot endpoint=getAccountBalances account_count={} as_of={} snapshot_balance_hit_count={} latency_ms={}",
+                "balance_path=computed_balance endpoint=getAccountBalances account_count={} as_of={} computed_balance_path_count={} reason=snapshot_not_allowed latency_ms={}",
                 accountIds.size,
                 asOf,
-                snapshotBalanceHitCount.sum(),
+                computedBalancePathCount.sum(),
                 elapsedMillis(startedAt),
             )
-            accountCurrentBalanceRepository
-                .findAllByAccountIdIn(accountIds)
+            return computeComputedBalanceRawBalances(accountIds, asOf)
+        }
+
+        val snapshotEligibleAccountIdSet = snapshotEligibleAccountIds.toSet()
+        val computedAccountIds = accountIds.filterNot { it in snapshotEligibleAccountIdSet }
+
+        return try {
+            snapshotBalanceHitCount.increment()
+            val balancesByAccountId =
+                accountCurrentBalanceRepository
+                .findAllByAccountIdIn(snapshotEligibleAccountIds)
                 .associate { requireNotNull(it.accountId) to it.rawBalanceMinor }
+                .toMutableMap()
+
+            if (computedAccountIds.isNotEmpty()) {
+                computedBalanceFallbackCount.increment()
+                balancesByAccountId.putAll(computeComputedBalanceRawBalances(computedAccountIds, asOf))
+                logger.info(
+                    "balance_path=mixed endpoint=getAccountBalances account_count={} snapshot_account_count={} computed_balance_account_count={} snapshot_balance_hit_count={} computed_balance_fallback_count={} as_of={} latency_ms={}",
+                    accountIds.size,
+                    snapshotEligibleAccountIds.size,
+                    computedAccountIds.size,
+                    snapshotBalanceHitCount.sum(),
+                    computedBalanceFallbackCount.sum(),
+                    asOf,
+                    elapsedMillis(startedAt),
+                )
+            } else {
+                logger.info(
+                    "balance_path=snapshot endpoint=getAccountBalances account_count={} as_of={} snapshot_balance_hit_count={} latency_ms={}",
+                    accountIds.size,
+                    asOf,
+                    snapshotBalanceHitCount.sum(),
+                    elapsedMillis(startedAt),
+                )
+            }
+
+            balancesByAccountId
         } catch (ex: DataAccessException) {
             computedBalanceFallbackCount.increment()
             logger.warn(
@@ -397,7 +437,7 @@ class ManageLedgerImpl(
         asOf: LocalDate,
     ): Long {
         val startedAt = System.nanoTime()
-        if (!shouldUseSnapshotBalance(asOf)) {
+        if (!shouldUseSnapshotBalance(accountId, asOf)) {
             computedBalancePathCount.increment()
             logger.info(
                 "balance_path=computed_balance endpoint=getAccountBalance account_count=1 as_of={} computed_balance_path_count={} latency_ms={}",
@@ -451,9 +491,15 @@ class ManageLedgerImpl(
         asOf: LocalDate,
     ): Long = ledgerSplitRepository.computeBalance(accountId, asOf, SplitSide.DEBIT, SplitSide.CREDIT)
 
-    private fun shouldUseSnapshotBalance(asOf: LocalDate): Boolean =
+    private fun shouldUseSnapshotBalance(
+        accountId: UUID,
+        asOf: LocalDate,
+    ): Boolean =
+        isSnapshotFeatureEligible(asOf) &&
+            currentBalanceSnapshotReadiness.isSnapshotAllowed(accountId)
+
+    private fun isSnapshotFeatureEligible(asOf: LocalDate): Boolean =
         currentBalanceSnapshotEnabled &&
-            currentBalanceSnapshotReadiness.isSnapshotAllowed() &&
             asOf == LocalDate.now(clock)
 
     private fun elapsedMillis(startedAtNanos: Long): Long = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startedAtNanos)

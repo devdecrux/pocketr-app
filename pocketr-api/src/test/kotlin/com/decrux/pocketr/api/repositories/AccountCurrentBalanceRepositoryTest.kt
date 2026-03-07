@@ -86,6 +86,18 @@ class AccountCurrentBalanceRepositoryTest
             assertEquals(1L, accountCurrentBalanceRepository.countAccountsBalanceMismatch())
         }
 
+        @Test
+        @DisplayName("findAccountsBalanceMismatch returns mismatched account ids")
+        fun findAccountsBalanceMismatchReturnsIds() {
+            val accountId = persistAccount()
+            accountCurrentBalanceRepository.addDelta(accountId, 50L)
+            testEntityManager.flush()
+            testEntityManager.clear()
+
+            val mismatchIds = accountCurrentBalanceRepository.findAccountsBalanceMismatch().toSet()
+            assertEquals(setOf(accountId), mismatchIds)
+        }
+
         private fun persistAccount(): UUID {
             val currency =
                 testEntityManager.entityManager.find(Currency::class.java, "EUR")
