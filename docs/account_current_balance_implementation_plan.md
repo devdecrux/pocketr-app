@@ -1,6 +1,6 @@
 # Account Current Balance Read Model - Implementation Plan
 
-This document describes how to add a scalable "current balance" fast path while keeping the ledger as the source of truth.
+This document describes how to add a scalable current-balance snapshot cache while keeping the ledger as the source of truth.
 
 The feature is a CQRS-style read model:
 
@@ -13,9 +13,9 @@ No API contract changes are required.
 
 ## 1) Goals
 
-1. Reduce hot-path balance reads from aggregate scans to O(1) per account.
+1. Reduce hot-path balance reads from computed scans to O(1) per account.
 2. Preserve correctness and accounting invariants of double-entry posting.
-3. Keep historical/as-of-date balances accurate via existing aggregate queries.
+3. Keep historical/as-of-date balances accurate via existing computed queries.
 4. Keep rollout low-risk with reconciliation and fallback.
 
 ## 2) Non-goals
@@ -78,7 +78,7 @@ For each split:
 - `DEBIT`: `delta = +amountMinor`
 - `CREDIT`: `delta = -amountMinor`
 
-Aggregate by `accountId` first, then persist one increment per account.
+Compute by `accountId` first, then persist one increment per account.
 
 ### 5.2 Deadlock safety
 
@@ -131,12 +131,12 @@ Call `applyCurrentBalanceProjection(...)` inside the same `@Transactional` metho
 
 ## 6) Read Path Strategy
 
-Use read model for current-date requests only. Keep existing aggregate query for historical `asOf`.
+Use read model for current-date requests only. Keep existing computed query for historical `asOf`.
 
 Decision:
 
 1. If `asOf == LocalDate.now()` => read from `account_current_balance`.
-2. Else => existing `ledger_split` aggregate query path.
+2. Else => existing `ledger_split` computed query path.
 
 This gives immediate performance gain for dashboards without changing historical correctness.
 
@@ -144,7 +144,7 @@ This gives immediate performance gain for dashboards without changing historical
 
 1. Keep existing access/permission checks.
 2. Fetch account metadata (`type`, `currency`, etc.).
-3. Get `raw_balance_minor` from read model or fallback aggregate.
+3. Get `raw_balance_minor` from read model or fallback computed.
 4. Normalize by account type before returning DTO.
 
 ### 6.2 Multi-account balance flow
@@ -168,7 +168,7 @@ Missing rows should be treated as `0`.
 1. Create table `account_current_balance`.
 2. Add repository/entity/service projection code.
 3. Add config flag:
-   - `ledger.current-balance.fast-path-enabled=false`
+   - `ledger.accounts.snapshot.balance.enabled=false`
 
 ### Phase B - Backfill existing data
 
@@ -208,9 +208,9 @@ WHERE COALESCE(l.raw_balance_minor, 0) <> COALESCE(c.raw_balance_minor, 0);
 
 Expected result: zero rows.
 
-### Phase D - Enable fast path
+### Phase D - Enable snapshot cache
 
-1. Turn on `ledger.current-balance.fast-path-enabled=true`.
+1. Turn on `ledger.accounts.snapshot.balance.enabled=true`.
 2. Monitor p95 latency and DB CPU.
 3. Keep fallback path available.
 
@@ -250,7 +250,7 @@ SET raw_balance_minor = EXCLUDED.raw_balance_minor,
    - If edit/delete is introduced later, projection must apply reverse delta or full recompute for affected accounts.
 2. Backdated transactions:
    - Safe for current balance projection because current balance is cumulative.
-   - Historical as-of values still rely on ledger aggregates.
+   - Historical as-of values still rely on ledger computed values.
 3. Overflow:
    - Keep `BIGINT`; add guardrails if unusually high volumes are expected.
 
@@ -270,8 +270,8 @@ SET raw_balance_minor = EXCLUDED.raw_balance_minor,
 
 1. Post transaction updates both ledger and projection in one transaction.
 2. Simulated failure after ledger save rolls back projection update.
-3. Fast path returns same value as aggregate path for `asOf=today`.
-4. Historical `asOf` still uses aggregate path and remains unchanged.
+3. Snapshot cache returns same value as computed-balance path for `asOf=today`.
+4. Historical `asOf` still uses computed-balance path and remains unchanged.
 
 ### 10.3 Concurrency tests
 
@@ -290,12 +290,12 @@ Track and alert on:
 2. Projection write failures.
 3. Reconciliation mismatches count.
 4. Read-path split:
-   - fast-path hit rate
-   - aggregate fallback rate
+   - snapshot hit rate
+   - computed-balance fallback rate
 
 Suggested log tags:
 
-- `balance_path=fast|aggregate`
+- `balance_path=snapshot|computed_balance`
 - `projection_delta_accounts=<count>`
 - `reconciliation_mismatch=<true|false>`
 
@@ -338,7 +338,7 @@ Files:
 Deliverables:
 
 1. Fast path for `asOf == today`.
-2. Fallback aggregate path.
+2. Fallback computed-balance path.
 3. Feature flag wiring.
 
 ### Agent 4 - Tests
@@ -358,7 +358,7 @@ Deliverables:
 ## 13) Acceptance Criteria
 
 1. Current-date balance endpoints use read model when enabled.
-2. Returned balances match aggregate baseline for identical requests.
+2. Returned balances match computed baseline for identical requests.
 3. Ledger posting and projection updates are atomic.
 4. Reconciliation query shows no mismatch after backfill and normal posting.
 5. Historical balance behavior is unchanged.

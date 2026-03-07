@@ -21,3 +21,11 @@ server:
   servlet:
     session:
       timeout: 5m
+
+ledger:
+  accounts:
+    snapshot:
+      balance:
+        enabled: true
+  current-balance:
+    reconciliation-log-on-startup: true

@@ -2,6 +2,7 @@ package com.decrux.pocketr.api.services.ledger
 
 import com.decrux.pocketr.api.entities.db.auth.User
 import com.decrux.pocketr.api.entities.db.ledger.Account
+import com.decrux.pocketr.api.entities.db.ledger.AccountCurrentBalance
 import com.decrux.pocketr.api.entities.db.ledger.AccountType
 import com.decrux.pocketr.api.entities.db.ledger.CategoryTag
 import com.decrux.pocketr.api.entities.db.ledger.Currency
@@ -12,6 +13,7 @@ import com.decrux.pocketr.api.entities.dtos.CreateTransactionDto
 import com.decrux.pocketr.api.exceptions.BadRequestException
 import com.decrux.pocketr.api.exceptions.ForbiddenException
 import com.decrux.pocketr.api.exceptions.NotFoundException
+import com.decrux.pocketr.api.repositories.AccountCurrentBalanceRepository
 import com.decrux.pocketr.api.repositories.AccountRepository
 import com.decrux.pocketr.api.repositories.CategoryTagRepository
 import com.decrux.pocketr.api.repositories.CurrencyRepository
@@ -39,6 +41,7 @@ import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.mockito.ArgumentMatchers.any
+import org.mockito.Mockito.inOrder
 import org.mockito.Mockito.mock
 import org.mockito.Mockito.never
 import org.mockito.Mockito.times
@@ -46,9 +49,12 @@ import org.mockito.Mockito.verify
 import org.mockito.Mockito.verifyNoInteractions
 import org.mockito.Mockito.verifyNoMoreInteractions
 import org.mockito.Mockito.`when`
+import org.springframework.dao.DataIntegrityViolationException
+import java.time.Clock
+import java.time.Instant
 import java.time.LocalDate
-import java.util.Optional
-import java.util.UUID
+import java.time.ZoneOffset
+import java.util.*
 
 /**
  * Unit tests for ledger transaction validation (Section 12.1).
@@ -63,6 +69,7 @@ import java.util.UUID
 class LedgerTransactionValidationTest {
     private lateinit var ledgerTxnRepository: LedgerTxnRepository
     private lateinit var ledgerSplitRepository: LedgerSplitRepository
+    private lateinit var accountCurrentBalanceRepository: AccountCurrentBalanceRepository
     private lateinit var accountRepository: AccountRepository
     private lateinit var currencyRepository: CurrencyRepository
     private lateinit var categoryTagRepository: CategoryTagRepository
@@ -96,36 +103,20 @@ class LedgerTransactionValidationTest {
     private val usdAccountId = UUID.randomUUID()
     private val usdAccount = Account(id = usdAccountId, owner = userA, name = "USD Checking", type = AccountType.ASSET, currency = usd)
 
+    private val fixedClock = Clock.fixed(Instant.parse("2026-02-20T00:00:00Z"), ZoneOffset.UTC)
+
     @BeforeEach
     fun setUp() {
         ledgerTxnRepository = mock(LedgerTxnRepository::class.java)
         ledgerSplitRepository = mock(LedgerSplitRepository::class.java)
+        accountCurrentBalanceRepository = mock(AccountCurrentBalanceRepository::class.java)
         accountRepository = mock(AccountRepository::class.java)
         currencyRepository = mock(CurrencyRepository::class.java)
         categoryTagRepository = mock(CategoryTagRepository::class.java)
         manageHousehold = mock(ManageHousehold::class.java)
         userAvatarService = mock(UserAvatarService::class.java)
 
-        service =
-            ManageLedgerImpl(
-                ledgerTxnRepository,
-                ledgerSplitRepository,
-                accountRepository,
-                currencyRepository,
-                categoryTagRepository,
-                manageHousehold,
-                userAvatarService,
-                MinimumSplitCountValidator(),
-                PositiveSplitAmountValidator(),
-                SplitSideValueValidator(),
-                DoubleEntryBalanceValidator(),
-                TransactionAccountCurrencyValidator(),
-                IndividualModeOwnershipValidator(),
-                HouseholdIdPresenceValidator(),
-                HouseholdMembershipValidator(),
-                HouseholdSharedAccountValidator(),
-                CrossUserAssetAccountTypeValidator(),
-            )
+        service = buildService()
 
         `when`(currencyRepository.findById("EUR")).thenReturn(Optional.of(eur))
         `when`(currencyRepository.findById("USD")).thenReturn(Optional.of(usd))
@@ -138,6 +129,31 @@ class LedgerTransactionValidationTest {
             txn
         }
     }
+
+    private fun buildService(snapshotBalanceEnabled: Boolean = false): ManageLedgerImpl =
+        ManageLedgerImpl(
+            ledgerTxnRepository,
+            ledgerSplitRepository,
+            accountCurrentBalanceRepository,
+            accountRepository,
+            currencyRepository,
+            categoryTagRepository,
+            manageHousehold,
+            userAvatarService,
+            MinimumSplitCountValidator(),
+            PositiveSplitAmountValidator(),
+            SplitSideValueValidator(),
+            DoubleEntryBalanceValidator(),
+            TransactionAccountCurrencyValidator(),
+            IndividualModeOwnershipValidator(),
+            HouseholdIdPresenceValidator(),
+            HouseholdMembershipValidator(),
+            HouseholdSharedAccountValidator(),
+            CrossUserAssetAccountTypeValidator(),
+            currentBalanceSnapshotEnabled = snapshotBalanceEnabled,
+            currentBalanceSnapshotReadiness = CurrentBalanceSnapshotReadiness.AlwaysAllowed,
+            clock = fixedClock,
+        )
 
     private fun stubAccounts(vararg accounts: Account) {
         val ids = accounts.map { requireNotNull(it.id) }
@@ -628,6 +644,90 @@ class LedgerTransactionValidationTest {
             // No categoryTagRepository interactions when no tags
             verify(categoryTagRepository, never()).findAllById(any())
         }
+
+        @Test
+        @DisplayName("should apply sorted per-account deltas for current balance projection")
+        fun applySortedProjectionDeltas() {
+            val lowerId = UUID.fromString("00000000-0000-0000-0000-000000000001")
+            val upperId = UUID.fromString("00000000-0000-0000-0000-000000000010")
+            val lowerAccount = Account(id = lowerId, owner = userA, name = "Lower", type = AccountType.ASSET, currency = eur)
+            val upperAccount = Account(id = upperId, owner = userA, name = "Upper", type = AccountType.ASSET, currency = eur)
+            stubAccounts(upperAccount, lowerAccount)
+
+            val dto =
+                CreateTransactionDto(
+                    txnDate = LocalDate.of(2026, 2, 20),
+                    currency = "EUR",
+                    description = "Sorted projection test",
+                    splits =
+                        listOf(
+                            CreateSplitDto(accountId = upperId, side = "CREDIT", amountMinor = 1000),
+                            CreateSplitDto(accountId = lowerId, side = "DEBIT", amountMinor = 1000),
+                        ),
+                )
+
+            service.createTransaction(dto, userA)
+
+            val inOrder = inOrder(accountCurrentBalanceRepository)
+            inOrder.verify(accountCurrentBalanceRepository).addDelta(lowerId, 1000L)
+            inOrder.verify(accountCurrentBalanceRepository).addDelta(upperId, -1000L)
+        }
+
+        @Test
+        @DisplayName("should compute deltas and skip zero-net accounts")
+        fun computeAndSkipZeroNetDeltas() {
+            val aId = UUID.randomUUID()
+            val bId = UUID.randomUUID()
+            val cId = UUID.randomUUID()
+            val accountA = Account(id = aId, owner = userA, name = "A", type = AccountType.ASSET, currency = eur)
+            val accountB = Account(id = bId, owner = userA, name = "B", type = AccountType.EXPENSE, currency = eur)
+            val accountC = Account(id = cId, owner = userA, name = "C", type = AccountType.ASSET, currency = eur)
+            stubAccounts(accountA, accountB, accountC)
+
+            val dto =
+                CreateTransactionDto(
+                    txnDate = LocalDate.of(2026, 2, 20),
+                    currency = "EUR",
+                    description = "Zero net account test",
+                    splits =
+                        listOf(
+                            CreateSplitDto(accountId = aId, side = "DEBIT", amountMinor = 1000),
+                            CreateSplitDto(accountId = aId, side = "CREDIT", amountMinor = 1000),
+                            CreateSplitDto(accountId = bId, side = "DEBIT", amountMinor = 500),
+                            CreateSplitDto(accountId = cId, side = "CREDIT", amountMinor = 500),
+                        ),
+                )
+
+            service.createTransaction(dto, userA)
+
+            verify(accountCurrentBalanceRepository, never()).addDelta(aId, 0L)
+            verify(accountCurrentBalanceRepository).addDelta(bId, 500L)
+            verify(accountCurrentBalanceRepository).addDelta(cId, -500L)
+        }
+
+        @Test
+        @DisplayName("should propagate projection write failure")
+        fun propagateProjectionFailure() {
+            stubAccounts(checking, savings)
+            val dto =
+                CreateTransactionDto(
+                    txnDate = LocalDate.of(2026, 2, 20),
+                    currency = "EUR",
+                    description = "Projection failure",
+                    splits =
+                        listOf(
+                            CreateSplitDto(accountId = checkingId, side = "CREDIT", amountMinor = 2000),
+                            CreateSplitDto(accountId = savingsId, side = "DEBIT", amountMinor = 2000),
+                        ),
+                )
+
+            `when`(accountCurrentBalanceRepository.addDelta(checkingId, -2000L))
+                .thenThrow(DataIntegrityViolationException("Projection write failed"))
+
+            assertThrows(DataIntegrityViolationException::class.java) {
+                service.createTransaction(dto, userA)
+            }
+        }
     }
 
     @Nested
@@ -739,8 +839,8 @@ class LedgerTransactionValidationTest {
         @DisplayName("should compute credit-normal balance for LIABILITY account")
         fun creditNormalBalanceForLiability() {
             `when`(accountRepository.findById(liabilityId)).thenReturn(Optional.of(liabilityAcct))
-            `when`(ledgerSplitRepository.computeBalance(liabilityId, LocalDate.now(), SplitSide.CREDIT, SplitSide.DEBIT))
-                .thenReturn(49950000L)
+            `when`(ledgerSplitRepository.computeBalance(liabilityId, LocalDate.now(), SplitSide.DEBIT, SplitSide.CREDIT))
+                .thenReturn(-49950000L)
 
             val result = service.getAccountBalance(liabilityId, LocalDate.now(), userA, null)
             assertEquals(49950000L, result.balanceMinor)
@@ -751,8 +851,8 @@ class LedgerTransactionValidationTest {
         @DisplayName("should compute credit-normal balance for INCOME account")
         fun creditNormalBalanceForIncome() {
             `when`(accountRepository.findById(incomeId)).thenReturn(Optional.of(incomeAcct))
-            `when`(ledgerSplitRepository.computeBalance(incomeId, LocalDate.now(), SplitSide.CREDIT, SplitSide.DEBIT))
-                .thenReturn(400000L)
+            `when`(ledgerSplitRepository.computeBalance(incomeId, LocalDate.now(), SplitSide.DEBIT, SplitSide.CREDIT))
+                .thenReturn(-400000L)
 
             val result = service.getAccountBalance(incomeId, LocalDate.now(), userA, null)
             assertEquals(400000L, result.balanceMinor)
@@ -763,8 +863,8 @@ class LedgerTransactionValidationTest {
         @DisplayName("should compute credit-normal balance for EQUITY account")
         fun creditNormalBalanceForEquity() {
             `when`(accountRepository.findById(equityId)).thenReturn(Optional.of(equityAcct))
-            `when`(ledgerSplitRepository.computeBalance(equityId, LocalDate.now(), SplitSide.CREDIT, SplitSide.DEBIT))
-                .thenReturn(150000L)
+            `when`(ledgerSplitRepository.computeBalance(equityId, LocalDate.now(), SplitSide.DEBIT, SplitSide.CREDIT))
+                .thenReturn(-150000L)
 
             val result = service.getAccountBalance(equityId, LocalDate.now(), userA, null)
             assertEquals(150000L, result.balanceMinor)
@@ -803,6 +903,85 @@ class LedgerTransactionValidationTest {
             assertThrows(NotFoundException::class.java) {
                 service.getAccountBalance(missingId, LocalDate.now(), userA, null)
             }
+        }
+
+        @Test
+        @DisplayName("should use snapshot balance for today's single-account balance when enabled")
+        fun useSnapshotBalanceForSingleAccountToday() {
+            service = buildService(snapshotBalanceEnabled = true)
+            `when`(accountRepository.findById(checkingId)).thenReturn(Optional.of(checking))
+            `when`(accountCurrentBalanceRepository.findById(checkingId))
+                .thenReturn(Optional.of(AccountCurrentBalance(accountId = checkingId, rawBalanceMinor = 12345L)))
+
+            val result = service.getAccountBalance(checkingId, LocalDate.of(2026, 2, 20), userA, null)
+
+            assertEquals(12345L, result.balanceMinor)
+            verifyNoInteractions(ledgerSplitRepository)
+        }
+
+        @Test
+        @DisplayName("should return zero when snapshot-balance row is missing")
+        fun snapshotBalanceMissingRowReturnsZero() {
+            service = buildService(snapshotBalanceEnabled = true)
+            `when`(accountRepository.findById(checkingId)).thenReturn(Optional.of(checking))
+            `when`(accountCurrentBalanceRepository.findById(checkingId)).thenReturn(Optional.empty())
+
+            val result = service.getAccountBalance(checkingId, LocalDate.of(2026, 2, 20), userA, null)
+
+            assertEquals(0L, result.balanceMinor)
+            verifyNoInteractions(ledgerSplitRepository)
+        }
+
+        @Test
+        @DisplayName("should use computed-balance fallback when snapshot-balance read fails")
+        fun fallbackToComputedBalanceWhenSnapshotBalanceFails() {
+            service = buildService(snapshotBalanceEnabled = true)
+            `when`(accountRepository.findById(checkingId)).thenReturn(Optional.of(checking))
+            `when`(accountCurrentBalanceRepository.findById(checkingId))
+                .thenThrow(DataIntegrityViolationException("Projection read failed"))
+            `when`(ledgerSplitRepository.computeBalance(checkingId, LocalDate.of(2026, 2, 20), SplitSide.DEBIT, SplitSide.CREDIT))
+                .thenReturn(9000L)
+
+            val result = service.getAccountBalance(checkingId, LocalDate.of(2026, 2, 20), userA, null)
+
+            assertEquals(9000L, result.balanceMinor)
+        }
+
+        @Test
+        @DisplayName("should keep historical requests on computed-balance path even when snapshot balance is enabled")
+        fun historicalRequestUsesComputedBalancePath() {
+            service = buildService(snapshotBalanceEnabled = true)
+            val historicalDate = LocalDate.of(2026, 2, 19)
+            `when`(accountRepository.findById(checkingId)).thenReturn(Optional.of(checking))
+            `when`(ledgerSplitRepository.computeBalance(checkingId, historicalDate, SplitSide.DEBIT, SplitSide.CREDIT))
+                .thenReturn(5000L)
+
+            val result = service.getAccountBalance(checkingId, historicalDate, userA, null)
+
+            assertEquals(5000L, result.balanceMinor)
+            verify(accountCurrentBalanceRepository, never()).findById(checkingId)
+        }
+
+        @Test
+        @DisplayName("should use snapshot-balance batch rows and treat missing rows as zero")
+        fun snapshotBalanceBatchWithMissingRowsAsZero() {
+            service = buildService(snapshotBalanceEnabled = true)
+            val ids = listOf(checkingId, liabilityId, expenseId)
+            `when`(accountRepository.findAllById(ids)).thenReturn(listOf(checking, liabilityAcct, expenseAcct))
+            `when`(accountCurrentBalanceRepository.findAllByAccountIdIn(ids)).thenReturn(
+                listOf(
+                    AccountCurrentBalance(accountId = checkingId, rawBalanceMinor = 2000L),
+                    AccountCurrentBalance(accountId = liabilityId, rawBalanceMinor = -7000L),
+                ),
+            )
+
+            val result = service.getAccountBalances(ids, LocalDate.of(2026, 2, 20), userA, null)
+            val byId = result.associateBy { it.accountId }
+
+            assertEquals(2000L, byId.getValue(checkingId).balanceMinor)
+            assertEquals(7000L, byId.getValue(liabilityId).balanceMinor)
+            assertEquals(0L, byId.getValue(expenseId).balanceMinor)
+            verifyNoInteractions(ledgerSplitRepository)
         }
     }
 }

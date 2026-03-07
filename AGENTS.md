@@ -41,6 +41,7 @@
 - Wildcard imports are not allowed under any circumstances.
 - Prioritize reusable, composable components/services in both backend and frontend to reduce duplication and improve maintainability.
 - Following software-architect best practices and appropriate design patterns is top priority.
+- Prefer Spring Data JPA derived query methods over explicit `@Query` declarations when possible.
 - Adding new dependencies or introducing new tools/technologies requires explicit user approval first.
 - Vue/TS:
   - Components: `PascalCase.vue` (example: `DateRangePicker.vue`)
@@ -49,8 +50,10 @@
 - Run format/lint tools before opening a PR.
 
 ## Agent Startup, Context & Output
+- `AGENTS.md` has higher priority than task-specific plans/docs/files. If there is any conflict, follow `AGENTS.md`.
 - Treat `AGENTS.md` and task-relevant files as the single source of truth; check them first before spending tokens on broad codebase exploration.
 - At the start of every Codex/Claude run (including multi-agent runs), explicitly confirm that `AGENTS.md` and all task-relevant files are loaded in context.
+- Do not repeatedly reconfirm `AGENTS.md` usage during the same run; the initial confirmation is sufficient.
 - Use only the smallest relevant set of files in context to improve signal quality and reduce token usage.
 - If required files are missing from context, load them before proposing or applying changes.
 - Keep responses concise: avoid large raw outputs and provide a single summarized paragraph explaining what was changed, where, and why.

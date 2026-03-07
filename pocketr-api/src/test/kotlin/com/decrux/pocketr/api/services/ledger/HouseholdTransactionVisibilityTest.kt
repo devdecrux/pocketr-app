@@ -9,6 +9,7 @@ import com.decrux.pocketr.api.entities.db.ledger.LedgerTxn
 import com.decrux.pocketr.api.entities.db.ledger.SplitSide
 import com.decrux.pocketr.api.exceptions.BadRequestException
 import com.decrux.pocketr.api.exceptions.ForbiddenException
+import com.decrux.pocketr.api.repositories.AccountCurrentBalanceRepository
 import com.decrux.pocketr.api.repositories.AccountRepository
 import com.decrux.pocketr.api.repositories.CategoryTagRepository
 import com.decrux.pocketr.api.repositories.CurrencyRepository
@@ -44,9 +45,11 @@ import org.mockito.Mockito.`when`
 import org.springframework.data.domain.PageImpl
 import org.springframework.data.domain.Pageable
 import org.springframework.data.jpa.domain.Specification
+import java.time.Clock
 import java.time.Instant
 import java.time.LocalDate
-import java.util.UUID
+import java.time.ZoneOffset
+import java.util.*
 
 /**
  * Unit tests for household transaction visibility in listTransactions().
@@ -59,6 +62,7 @@ import java.util.UUID
 class HouseholdTransactionVisibilityTest {
     private lateinit var ledgerTxnRepository: LedgerTxnRepository
     private lateinit var ledgerSplitRepository: LedgerSplitRepository
+    private lateinit var accountCurrentBalanceRepository: AccountCurrentBalanceRepository
     private lateinit var accountRepository: AccountRepository
     private lateinit var currencyRepository: CurrencyRepository
     private lateinit var categoryTagRepository: CategoryTagRepository
@@ -111,6 +115,7 @@ class HouseholdTransactionVisibilityTest {
     fun setUp() {
         ledgerTxnRepository = mock(LedgerTxnRepository::class.java)
         ledgerSplitRepository = mock(LedgerSplitRepository::class.java)
+        accountCurrentBalanceRepository = mock(AccountCurrentBalanceRepository::class.java)
         accountRepository = mock(AccountRepository::class.java)
         currencyRepository = mock(CurrencyRepository::class.java)
         categoryTagRepository = mock(CategoryTagRepository::class.java)
@@ -121,6 +126,7 @@ class HouseholdTransactionVisibilityTest {
             ManageLedgerImpl(
                 ledgerTxnRepository,
                 ledgerSplitRepository,
+                accountCurrentBalanceRepository,
                 accountRepository,
                 currencyRepository,
                 categoryTagRepository,
@@ -136,6 +142,9 @@ class HouseholdTransactionVisibilityTest {
                 HouseholdMembershipValidator(),
                 HouseholdSharedAccountValidator(),
                 CrossUserAssetAccountTypeValidator(),
+                currentBalanceSnapshotEnabled = false,
+                currentBalanceSnapshotReadiness = CurrentBalanceSnapshotReadiness.AlwaysAllowed,
+                clock = Clock.fixed(Instant.parse("2026-02-20T00:00:00Z"), ZoneOffset.UTC),
             )
     }
 

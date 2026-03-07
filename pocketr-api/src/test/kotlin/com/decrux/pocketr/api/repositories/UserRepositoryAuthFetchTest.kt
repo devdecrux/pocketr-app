@@ -2,6 +2,7 @@ package com.decrux.pocketr.api.repositories
 
 import com.decrux.pocketr.api.entities.db.auth.User
 import com.decrux.pocketr.api.entities.db.auth.UserRole
+import com.decrux.pocketr.api.testsupport.UsePostgresDb
 import jakarta.persistence.EntityManagerFactory
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
@@ -12,10 +13,9 @@ import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest
 import org.springframework.boot.jpa.test.autoconfigure.TestEntityManager
-import org.springframework.test.context.ActiveProfiles
 
 @DataJpaTest
-@ActiveProfiles("test")
+@UsePostgresDb
 @DisplayName("UserRepository auth fetch strategy")
 class UserRepositoryAuthFetchTest
     @Autowired
