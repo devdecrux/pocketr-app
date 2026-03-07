@@ -10,6 +10,12 @@ import java.util.*
 
 @Repository
 interface AccountCurrentBalanceRepository : JpaRepository<AccountCurrentBalance, UUID> {
+    /**
+     * Applies a signed delta to an account's snapshot balance in a single atomic SQL statement.
+     *
+     * Inserts a row when the account does not have a snapshot yet, or increments the existing
+     * `raw_balance_minor` value when it already exists.
+     */
     @Modifying
     @Query(
         value = """
@@ -26,6 +32,11 @@ interface AccountCurrentBalanceRepository : JpaRepository<AccountCurrentBalance,
         @Param("delta") delta: Long,
     ): Int
 
+    /**
+     * Counts accounts where the snapshot balance differs from the value computed from ledger splits.
+     *
+     * Used by reconciliation/health logic to decide whether snapshot reads are safe to serve.
+     */
     @Query(
         value = """
             WITH ledger_calc AS (
@@ -42,7 +53,7 @@ interface AccountCurrentBalanceRepository : JpaRepository<AccountCurrentBalance,
         """,
         nativeQuery = true,
     )
-    fun countReconciliationMismatches(): Long
+    fun countAccountsBalanceMismatch(): Long
 
     fun findAllByAccountIdIn(accountIds: Collection<UUID>): List<AccountCurrentBalance>
 }

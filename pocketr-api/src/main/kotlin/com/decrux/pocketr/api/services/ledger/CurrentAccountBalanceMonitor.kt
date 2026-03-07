@@ -8,7 +8,14 @@ import org.springframework.context.event.EventListener
 import org.springframework.stereotype.Component
 
 @Component
-class CurrentBalanceReconciliationMonitor(
+/**
+ * Monitors snapshot-cache consistency for account balances at application startup.
+ *
+ * It compares cached balances with balances computed from ledger entries and updates
+ * snapshot-read readiness so the service can fall back to computed balances when mismatches
+ * or reconciliation errors are detected.
+ */
+class CurrentAccountBalanceMonitor(
     private val accountCurrentBalanceRepository: AccountCurrentBalanceRepository,
     private val currentBalanceSnapshotReadinessState: CurrentBalanceSnapshotReadinessState,
     @Value("\${ledger.current-balance.reconciliation-log-on-startup:true}")
@@ -17,7 +24,7 @@ class CurrentBalanceReconciliationMonitor(
     @EventListener(ApplicationReadyEvent::class)
     fun logMismatchCountOnStartup() {
         try {
-            val mismatchCount = accountCurrentBalanceRepository.countReconciliationMismatches()
+            val mismatchCount = accountCurrentBalanceRepository.countAccountsBalanceMismatch()
             currentBalanceSnapshotReadinessState.updateFromMismatchCount(mismatchCount)
 
             if (reconciliationLogOnStartup || mismatchCount > 0) {
@@ -39,6 +46,6 @@ class CurrentBalanceReconciliationMonitor(
     }
 
     private companion object {
-        private val logger = LoggerFactory.getLogger(CurrentBalanceReconciliationMonitor::class.java)
+        private val logger = LoggerFactory.getLogger(CurrentAccountBalanceMonitor::class.java)
     }
 }

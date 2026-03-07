@@ -40,7 +40,7 @@ class ManageLedgerCurrentBalanceIntegrationTest
     private val ledgerTxnRepository: LedgerTxnRepository,
     private val ledgerSplitRepository: LedgerSplitRepository,
     private val accountCurrentBalanceRepository: AccountCurrentBalanceRepository,
-    private val currentBalanceReconciliationMonitor: CurrentBalanceReconciliationMonitor,
+    private val currentAccountBalanceMonitor: CurrentAccountBalanceMonitor,
     ) {
     private lateinit var eur: Currency
 
@@ -58,7 +58,7 @@ class ManageLedgerCurrentBalanceIntegrationTest
                 )
             }
 
-        currentBalanceReconciliationMonitor.logMismatchCountOnStartup()
+        currentAccountBalanceMonitor.logMismatchCountOnStartup()
     }
 
     @Test
@@ -226,8 +226,8 @@ class ManageLedgerCurrentBalanceIntegrationTest
             creator = user,
         )
 
-        currentBalanceReconciliationMonitor.logMismatchCountOnStartup()
-        assertEquals(0L, accountCurrentBalanceRepository.countReconciliationMismatches())
+        currentAccountBalanceMonitor.logMismatchCountOnStartup()
+        assertEquals(0L, accountCurrentBalanceRepository.countAccountsBalanceMismatch())
     }
 
     @Test
@@ -257,7 +257,7 @@ class ManageLedgerCurrentBalanceIntegrationTest
         )
 
         accountCurrentBalanceRepository.addDelta(cashId, 5_000L)
-        currentBalanceReconciliationMonitor.logMismatchCountOnStartup()
+        currentAccountBalanceMonitor.logMismatchCountOnStartup()
 
         val todayBalance = manageLedger.getAccountBalance(cashId, today, user, null)
         assertEquals(-1_200L, todayBalance.balanceMinor)

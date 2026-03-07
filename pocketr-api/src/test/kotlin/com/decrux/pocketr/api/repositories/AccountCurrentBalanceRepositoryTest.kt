@@ -74,16 +74,16 @@ class AccountCurrentBalanceRepositoryTest
         }
 
         @Test
-        @DisplayName("countReconciliationMismatches reports projection drift")
-        fun countReconciliationMismatchesReportsDrift() {
-            assertEquals(0L, accountCurrentBalanceRepository.countReconciliationMismatches())
+        @DisplayName("countAccountsBalanceMismatch reports projection drift")
+        fun countAccountsBalanceMismatchReportsDrift() {
+            assertEquals(0L, accountCurrentBalanceRepository.countAccountsBalanceMismatch())
 
             val accountId = persistAccount()
             accountCurrentBalanceRepository.addDelta(accountId, 50L)
             testEntityManager.flush()
             testEntityManager.clear()
 
-            assertEquals(1L, accountCurrentBalanceRepository.countReconciliationMismatches())
+            assertEquals(1L, accountCurrentBalanceRepository.countAccountsBalanceMismatch())
         }
 
         private fun persistAccount(): UUID {
