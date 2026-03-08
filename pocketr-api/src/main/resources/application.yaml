@@ -14,7 +14,6 @@ spring:
       max-request-size: 5MB
   jpa:
     hibernate:
-      # Dev default: 'update' preserves local data.
       ddl-auto: update
 
 server:
