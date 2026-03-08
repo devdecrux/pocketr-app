@@ -307,36 +307,16 @@ class ManageLedgerImpl(
     }
 
     private fun applyCurrentBalanceProjection(splits: List<LedgerSplit>) {
-        val deltasByAccountId = mutableMapOf<UUID, Long>()
-
-        splits.forEach { split ->
-            val accountId = requireNotNull(split.account?.id) { "Split account ID must not be null" }
-            val signedDelta =
-                when (split.side) {
-                    SplitSide.DEBIT -> split.amountMinor
-                    SplitSide.CREDIT -> -split.amountMinor
-                }
-            val currentDelta = deltasByAccountId[accountId] ?: 0L
-            deltasByAccountId[accountId] = Math.addExact(currentDelta, signedDelta)
-        }
-
-        val nonZeroDeltas =
-            deltasByAccountId.entries
-                .sortedBy { it.key }
-                .filter { it.value != 0L }
+        val deltasByAccountId = accumulateDeltasByAccount(splits)
 
         try {
-            nonZeroDeltas.forEach { (accountId, delta) ->
+            deltasByAccountId.forEach { (accountId, delta) ->
                 accountCurrentBalanceRepository.addDelta(accountId, delta)
             }
         } catch (ex: RuntimeException) {
-            projectionWriteFailureCount.increment()
             logger.error(
-                "projection_write_failure_count={} projection_delta_accounts={} total_split_count={} failure_type={}",
-                projectionWriteFailureCount.sum(),
-                nonZeroDeltas.size,
-                splits.size,
-                ex::class.simpleName,
+                "Failed to update snapshot balance delta for the transaction; rolling back the entire transaction due to {}",
+                ex.message,
                 ex,
             )
             throw ex
@@ -344,10 +324,40 @@ class ManageLedgerImpl(
 
         logger.info(
             "projection_delta_accounts={} total_split_count={}",
-            nonZeroDeltas.size,
+            deltasByAccountId.size,
             splits.size,
         )
     }
+
+    private fun accumulateDeltasByAccount(splits: List<LedgerSplit>): MutableMap<UUID, Long> {
+        val deltasByAccountId = mutableMapOf<UUID, Long>()
+
+        splits.forEach { split ->
+            val accountId = split.requireAccountId()
+            val signedDelta = split.toRawSignedDelta()
+            val newComputedDelta =
+                deltasByAccountId[accountId]
+                    ?.let { currentDelta -> Math.addExact(currentDelta, signedDelta) }
+                    ?: signedDelta
+
+            if (newComputedDelta == 0L) {
+                deltasByAccountId.remove(accountId)
+            } else {
+                deltasByAccountId[accountId] = newComputedDelta
+            }
+        }
+
+        return deltasByAccountId
+    }
+
+    private fun LedgerSplit.requireAccountId(): UUID =
+        requireNotNull(account?.id) { "Split account ID must not be null" }
+
+    private fun LedgerSplit.toRawSignedDelta(): Long =
+        when (side) {
+            SplitSide.DEBIT -> amountMinor
+            SplitSide.CREDIT -> -amountMinor
+        }
 
     private fun resolveRawBalances(
         accountIds: Collection<UUID>,
@@ -509,7 +519,6 @@ class ManageLedgerImpl(
         private val snapshotBalanceHitCount = LongAdder()
         private val computedBalancePathCount = LongAdder()
         private val computedBalanceFallbackCount = LongAdder()
-        private val projectionWriteFailureCount = LongAdder()
         val DEBIT_NORMAL_TYPES = setOf(AccountType.ASSET, AccountType.EXPENSE)
         val TRANSFER_TYPES = setOf(AccountType.ASSET, AccountType.LIABILITY, AccountType.EQUITY)
 
