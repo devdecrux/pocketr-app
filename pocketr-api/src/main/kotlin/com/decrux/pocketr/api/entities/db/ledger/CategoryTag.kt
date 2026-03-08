@@ -4,6 +4,7 @@ import com.decrux.pocketr.api.entities.db.auth.User
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
 import jakarta.persistence.FetchType
+import jakarta.persistence.ForeignKey
 import jakarta.persistence.GeneratedValue
 import jakarta.persistence.GenerationType
 import jakarta.persistence.Id
@@ -12,7 +13,7 @@ import jakarta.persistence.ManyToOne
 import jakarta.persistence.Table
 import jakarta.persistence.UniqueConstraint
 import java.time.Instant
-import java.util.UUID
+import java.util.*
 
 @Entity
 @Table(
@@ -24,7 +25,7 @@ class CategoryTag(
     @GeneratedValue(strategy = GenerationType.UUID)
     var id: UUID? = null,
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "owner_user_id", nullable = false)
+    @JoinColumn(name = "owner_user_id", nullable = false, foreignKey = ForeignKey(name = "fk_category_tag_owner"))
     var owner: User? = null,
     @Column(nullable = false)
     var name: String = "",

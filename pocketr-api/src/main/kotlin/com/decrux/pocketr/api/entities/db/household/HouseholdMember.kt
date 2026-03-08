@@ -6,6 +6,7 @@ import jakarta.persistence.Entity
 import jakarta.persistence.EnumType
 import jakarta.persistence.Enumerated
 import jakarta.persistence.FetchType
+import jakarta.persistence.ForeignKey
 import jakarta.persistence.Id
 import jakarta.persistence.IdClass
 import jakarta.persistence.Index
@@ -27,11 +28,11 @@ import java.time.Instant
 class HouseholdMember(
     @Id
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "household_id", nullable = false)
+    @JoinColumn(name = "household_id", nullable = false, foreignKey = ForeignKey(name = "fk_household_member_household"))
     var household: Household? = null,
     @Id
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = false)
+    @JoinColumn(name = "user_id", nullable = false, foreignKey = ForeignKey(name = "fk_household_member_user"))
     var user: User? = null,
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
@@ -40,7 +41,7 @@ class HouseholdMember(
     @Column(nullable = false)
     var status: MemberStatus = MemberStatus.ACTIVE,
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "invited_by")
+    @JoinColumn(name = "invited_by", foreignKey = ForeignKey(name = "fk_household_member_invited_by"))
     var invitedBy: User? = null,
     @Column(name = "invited_at")
     var invitedAt: Instant? = null,

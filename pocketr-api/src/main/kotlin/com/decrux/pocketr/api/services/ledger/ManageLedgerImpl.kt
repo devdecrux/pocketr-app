@@ -308,9 +308,12 @@ class ManageLedgerImpl(
 
     private fun applyCurrentBalanceProjection(splits: List<LedgerSplit>) {
         val deltasByAccountId = accumulateDeltasByAccount(splits)
+        val orderedDeltasByAccountId = deltasByAccountId.toSortedMap()
 
         try {
-            deltasByAccountId.forEach { (accountId, delta) ->
+            // Apply projection deltas in a stable account-id order to avoid deadlocks when
+            // concurrent transactions touch the same set of accounts through different split orders.
+            orderedDeltasByAccountId.forEach { (accountId, delta) ->
                 accountCurrentBalanceRepository.addDelta(accountId, delta)
             }
         } catch (ex: RuntimeException) {
@@ -324,7 +327,7 @@ class ManageLedgerImpl(
 
         logger.info(
             "projection_delta_accounts={} total_split_count={}",
-            deltasByAccountId.size,
+            orderedDeltasByAccountId.size,
             splits.size,
         )
     }

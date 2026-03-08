@@ -4,6 +4,8 @@ spring:
     url: ${TEST_DB_URL:jdbc:postgresql://localhost:5432/pocketr_test_db}
     username: ${TEST_DB_USERNAME:pocketr_user}
     password: ${TEST_DB_PASSWORD:pocketr_password}
+  flyway:
+    enabled: false
   jpa:
     hibernate:
       ddl-auto: create-drop

@@ -5,6 +5,7 @@ import jakarta.persistence.Entity
 import jakarta.persistence.EnumType
 import jakarta.persistence.Enumerated
 import jakarta.persistence.FetchType
+import jakarta.persistence.ForeignKey
 import jakarta.persistence.GeneratedValue
 import jakarta.persistence.GenerationType
 import jakarta.persistence.Id
@@ -12,7 +13,7 @@ import jakarta.persistence.Index
 import jakarta.persistence.JoinColumn
 import jakarta.persistence.ManyToOne
 import jakarta.persistence.Table
-import java.util.UUID
+import java.util.*
 
 @Entity
 @Table(
@@ -27,10 +28,10 @@ class LedgerSplit(
     @GeneratedValue(strategy = GenerationType.UUID)
     var id: UUID? = null,
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "txn_id", nullable = false)
+    @JoinColumn(name = "txn_id", nullable = false, foreignKey = ForeignKey(name = "fk_ledger_split_txn"))
     var transaction: LedgerTxn? = null,
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "account_id", nullable = false)
+    @JoinColumn(name = "account_id", nullable = false, foreignKey = ForeignKey(name = "fk_ledger_split_account"))
     var account: Account? = null,
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
@@ -38,6 +39,6 @@ class LedgerSplit(
     @Column(name = "amount_minor", nullable = false)
     var amountMinor: Long = 0,
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "category_tag_id")
+    @JoinColumn(name = "category_tag_id", foreignKey = ForeignKey(name = "fk_ledger_split_category_tag"))
     var categoryTag: CategoryTag? = null,
 )

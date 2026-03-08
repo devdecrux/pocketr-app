@@ -10,7 +10,7 @@ class FrontendSpaController {
             "/frontend",
             "/frontend/",
             "/frontend/{path:^(?!assets$)[^.]+}",
-            "/frontend/{path:^(?!assets$)[^.]+}/**/{subpath:[^.]+}",
+            "/frontend/{path:^(?!assets$)[^.]+}/{*subpath}",
         ],
     )
     fun forwardToFrontendIndex(): String = "forward:/frontend/index.html"

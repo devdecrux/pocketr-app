@@ -1,7 +1,6 @@
 name: pocketr
 
 services:
-  # Copy .env.example to .env before first run
   db:
     image: postgres:18.0-alpine3.22
     container_name: pocketr-db
@@ -9,12 +8,39 @@ services:
       - "127.0.0.1:5432:5432"
     restart: unless-stopped
     environment:
-      # Keep local dev startup resilient even when `.env` is absent.
-      POSTGRES_USER: ${DB_USER:-pocketr_user}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-pocketr_password}
+      POSTGRES_USER: pocketr_user
+      POSTGRES_PASSWORD: pocketr_password
       POSTGRES_DB: pocketr_db
     volumes:
       - db-data:/var/lib/postgresql/data
+    networks:
+      - pocketr-network
+
+  pgadmin:
+    image: dpage/pgadmin4:9.13.0
+    container_name: pocketr-pgadmin
+    depends_on:
+      - db
+    entrypoint:
+      - /bin/sh
+      - -ec
+      - cp /pgadmin4/pocketr.pgpass /tmp/pocketr.pgpass && chmod 600 /tmp/pocketr.pgpass && exec /entrypoint.sh
+    ports:
+      - "127.0.0.1:5050:80"
+    restart: unless-stopped
+    environment:
+      # Required by the pgAdmin image startup even when server mode is disabled.
+      PGADMIN_DEFAULT_EMAIL: admin@example.com
+      PGADMIN_DEFAULT_PASSWORD: pocketr_pgadmin_password
+      PGADMIN_REPLACE_SERVERS_ON_STARTUP: "True"
+      PGADMIN_CONFIG_SERVER_MODE: "False"
+      PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: "False"
+      PGPASS_FILE: /tmp/pocketr.pgpass
+    volumes:
+      - ./config/pgadmin/servers.json:/pgadmin4/servers.json:ro
+      - ./config/pgadmin/pocketr.pgpass:/pgadmin4/pocketr.pgpass:ro
+      - ./storage/pgadmin:/var/lib/pgadmin/storage
+      - pgadmin-data:/var/lib/pgadmin
     networks:
       - pocketr-network
 
@@ -41,3 +67,4 @@ networks:
 
 volumes:
   db-data:
+  pgadmin-data:

@@ -6,6 +6,7 @@ import jakarta.persistence.Entity
 import jakarta.persistence.EnumType
 import jakarta.persistence.Enumerated
 import jakarta.persistence.FetchType
+import jakarta.persistence.ForeignKey
 import jakarta.persistence.GeneratedValue
 import jakarta.persistence.GenerationType
 import jakarta.persistence.Id
@@ -15,7 +16,7 @@ import jakarta.persistence.ManyToOne
 import jakarta.persistence.Table
 import jakarta.persistence.UniqueConstraint
 import java.time.Instant
-import java.util.UUID
+import java.util.*
 
 @Entity
 @Table(
@@ -33,7 +34,7 @@ class Account(
     @GeneratedValue(strategy = GenerationType.UUID)
     var id: UUID? = null,
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "owner_user_id", nullable = false)
+    @JoinColumn(name = "owner_user_id", nullable = false, foreignKey = ForeignKey(name = "fk_account_owner"))
     var owner: User? = null,
     @Column(nullable = false)
     var name: String = "",
@@ -41,7 +42,7 @@ class Account(
     @Column(nullable = false)
     var type: AccountType = AccountType.ASSET,
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "currency", nullable = false)
+    @JoinColumn(name = "currency", nullable = false, foreignKey = ForeignKey(name = "fk_account_currency"))
     var currency: Currency? = null,
     @Column(name = "created_at", nullable = false, updatable = false)
     var createdAt: Instant = Instant.now(),

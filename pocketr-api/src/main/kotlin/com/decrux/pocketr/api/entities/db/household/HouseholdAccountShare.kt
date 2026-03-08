@@ -5,6 +5,7 @@ import com.decrux.pocketr.api.entities.db.ledger.Account
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
 import jakarta.persistence.FetchType
+import jakarta.persistence.ForeignKey
 import jakarta.persistence.Id
 import jakarta.persistence.IdClass
 import jakarta.persistence.JoinColumn
@@ -18,14 +19,14 @@ import java.time.Instant
 class HouseholdAccountShare(
     @Id
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "household_id", nullable = false)
+    @JoinColumn(name = "household_id", nullable = false, foreignKey = ForeignKey(name = "fk_household_account_share_household"))
     var household: Household? = null,
     @Id
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "account_id", nullable = false)
+    @JoinColumn(name = "account_id", nullable = false, foreignKey = ForeignKey(name = "fk_household_account_share_account"))
     var account: Account? = null,
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "shared_by", nullable = false)
+    @JoinColumn(name = "shared_by", nullable = false, foreignKey = ForeignKey(name = "fk_household_account_share_shared_by"))
     var sharedBy: User? = null,
     @Column(name = "shared_at", nullable = false, updatable = false)
     var sharedAt: Instant = Instant.now(),
