@@ -62,7 +62,7 @@ function handlePageSizeChange(val: AcceptableValue): void {
 
 <template>
   <div v-bind="$attrs" class="overflow-auto flex flex-col">
-    <div class="rounded-md border overflow-hidden">
+    <div class="rounded-md border overflow-hidden shrink-0">
       <table class="w-full text-sm">
         <thead :class="theadClass">
           <tr

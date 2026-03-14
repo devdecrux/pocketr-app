@@ -33,7 +33,6 @@ import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
 import java.time.Instant
 import java.time.LocalDate
-import java.util.*
 
 @Component
 @Profile("dev")
@@ -50,6 +49,7 @@ class DevelopmentDatabaseSeeder(
     private val accountCurrentBalanceRepository: AccountCurrentBalanceRepository,
     private val passwordEncoder: PasswordEncoder,
 ) : ApplicationRunner {
+
     @Transactional
     override fun run(args: ApplicationArguments) {
         if (!isFreshDomainDatabase()) {
@@ -58,21 +58,20 @@ class DevelopmentDatabaseSeeder(
         }
 
         val eur =
-            currencyRepository
-                .findById(CURRENCY_CODE)
-                .orElseThrow {
-                    IllegalStateException("Currency '$CURRENCY_CODE' must exist before development seed data is created")
-                }
+            currencyRepository.findById(CURRENCY_CODE).orElseThrow {
+                IllegalStateException("Currency '$CURRENCY_CODE' must exist before development seed data is created")
+            }
 
         logger.info("development_seed started=true user_count={}", USER_SEEDS.size)
 
         val usersByEmail = persistUsers()
         val categoriesByUserId = persistCategories(usersByEmail)
         val accountsByUserId = persistAccounts(usersByEmail, eur)
+
         val contexts =
             USER_SEEDS.map { seed ->
                 val user = usersByEmail.getValue(seed.email)
-                val userId = requireNotNull(user.userId) { "User ID must not be null" }
+                val userId = requireNotNull(user.userId) { "User ID must not be null after persist" }
                 SeedContext(
                     seed = seed,
                     user = user,
@@ -83,26 +82,22 @@ class DevelopmentDatabaseSeeder(
 
         createHouseholdAndShares(contexts)
 
-        val rawBalancesByAccountId = linkedMapOf<UUID, Long>()
-        val transactions = contexts.flatMap { buildTransactions(it, eur, rawBalancesByAccountId) }
-        ledgerTxnRepository.saveAllAndFlush(transactions)
+        val allTransactions = contexts.flatMap { buildTransactions(it, eur) }
+        ledgerTxnRepository.saveAllAndFlush(allTransactions)
 
-        val currentBalances =
-            rawBalancesByAccountId
-                .filterValues { it != 0L }
-                .onEach { (accountId, rawBalanceMinor) ->
-                    accountCurrentBalanceRepository.addDelta(accountId, rawBalanceMinor)
-                }
-                .size
+        // Recompute all account snapshots from the persisted ledger data in a single SQL upsert.
+        val allAccountIds = contexts.flatMap { ctx -> ctx.accounts.all.mapNotNull { it.id } }
+        val snapshotCount = accountCurrentBalanceRepository.synchronizeSnapshotWithComputedForAccounts(allAccountIds)
 
         logger.info(
-            "development_seed completed=true user_count={} transaction_count={} account_count={} snapshot_count={}",
+            "development_seed completed=true user_count={} transaction_count={} balance_snapshot_count={}",
             contexts.size,
-            transactions.size,
-            rawBalancesByAccountId.size,
-            currentBalances,
+            allTransactions.size,
+            snapshotCount,
         )
     }
+
+    // ── Guard ────────────────────────────────────────────────────────────────
 
     private fun isFreshDomainDatabase(): Boolean =
         userRepository.count() == 0L &&
@@ -114,107 +109,56 @@ class DevelopmentDatabaseSeeder(
             ledgerTxnRepository.count() == 0L &&
             accountCurrentBalanceRepository.count() == 0L
 
+    // ── Persistence ──────────────────────────────────────────────────────────
+
     private fun persistUsers(): Map<String, User> {
-        val encodedSeedPassword =
-            requireNotNull(passwordEncoder.encode(SEED_PASSWORD)) {
-                "Password encoder returned null"
-            }
-        val users =
-            userRepository
-                .saveAllAndFlush(
-                    USER_SEEDS.map { seed ->
-                        User(
-                            password = encodedSeedPassword,
-                            email = seed.email,
-                            firstName = seed.firstName,
-                            lastName = seed.lastName,
-                            roles = mutableListOf(UserRole(role = ROLE_USER)),
-                        )
-                    },
-                ).associateBy { it.email }
-
-        return users
+        val encodedPassword =
+            requireNotNull(passwordEncoder.encode(SEED_PASSWORD)) { "Password encoder returned null" }
+        return userRepository
+            .saveAllAndFlush(
+                USER_SEEDS.map { seed ->
+                    User(
+                        password = encodedPassword,
+                        email = seed.email,
+                        firstName = seed.firstName,
+                        lastName = seed.lastName,
+                        roles = mutableListOf(UserRole(role = ROLE_USER)),
+                    )
+                },
+            ).associateBy { it.email }
     }
 
-    private fun persistCategories(usersByEmail: Map<String, User>): Map<Long, Map<String, CategoryTag>> {
-        val categories =
-            categoryTagRepository
-                .saveAllAndFlush(
-                    USER_SEEDS.flatMap { seed ->
-                        val user = usersByEmail.getValue(seed.email)
-                        CATEGORY_SEEDS.map { categorySeed ->
-                            CategoryTag(
-                                owner = user,
-                                name = categorySeed.name,
-                                color = categorySeed.color,
-                            )
-                        }
-                    },
-                )
-
-        return categories
-            .groupBy { requireNotNull(it.owner?.userId) { "Category owner ID must not be null" } }
-            .mapValues { (_, ownedCategories) -> ownedCategories.associateBy { it.name } }
-    }
+    private fun persistCategories(usersByEmail: Map<String, User>): Map<Long, Map<String, CategoryTag>> =
+        categoryTagRepository
+            .saveAllAndFlush(
+                USER_SEEDS.flatMap { seed ->
+                    val user = usersByEmail.getValue(seed.email)
+                    CATEGORY_SEEDS.map { (name, color) ->
+                        CategoryTag(owner = user, name = name, color = color)
+                    }
+                },
+            ).groupBy { requireNotNull(it.owner?.userId) { "Category owner ID must not be null" } }
+            .mapValues { (_, tags) -> tags.associateBy { it.name } }
 
     private fun persistAccounts(
         usersByEmail: Map<String, User>,
         currency: Currency,
-    ): Map<Long, SeedAccounts> {
-        val accounts =
-            accountRepository
-                .saveAllAndFlush(
-                    USER_SEEDS.flatMap { seed ->
-                        val user = usersByEmail.getValue(seed.email)
-                        listOf(
-                            Account(
-                                owner = user,
-                                name = PRIMARY_CHECKING_NAME,
-                                type = AccountType.ASSET,
-                                currency = currency,
-                            ),
-                            Account(
-                                owner = user,
-                                name = DAILY_CHECKING_NAME,
-                                type = AccountType.ASSET,
-                                currency = currency,
-                            ),
-                            Account(
-                                owner = user,
-                                name = SAVINGS_NAME,
-                                type = AccountType.ASSET,
-                                currency = currency,
-                            ),
-                            Account(
-                                owner = user,
-                                name = EXPENSE_ACCOUNT_NAME,
-                                type = AccountType.EXPENSE,
-                                currency = currency,
-                            ),
-                            Account(
-                                owner = user,
-                                name = INCOME_ACCOUNT_NAME,
-                                type = AccountType.INCOME,
-                                currency = currency,
-                            ),
-                            Account(
-                                owner = user,
-                                name = EQUITY_ACCOUNT_NAME,
-                                type = AccountType.EQUITY,
-                                currency = currency,
-                            ),
-                            Account(
-                                owner = user,
-                                name = seed.liabilityName,
-                                type = AccountType.LIABILITY,
-                                currency = currency,
-                            ),
-                        )
-                    },
-                )
-
-        return accounts
-            .groupBy { requireNotNull(it.owner?.userId) { "Account owner ID must not be null" } }
+    ): Map<Long, SeedAccounts> =
+        accountRepository
+            .saveAllAndFlush(
+                USER_SEEDS.flatMap { seed ->
+                    val user = usersByEmail.getValue(seed.email)
+                    listOf(
+                        account(user, PRIMARY_CHECKING_NAME, AccountType.ASSET, currency),
+                        account(user, DAILY_CHECKING_NAME, AccountType.ASSET, currency),
+                        account(user, SAVINGS_NAME, AccountType.ASSET, currency),
+                        account(user, EXPENSE_ACCOUNT_NAME, AccountType.EXPENSE, currency),
+                        account(user, INCOME_ACCOUNT_NAME, AccountType.INCOME, currency),
+                        account(user, EQUITY_ACCOUNT_NAME, AccountType.EQUITY, currency),
+                        account(user, seed.liabilityName, AccountType.LIABILITY, currency),
+                    )
+                },
+            ).groupBy { requireNotNull(it.owner?.userId) { "Account owner ID must not be null" } }
             .mapValues { (_, userAccounts) ->
                 val byName = userAccounts.associateBy { it.name }
                 SeedAccounts(
@@ -224,20 +168,25 @@ class DevelopmentDatabaseSeeder(
                     expense = byName.getValue(EXPENSE_ACCOUNT_NAME),
                     income = byName.getValue(INCOME_ACCOUNT_NAME),
                     equity = byName.getValue(EQUITY_ACCOUNT_NAME),
-                    liability = byName.getValue(
-                        userAccounts
-                            .first { it.type == AccountType.LIABILITY }
-                            .name,
-                    ),
+                    liability = userAccounts.first { it.type == AccountType.LIABILITY },
                     all = userAccounts,
                 )
             }
-    }
+
+    private fun account(
+        owner: User,
+        name: String,
+        type: AccountType,
+        currency: Currency,
+    ) = Account(owner = owner, name = name, type = type, currency = currency)
+
+    // ── Household ────────────────────────────────────────────────────────────
 
     private fun createHouseholdAndShares(contexts: List<SeedContext>) {
-        val owner = contexts[0]
-        val admin = contexts[1]
-        val member = contexts[2]
+        require(contexts.size >= 3) { "At least 3 seed users are required to set up the demo household" }
+        val (ownerCtx, adminCtx, memberCtx) = contexts
+
+        val householdCreatedAt = Instant.parse("2026-01-10T09:00:00Z")
         val invitedAt = Instant.parse("2026-01-12T09:00:00Z")
         val joinedAt = invitedAt.plusSeconds(86_400)
 
@@ -245,265 +194,261 @@ class DevelopmentDatabaseSeeder(
             householdRepository.saveAndFlush(
                 Household(
                     name = "Demo Household",
-                    createdBy = owner.user,
-                    createdAt = Instant.parse("2026-01-10T09:00:00Z"),
+                    createdBy = ownerCtx.user,
+                    createdAt = householdCreatedAt,
                     members =
                         mutableListOf(
                             HouseholdMember(
-                                user = owner.user,
+                                user = ownerCtx.user,
                                 role = HouseholdRole.OWNER,
                                 status = MemberStatus.ACTIVE,
-                                joinedAt = Instant.parse("2026-01-10T09:00:00Z"),
+                                joinedAt = householdCreatedAt,
                             ),
                             HouseholdMember(
-                                user = admin.user,
+                                user = adminCtx.user,
                                 role = HouseholdRole.ADMIN,
                                 status = MemberStatus.ACTIVE,
-                                invitedBy = owner.user,
+                                invitedBy = ownerCtx.user,
                                 invitedAt = invitedAt,
                                 joinedAt = joinedAt,
                             ),
                             HouseholdMember(
-                                user = member.user,
+                                user = memberCtx.user,
                                 role = HouseholdRole.MEMBER,
                                 status = MemberStatus.ACTIVE,
-                                invitedBy = owner.user,
+                                invitedBy = ownerCtx.user,
                                 invitedAt = invitedAt.plusSeconds(3_600),
                                 joinedAt = joinedAt.plusSeconds(3_600),
                             ),
                         ),
-                ).apply {
-                    members.forEach { it.household = this }
-                },
+                ).apply { members.forEach { it.household = this } },
             )
 
         householdAccountShareRepository.saveAllAndFlush(
-            listOf(owner, admin, member).map { context ->
+            listOf(ownerCtx, adminCtx, memberCtx).map { ctx ->
                 HouseholdAccountShare(
                     household = household,
-                    account = context.accounts.primaryChecking,
-                    sharedBy = context.user,
+                    account = ctx.accounts.primaryChecking,
+                    sharedBy = ctx.user,
                 )
             },
         )
     }
 
+    // ── Transaction builders ─────────────────────────────────────────────────
+
     private fun buildTransactions(
         context: SeedContext,
         currency: Currency,
-        rawBalancesByAccountId: MutableMap<UUID, Long>,
     ): List<LedgerTxn> {
-        val transactions = mutableListOf<LedgerTxn>()
+        // Each user's dates are offset by their ordinal to spread transactions across a realistic timeline.
         val baseDate = LocalDate.of(2026, 1, 1).plusDays((context.seed.ordinal - 1L) * 4L)
-
         val assetAccounts =
             listOf(
                 context.accounts.primaryChecking,
                 context.accounts.dailyChecking,
                 context.accounts.savings,
             )
+        return buildList {
+            addAll(buildOpeningBalanceTxns(context, currency, baseDate, assetAccounts))
+            addAll(buildInternalTransferTxns(context, currency, baseDate))
+            addAll(buildExpenseTxns(context, currency, baseDate, assetAccounts))
+            addAll(buildIncomeTxns(context, currency, baseDate, assetAccounts))
+            addAll(buildLiabilityTxns(context, currency, baseDate))
+        }
+    }
 
-        context.seed.openingBalances.forEachIndexed { index, amountMinor ->
-            transactions +=
-                buildTransaction(
-                    creator = context.user,
-                    currency = currency,
-                    txnDate = baseDate.plusDays(index.toLong()),
-                    description = "Opening balance - ${assetAccounts[index].name}",
-                    debitAccount = assetAccounts[index],
-                    creditAccount = context.accounts.equity,
-                    amountMinor = amountMinor,
-                    categoryTag = context.categories.getValue(CATEGORY_OPENING_BALANCE),
-                    categoryPlacement = CategoryPlacement.DEBIT,
-                    rawBalancesByAccountId = rawBalancesByAccountId,
-                )
+    /** Records initial equity → asset transfers for each asset account (days 0..N). */
+    private fun buildOpeningBalanceTxns(
+        context: SeedContext,
+        currency: Currency,
+        baseDate: LocalDate,
+        assetAccounts: List<Account>,
+    ): List<LedgerTxn> =
+        context.seed.openingBalances.mapIndexed { index, amountMinor ->
+            txn(
+                creator = context.user,
+                currency = currency,
+                txnDate = baseDate.plusDays(index.toLong()),
+                description = "Opening balance - ${assetAccounts[index].name}",
+                debit = assetAccounts[index] to context.categories.getValue(CATEGORY_OPENING_BALANCE),
+                credit = context.accounts.equity to null,
+                amountMinor = amountMinor,
+            )
         }
 
+    /** Records operational fund moves between the three asset accounts (days 3..5). */
+    private fun buildInternalTransferTxns(
+        context: SeedContext,
+        currency: Currency,
+        baseDate: LocalDate,
+    ): List<LedgerTxn> {
         val transferCategory = context.categories.getValue(CATEGORY_INTERNAL_TRANSFER)
-        transactions +=
-            buildTransaction(
+        val o = context.seed.ordinal
+        return listOf(
+            txn(
                 creator = context.user,
                 currency = currency,
                 txnDate = baseDate.plusDays(3),
                 description = "Funding move to ${context.accounts.dailyChecking.name}",
-                debitAccount = context.accounts.dailyChecking,
-                creditAccount = context.accounts.primaryChecking,
-                amountMinor = 12_000L + (context.seed.ordinal * 350L),
-                categoryTag = transferCategory,
-                categoryPlacement = CategoryPlacement.DEBIT,
-                rawBalancesByAccountId = rawBalancesByAccountId,
-            )
-        transactions +=
-            buildTransaction(
+                debit = context.accounts.dailyChecking to transferCategory,
+                credit = context.accounts.primaryChecking to null,
+                amountMinor = 12_000L + (o * 350L),
+            ),
+            txn(
                 creator = context.user,
                 currency = currency,
                 txnDate = baseDate.plusDays(4),
                 description = "Savings contribution from ${context.accounts.savings.name}",
-                debitAccount = context.accounts.primaryChecking,
-                creditAccount = context.accounts.savings,
-                amountMinor = 18_500L + (context.seed.ordinal * 425L),
-                categoryTag = transferCategory,
-                categoryPlacement = CategoryPlacement.DEBIT,
-                rawBalancesByAccountId = rawBalancesByAccountId,
-            )
-        transactions +=
-            buildTransaction(
+                debit = context.accounts.primaryChecking to transferCategory,
+                credit = context.accounts.savings to null,
+                amountMinor = 18_500L + (o * 425L),
+            ),
+            txn(
                 creator = context.user,
                 currency = currency,
                 txnDate = baseDate.plusDays(5),
                 description = "Reserve top-up from ${context.accounts.dailyChecking.name}",
-                debitAccount = context.accounts.savings,
-                creditAccount = context.accounts.dailyChecking,
-                amountMinor = 9_500L + (context.seed.ordinal * 275L),
-                categoryTag = transferCategory,
-                categoryPlacement = CategoryPlacement.DEBIT,
-                rawBalancesByAccountId = rawBalancesByAccountId,
-            )
+                debit = context.accounts.savings to transferCategory,
+                credit = context.accounts.dailyChecking to null,
+                amountMinor = 9_500L + (o * 275L),
+            ),
+        )
+    }
 
-        val expenseCategoryCycle =
-            listOf(
-                CATEGORY_GROCERIES,
-                CATEGORY_DINING_OUT,
-                CATEGORY_UTILITIES,
-                CATEGORY_TRANSPORT,
-                CATEGORY_ENTERTAINMENT,
-                CATEGORY_HEALTH,
-            )
+    /** Records daily-life expense transactions across all asset accounts (days 6..). */
+    private fun buildExpenseTxns(
+        context: SeedContext,
+        currency: Currency,
+        baseDate: LocalDate,
+        assetAccounts: List<Account>,
+    ): List<LedgerTxn> {
         val expenseBaseAmounts = listOf(4_900L, 2_700L, 8_100L, 3_400L, 5_600L)
-
-        assetAccounts.forEachIndexed { assetIndex, assetAccount ->
-            repeat(EXPENSES_PER_ASSET_ACCOUNT) { expenseIndex ->
-                val categoryName = expenseCategoryCycle[(assetIndex + expenseIndex) % expenseCategoryCycle.size]
-                val amountMinor =
-                    expenseBaseAmounts[expenseIndex] +
-                        (assetIndex * 180L) +
-                        (context.seed.ordinal * 95L)
-
-                transactions +=
-                    buildTransaction(
-                        creator = context.user,
-                        currency = currency,
-                        txnDate = baseDate.plusDays(6 + assetIndex * 8L + expenseIndex.toLong()),
-                        description = "${categoryName.lowercase().replaceFirstChar { it.uppercase() }} from ${assetAccount.name}",
-                        debitAccount = context.accounts.expense,
-                        creditAccount = assetAccount,
-                        amountMinor = amountMinor,
-                        categoryTag = context.categories.getValue(categoryName),
-                        categoryPlacement = CategoryPlacement.DEBIT,
-                        rawBalancesByAccountId = rawBalancesByAccountId,
-                    )
+        return assetAccounts.flatMapIndexed { assetIndex, assetAccount ->
+            (0 until EXPENSES_PER_ASSET_ACCOUNT).map { expenseIndex ->
+                val categoryName = EXPENSE_CATEGORY_CYCLE[(assetIndex + expenseIndex) % EXPENSE_CATEGORY_CYCLE.size]
+                val amountMinor = expenseBaseAmounts[expenseIndex] + (assetIndex * 180L) + (context.seed.ordinal * 95L)
+                txn(
+                    creator = context.user,
+                    currency = currency,
+                    txnDate = baseDate.plusDays(6 + assetIndex * 8L + expenseIndex.toLong()),
+                    description = "${categoryName.lowercase().replaceFirstChar { it.uppercase() }} from ${assetAccount.name}",
+                    debit = context.accounts.expense to context.categories.getValue(categoryName),
+                    credit = assetAccount to null,
+                    amountMinor = amountMinor,
+                )
             }
+        }
+    }
 
-            repeat(INCOMES_PER_ASSET_ACCOUNT) { incomeIndex ->
+    /** Records salary and supplemental income transactions across all asset accounts (days 30..). */
+    private fun buildIncomeTxns(
+        context: SeedContext,
+        currency: Currency,
+        baseDate: LocalDate,
+        assetAccounts: List<Account>,
+    ): List<LedgerTxn> {
+        val salaryCategory = context.categories.getValue(CATEGORY_SALARY)
+        return assetAccounts.flatMapIndexed { assetIndex, assetAccount ->
+            (0 until INCOMES_PER_ASSET_ACCOUNT).map { incomeIndex ->
+                val isSalary = incomeIndex == 0
                 val amountMinor =
-                    if (incomeIndex == 0) {
+                    if (isSalary) {
                         48_000L + (assetIndex * 2_500L) + (context.seed.ordinal * 1_050L)
                     } else {
                         11_500L + (assetIndex * 900L) + (context.seed.ordinal * 450L)
                     }
+                txn(
+                    creator = context.user,
+                    currency = currency,
+                    txnDate = baseDate.plusDays(30 + assetIndex * 3L + incomeIndex.toLong()),
+                    description = if (isSalary) "Salary into ${assetAccount.name}" else "Extra income into ${assetAccount.name}",
+                    debit = assetAccount to null,
+                    credit = context.accounts.income to salaryCategory,
+                    amountMinor = amountMinor,
+                )
+            }
+        }
+    }
 
-                transactions +=
-                    buildTransaction(
+    /** Records the liability opening balance and subsequent repayments (days 42..). */
+    private fun buildLiabilityTxns(
+        context: SeedContext,
+        currency: Currency,
+        baseDate: LocalDate,
+    ): List<LedgerTxn> =
+        buildList {
+            add(
+                txn(
+                    creator = context.user,
+                    currency = currency,
+                    txnDate = baseDate.plusDays(42),
+                    description = "Opening balance - ${context.accounts.liability.name}",
+                    debit = context.accounts.equity to null,
+                    credit = context.accounts.liability to context.categories.getValue(CATEGORY_OPENING_BALANCE),
+                    amountMinor = context.seed.liabilityOpeningBalance,
+                ),
+            )
+            context.seed.liabilityRepayments.forEachIndexed { index, amountMinor ->
+                add(
+                    txn(
                         creator = context.user,
                         currency = currency,
-                        txnDate = baseDate.plusDays(30 + assetIndex * 3L + incomeIndex.toLong()),
-                        description = if (incomeIndex == 0) "Salary into ${assetAccount.name}" else "Extra income into ${assetAccount.name}",
-                        debitAccount = assetAccount,
-                        creditAccount = context.accounts.income,
+                        txnDate = baseDate.plusDays(43 + index.toLong()),
+                        description = "Repayment ${index + 1} for ${context.accounts.liability.name}",
+                        debit = context.accounts.liability to context.categories.getValue(CATEGORY_DEBT_PAYMENT),
+                        credit = context.accounts.primaryChecking to null,
                         amountMinor = amountMinor,
-                        categoryTag = context.categories.getValue(CATEGORY_SALARY),
-                        categoryPlacement = CategoryPlacement.CREDIT,
-                        rawBalancesByAccountId = rawBalancesByAccountId,
-                    )
+                    ),
+                )
             }
         }
 
-        transactions +=
-            buildTransaction(
-                creator = context.user,
-                currency = currency,
-                txnDate = baseDate.plusDays(42),
-                description = "Opening balance - ${context.accounts.liability.name}",
-                debitAccount = context.accounts.equity,
-                creditAccount = context.accounts.liability,
-                amountMinor = context.seed.liabilityOpeningBalance,
-                categoryTag = context.categories.getValue(CATEGORY_OPENING_BALANCE),
-                categoryPlacement = CategoryPlacement.CREDIT,
-                rawBalancesByAccountId = rawBalancesByAccountId,
-            )
+    // ── Transaction factory ──────────────────────────────────────────────────
 
-        context.seed.liabilityRepayments.forEachIndexed { index, amountMinor ->
-            transactions +=
-                buildTransaction(
-                    creator = context.user,
-                    currency = currency,
-                    txnDate = baseDate.plusDays(43 + index.toLong()),
-                    description = "Repayment ${index + 1} for ${context.accounts.liability.name}",
-                    debitAccount = context.accounts.liability,
-                    creditAccount = context.accounts.primaryChecking,
-                    amountMinor = amountMinor,
-                    categoryTag = context.categories.getValue(CATEGORY_DEBT_PAYMENT),
-                    categoryPlacement = CategoryPlacement.DEBIT,
-                    rawBalancesByAccountId = rawBalancesByAccountId,
-                )
-        }
-
-        return transactions
-    }
-
-    private fun buildTransaction(
+    /**
+     * Builds a balanced double-entry transaction. Each side is an `(Account, CategoryTag?)` pair;
+     * the category tag is placed on whichever side carries it — `null` on the other side is explicit.
+     */
+    private fun txn(
         creator: User,
         currency: Currency,
         txnDate: LocalDate,
         description: String,
-        debitAccount: Account,
-        creditAccount: Account,
+        debit: Pair<Account, CategoryTag?>,
+        credit: Pair<Account, CategoryTag?>,
         amountMinor: Long,
-        categoryTag: CategoryTag,
-        categoryPlacement: CategoryPlacement,
-        rawBalancesByAccountId: MutableMap<UUID, Long>,
     ): LedgerTxn {
-        val txn =
+        val (debitAccount, debitCategory) = debit
+        val (creditAccount, creditCategory) = credit
+        val ledgerTxn =
             LedgerTxn(
                 createdBy = creator,
                 txnDate = txnDate,
                 description = description,
                 currency = currency,
             )
-
-        val debitSplit =
-            LedgerSplit(
-                transaction = txn,
-                account = debitAccount,
-                side = SplitSide.DEBIT,
-                amountMinor = amountMinor,
-                categoryTag = if (categoryPlacement == CategoryPlacement.DEBIT) categoryTag else null,
+        ledgerTxn.splits =
+            mutableListOf(
+                LedgerSplit(
+                    transaction = ledgerTxn,
+                    account = debitAccount,
+                    side = SplitSide.DEBIT,
+                    amountMinor = amountMinor,
+                    categoryTag = debitCategory,
+                ),
+                LedgerSplit(
+                    transaction = ledgerTxn,
+                    account = creditAccount,
+                    side = SplitSide.CREDIT,
+                    amountMinor = amountMinor,
+                    categoryTag = creditCategory,
+                ),
             )
-        val creditSplit =
-            LedgerSplit(
-                transaction = txn,
-                account = creditAccount,
-                side = SplitSide.CREDIT,
-                amountMinor = amountMinor,
-                categoryTag = if (categoryPlacement == CategoryPlacement.CREDIT) categoryTag else null,
-            )
-
-        txn.splits = mutableListOf(debitSplit, creditSplit)
-
-        addRawBalance(rawBalancesByAccountId, debitAccount, amountMinor)
-        addRawBalance(rawBalancesByAccountId, creditAccount, -amountMinor)
-
-        return txn
+        return ledgerTxn
     }
 
-    private fun addRawBalance(
-        rawBalancesByAccountId: MutableMap<UUID, Long>,
-        account: Account,
-        delta: Long,
-    ) {
-        val accountId = requireNotNull(account.id) { "Account ID must not be null" }
-        rawBalancesByAccountId[accountId] = (rawBalancesByAccountId[accountId] ?: 0L) + delta
-    }
+    // ── Internal model ───────────────────────────────────────────────────────
 
     private data class SeedContext(
         val seed: UserSeed,
@@ -543,11 +488,6 @@ class DevelopmentDatabaseSeeder(
             get() = "$nickname.${suffix.toString().padStart(3, '0')}@test.com"
     }
 
-    private enum class CategoryPlacement {
-        DEBIT,
-        CREDIT,
-    }
-
     private companion object {
         private val logger = LoggerFactory.getLogger(DevelopmentDatabaseSeeder::class.java)
 
@@ -575,6 +515,16 @@ class DevelopmentDatabaseSeeder(
 
         private const val EXPENSES_PER_ASSET_ACCOUNT = 5
         private const val INCOMES_PER_ASSET_ACCOUNT = 2
+
+        private val EXPENSE_CATEGORY_CYCLE =
+            listOf(
+                CATEGORY_GROCERIES,
+                CATEGORY_DINING_OUT,
+                CATEGORY_UTILITIES,
+                CATEGORY_TRANSPORT,
+                CATEGORY_ENTERTAINMENT,
+                CATEGORY_HEALTH,
+            )
 
         private val CATEGORY_SEEDS =
             listOf(
