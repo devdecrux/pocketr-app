@@ -74,9 +74,8 @@
   - Notes on API or config changes
 
 ## Security & Configuration Tips
-- Copy `.env.example` to `.env` for local overrides.
 - Never commit secrets.
-- If DB credentials are customized in `.env`, keep backend runtime env vars aligned (`DB_USER`, `DB_PASSWORD`).
+- Create a local `.env` manually only if you want to override the optional pgAdmin bootstrap defaults.
 - Treat security-sensitive paths as high-risk: authentication/authorization, input validation, redirects, and infrastructure exposure.
 - Data integrity, data security, and exposure prevention are top priority for new features and maintenance across frontend, backend, and infrastructure.
 - Apply security best practices by default (e.g., SQL injection prevention, transport security/MITM risk reduction, secure auth/session handling, and least-privilege access).

@@ -4,6 +4,7 @@ import jakarta.persistence.CascadeType
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
 import jakarta.persistence.FetchType
+import jakarta.persistence.ForeignKey
 import jakarta.persistence.GeneratedValue
 import jakarta.persistence.GenerationType
 import jakarta.persistence.Id
@@ -29,7 +30,7 @@ class User(
     @Column(name = "avatar_path")
     var avatarPath: String? = null,
     @OneToMany(cascade = [CascadeType.ALL], fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id")
+    @JoinColumn(name = "user_id", foreignKey = ForeignKey(name = "fk_user_roles_user"))
     var roles: MutableList<UserRole> = mutableListOf(),
 ) : UserDetails {
     override fun getAuthorities(): Collection<GrantedAuthority> =

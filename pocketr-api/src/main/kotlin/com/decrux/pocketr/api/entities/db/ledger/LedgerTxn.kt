@@ -19,7 +19,7 @@ import jakarta.persistence.PreUpdate
 import jakarta.persistence.Table
 import java.time.Instant
 import java.time.LocalDate
-import java.util.UUID
+import java.util.*
 
 @Entity
 @Table(
@@ -36,7 +36,7 @@ class LedgerTxn(
     @GeneratedValue(strategy = GenerationType.UUID)
     var id: UUID? = null,
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "created_by_user_id", nullable = false)
+    @JoinColumn(name = "created_by_user_id", nullable = false, foreignKey = ForeignKey(name = "fk_ledger_txn_created_by"))
     var createdBy: User? = null,
     @Column(name = "household_id")
     var householdId: UUID? = null,
@@ -53,7 +53,7 @@ class LedgerTxn(
     @Column(nullable = false)
     var description: String = "",
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "currency", nullable = false)
+    @JoinColumn(name = "currency", nullable = false, foreignKey = ForeignKey(name = "fk_ledger_txn_currency"))
     var currency: Currency? = null,
     @OneToMany(mappedBy = "transaction", cascade = [CascadeType.ALL], orphanRemoval = true)
     var splits: MutableList<LedgerSplit> = mutableListOf(),

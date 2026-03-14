@@ -14,6 +14,7 @@ class PostgresTestContainerInitializer : ApplicationContextInitializer<Configura
             "spring.datasource.url=${TestPostgresContainer.container.jdbcUrl}",
             "spring.datasource.username=${TestPostgresContainer.container.username}",
             "spring.datasource.password=${TestPostgresContainer.container.password}",
+            "spring.flyway.enabled=false",
             "spring.jpa.hibernate.ddl-auto=create-drop",
         )
     }
