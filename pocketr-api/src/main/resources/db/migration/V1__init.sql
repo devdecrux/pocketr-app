@@ -1,5 +1,3 @@
--- Derived from storage/pgadmin/v1__init.sql and sanitized for Flyway execution.
-
 CREATE TABLE public.account (
     currency character varying(3) NOT NULL,
     created_at timestamp(6) with time zone NOT NULL,
