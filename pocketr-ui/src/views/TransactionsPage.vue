@@ -253,8 +253,10 @@ const columns = computed(() => {
       header: 'Type',
       cell: ({ row }) => {
         const presentation = txnPresentation(row.original)
-        return h(Badge, { variant: presentation.badgeVariant, class: 'text-xs' }, () =>
-          presentation.label,
+        return h(
+          Badge,
+          { variant: presentation.badgeVariant, class: 'text-xs' },
+          () => presentation.label,
         )
       },
     }),
