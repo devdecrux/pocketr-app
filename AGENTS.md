@@ -9,12 +9,13 @@
   - Unit tests: `pocketr-ui/src/__tests__`
   - E2E tests: `pocketr-ui/e2e`
 - Root infrastructure/docs:
-  - `docker-compose.yaml` and `config/` (Traefik) are development-only for local app deployment and debugging.
+  - `docker-compose.dev.yaml` and `config/` (Traefik) are development-only for local app deployment and debugging.
+  - `docker-compose.yaml` is the production-oriented Docker Compose file and currently provisions only PostgreSQL.
   - `docs/`, `bruno/` (API collection), `storage/`.
 
 ## Build, Test, and Development Commands
-- Start local infra (root): `docker compose up -d db traefik-reverse-proxy`
-- Stop infra: `docker compose down`
+- Start local infra (root): `docker compose -f docker-compose.dev.yaml up -d db traefik-reverse-proxy`
+- Stop local infra: `docker compose -f docker-compose.dev.yaml down`
 - Backend dev server: `cd pocketr-api && ./gradlew bootRun`
 - Backend checks:
   - `./gradlew build` (compile, test, and package backend)
@@ -41,6 +42,7 @@
 - Wildcard imports are not allowed under any circumstances.
 - Prioritize reusable, composable components/services in both backend and frontend to reduce duplication and improve maintainability.
 - Following software-architect best practices and appropriate design patterns is top priority.
+- Prefer Spring Data JPA derived query methods over explicit `@Query` declarations when possible.
 - Adding new dependencies or introducing new tools/technologies requires explicit user approval first.
 - Vue/TS:
   - Components: `PascalCase.vue` (example: `DateRangePicker.vue`)
@@ -49,8 +51,10 @@
 - Run format/lint tools before opening a PR.
 
 ## Agent Startup, Context & Output
+- `AGENTS.md` has higher priority than task-specific plans/docs/files. If there is any conflict, follow `AGENTS.md`.
 - Treat `AGENTS.md` and task-relevant files as the single source of truth; check them first before spending tokens on broad codebase exploration.
 - At the start of every Codex/Claude run (including multi-agent runs), explicitly confirm that `AGENTS.md` and all task-relevant files are loaded in context.
+- Do not repeatedly reconfirm `AGENTS.md` usage during the same run; the initial confirmation is sufficient.
 - Use only the smallest relevant set of files in context to improve signal quality and reduce token usage.
 - If required files are missing from context, load them before proposing or applying changes.
 - Keep responses concise: avoid large raw outputs and provide a single summarized paragraph explaining what was changed, where, and why.
@@ -71,9 +75,8 @@
   - Notes on API or config changes
 
 ## Security & Configuration Tips
-- Copy `.env.example` to `.env` for local overrides.
 - Never commit secrets.
-- If DB credentials are customized in `.env`, keep backend runtime env vars aligned (`DB_USER`, `DB_PASSWORD`).
+- Create a local `.env` manually only if you want to override the optional pgAdmin bootstrap defaults.
 - Treat security-sensitive paths as high-risk: authentication/authorization, input validation, redirects, and infrastructure exposure.
 - Data integrity, data security, and exposure prevention are top priority for new features and maintenance across frontend, backend, and infrastructure.
 - Apply security best practices by default (e.g., SQL injection prevention, transport security/MITM risk reduction, secure auth/session handling, and least-privilege access).

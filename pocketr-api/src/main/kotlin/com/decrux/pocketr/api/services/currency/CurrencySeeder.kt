@@ -4,10 +4,12 @@ import com.decrux.pocketr.api.entities.db.ledger.Currency
 import com.decrux.pocketr.api.repositories.CurrencyRepository
 import org.springframework.boot.ApplicationArguments
 import org.springframework.boot.ApplicationRunner
+import org.springframework.core.annotation.Order
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
 
 @Component
+@Order(0)
 class CurrencySeeder(
     private val currencyRepository: CurrencyRepository,
 ) : ApplicationRunner {

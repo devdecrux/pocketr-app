@@ -76,6 +76,17 @@ const availableCurrencies = computed(() => {
 const openingBalanceMinorUnit = computed(() =>
   currencyStore.getMinorUnit(newAccount.value.currency),
 )
+const supportsOpeningAmount = computed(
+  () => newAccount.value.type === 'ASSET' || newAccount.value.type === 'LIABILITY',
+)
+const openingBalanceLabel = computed(() =>
+  newAccount.value.type === 'LIABILITY' ? 'Opening debt' : 'Initial balance',
+)
+const openingBalanceHint = computed(() =>
+  newAccount.value.type === 'LIABILITY'
+    ? 'Posted as opening debt against Opening Equity. Liability opening amounts must be positive.'
+    : 'Posted as an opening balance journal entry against Opening Equity. Opening balance date is used only when initial balance is non-zero.',
+)
 
 const sharedAccountIds = computed(() => {
   const ids = new Set<string>()
@@ -204,6 +215,15 @@ onMounted(loadAll)
 
 watch(() => modeStore.viewMode, loadAll, { deep: true })
 
+watch(
+  () => newAccount.value.type,
+  (type) => {
+    if (type === 'LIABILITY' && openingBalanceMinor.value < 0) {
+      openingBalanceMinor.value = Math.abs(openingBalanceMinor.value)
+    }
+  },
+)
+
 const renameDialog = ref(false)
 const renameTarget = ref<Account | null>(null)
 const renameName = ref('')
@@ -236,7 +256,7 @@ async function submitCreate(): Promise<void> {
       type: newAccount.value.type,
       currency: newAccount.value.currency,
     }
-    if (newAccount.value.type === 'ASSET' && openingBalanceMinor.value !== 0) {
+    if (supportsOpeningAmount.value && openingBalanceMinor.value !== 0) {
       payload.openingBalanceMinor = openingBalanceMinor.value
       payload.openingBalanceDate = openingBalanceDate.value || todayString()
     }
@@ -302,8 +322,8 @@ function todayString(): string {
               </div>
 
               <div class="grid grid-cols-1 gap-4 sm:grid-cols-3 sm:items-end">
-                <div v-if="newAccount.type === 'ASSET'" class="grid gap-2">
-                  <Label for="opening-balance-date">Opening balance date</Label>
+                <div v-if="supportsOpeningAmount" class="grid gap-2">
+                  <Label for="opening-balance-date">Opening date</Label>
                   <Input
                     id="opening-balance-date"
                     v-model="openingBalanceDate"
@@ -313,14 +333,14 @@ function todayString(): string {
                 </div>
                 <div v-else class="hidden sm:block" aria-hidden="true" />
 
-                <div v-if="newAccount.type === 'ASSET'" class="grid gap-2">
-                  <Label for="opening-balance">Initial balance</Label>
+                <div v-if="supportsOpeningAmount" class="grid gap-2">
+                  <Label for="opening-balance">{{ openingBalanceLabel }}</Label>
                   <CurrencyAmountInput
                     id="opening-balance"
                     v-model="openingBalanceMinor"
                     :minor-unit="openingBalanceMinorUnit"
                     :currency-code="newAccount.currency"
-                    :allow-negative="true"
+                    :allow-negative="newAccount.type === 'ASSET'"
                     placeholder="0.00"
                   />
                 </div>
@@ -345,9 +365,8 @@ function todayString(): string {
                 </div>
               </div>
 
-              <p v-if="newAccount.type === 'ASSET'" class="text-xs text-muted-foreground">
-                Posted as an opening balance journal entry against Opening Equity. Opening balance
-                date is used only when initial balance is non-zero.
+              <p v-if="supportsOpeningAmount" class="text-xs text-muted-foreground">
+                {{ openingBalanceHint }}
               </p>
               <p v-if="createError" class="text-sm text-red-600">{{ createError }}</p>
             </div>

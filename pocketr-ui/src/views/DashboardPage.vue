@@ -51,17 +51,17 @@ const recentTransactions = computed(() => {
 const spendingByCategory = computed(() => {
   const map = new Map<string, { name: string; total: number; currency: string }>()
   for (const entry of monthlyReport.value) {
-    const key = entry.categoryId ?? 'uncategorized'
-    const account = accountStore.accountMap.get(entry.expenseAccountId)
-    const currency = account?.currency ?? ''
+    const key =
+      entry.categoryTagId ??
+      (entry.categoryTagName ? `named:${entry.categoryTagName}` : 'uncategorized')
     const existing = map.get(key)
     if (existing) {
       existing.total += entry.netMinor
     } else {
       map.set(key, {
-        name: entry.categoryName ?? 'Uncategorized',
+        name: entry.categoryTagName ?? 'Uncategorized',
         total: entry.netMinor,
-        currency,
+        currency: entry.currency,
       })
     }
   }
@@ -72,8 +72,6 @@ const spendingByAccount = computed(() => {
   const map = new Map<string, { name: string; total: number; currency: string }>()
   for (const entry of monthlyReport.value) {
     const key = entry.expenseAccountId
-    const account = accountStore.accountMap.get(key)
-    const currency = account?.currency ?? ''
     const existing = map.get(key)
     if (existing) {
       existing.total += entry.netMinor
@@ -81,7 +79,7 @@ const spendingByAccount = computed(() => {
       map.set(key, {
         name: entry.expenseAccountName,
         total: entry.netMinor,
-        currency,
+        currency: entry.currency,
       })
     }
   }

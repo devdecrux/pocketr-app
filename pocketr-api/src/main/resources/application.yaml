@@ -14,10 +14,17 @@ spring:
       max-request-size: 5MB
   jpa:
     hibernate:
-      # Dev default: 'update' preserves local data.
-      ddl-auto: update
+      ddl-auto: validate
 
 server:
   servlet:
     session:
       timeout: 5m
+
+ledger:
+  accounts:
+    snapshot:
+      balance:
+        enabled: true
+  current-balance:
+    integrity-log-on-startup: true

@@ -1,12 +1,7 @@
 <script setup lang="ts">
 import { HTTPError } from 'ky'
 import { computed, h, onMounted, ref, watch } from 'vue'
-import {
-  createColumnHelper,
-  getCoreRowModel,
-  getExpandedRowModel,
-  useVueTable,
-} from '@tanstack/vue-table'
+import { createColumnHelper, getCoreRowModel, getExpandedRowModel, useVueTable } from '@tanstack/vue-table'
 import { createTxn } from '@/api/ledger'
 import { useAccountStore } from '@/stores/account'
 import { useCategoryStore } from '@/stores/category'
@@ -15,7 +10,8 @@ import { useHouseholdStore } from '@/stores/household'
 import { useLedgerStore } from '@/stores/ledger'
 import { useModeStore } from '@/stores/mode'
 import type { LedgerSplit, LedgerTxn } from '@/types/ledger'
-import { expenseStrategy, incomeStrategy, transferStrategy } from '@/utils/txnStrategies'
+import { debtPaymentStrategy, expenseStrategy, incomeStrategy, transferStrategy } from '@/utils/txnStrategies'
+import { getTxnPresentation } from '@/utils/txnPresentation'
 import { formatMinor } from '@/utils/money'
 import AccountSelector from '@/components/AccountSelector.vue'
 import CategoryTagSelector from '@/components/CategoryTagSelector.vue'
@@ -24,15 +20,7 @@ import CurrencyAmountInput from '@/components/CurrencyAmountInput.vue'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -83,6 +71,13 @@ const transferTo = ref('')
 const transferAmount = ref(0)
 const transferDescription = ref('')
 
+// Debt payment form
+const debtPaymentDate = ref(todayString())
+const debtPaymentPayFrom = ref('')
+const debtPaymentLiabilityAccount = ref('')
+const debtPaymentAmount = ref(0)
+const debtPaymentDescription = ref('')
+
 function todayString(): string {
   return new Date().toISOString().slice(0, 10)
 }
@@ -110,6 +105,14 @@ const transferCurrency = computed(() => {
 })
 
 const transferMinorUnit = computed(() => currencyStore.getMinorUnit(transferCurrency.value))
+
+// Derived currency for debt payment (from asset account)
+const debtPaymentCurrency = computed(() => {
+  const acc = accountStore.accountMap.get(debtPaymentPayFrom.value)
+  return acc?.currency ?? ''
+})
+
+const debtPaymentMinorUnit = computed(() => currencyStore.getMinorUnit(debtPaymentCurrency.value))
 
 // Cross-user transfer info
 const isCrossUserTransfer = computed(() => {
@@ -167,25 +170,22 @@ function getStrategyResult(): {
     return error ? { error } : { error: null, request: transferStrategy.buildRequest(ctx, fields) }
   }
 
-  return { error: 'Unknown tab.' }
-}
-
-// Derive txn kind display label from the backend-provided txnKind field
-function deriveTxnKind(txn: LedgerTxn): string {
-  switch (txn.txnKind) {
-    case 'EXPENSE':
-      return 'Expense'
-    case 'INCOME':
-      return 'Income'
-    default:
-      return 'Transfer'
+  if (activeTab.value === 'debt-payment') {
+    const fields = {
+      date: debtPaymentDate.value,
+      payFrom: debtPaymentPayFrom.value,
+      liabilityAccount: debtPaymentLiabilityAccount.value,
+      amount: debtPaymentAmount.value,
+      currency: debtPaymentCurrency.value,
+      description: debtPaymentDescription.value,
+    }
+    const error = debtPaymentStrategy.validate(fields)
+    return error
+      ? { error }
+      : { error: null, request: debtPaymentStrategy.buildRequest(ctx, fields) }
   }
-}
 
-function txnKindVariant(kind: string) {
-  if (kind === 'Expense') return 'destructive' as const
-  if (kind === 'Income') return 'default' as const
-  return 'secondary' as const
+  return { error: 'Unknown tab.' }
 }
 
 // Unique categories across all splits of a transaction
@@ -214,15 +214,8 @@ function txnDisplayAmount(txn: LedgerTxn): string {
   return formatMinor(total, txn.currency, minorUnit)
 }
 
-function txnAmountClass(txn: LedgerTxn): string {
-  switch (txn.txnKind) {
-    case 'EXPENSE':
-      return 'text-red-500'
-    case 'INCOME':
-      return 'text-green-500'
-    default:
-      return 'text-muted-foreground'
-  }
+function txnPresentation(txn: LedgerTxn) {
+  return getTxnPresentation(txn.txnKind)
 }
 
 // Filtered transactions
@@ -258,10 +251,14 @@ const columns = computed(() => {
     columnHelper.display({
       id: 'kind',
       header: 'Type',
-      cell: ({ row }) =>
-        h(Badge, { variant: txnKindVariant(deriveTxnKind(row.original)), class: 'text-xs' }, () =>
-          deriveTxnKind(row.original),
-        ),
+      cell: ({ row }) => {
+        const presentation = txnPresentation(row.original)
+        return h(
+          Badge,
+          { variant: presentation.badgeVariant, class: 'text-xs' },
+          () => presentation.label,
+        )
+      },
     }),
     columnHelper.display({
       id: 'categories',
@@ -292,19 +289,21 @@ const columns = computed(() => {
     columnHelper.display({
       id: 'amount',
       header: 'Amount',
-      cell: ({ row }) =>
-        h(
+      cell: ({ row }) => {
+        const presentation = txnPresentation(row.original)
+        return h(
           'span',
           {
-            class: `inline-flex items-center justify-end gap-1 whitespace-nowrap font-medium ${txnAmountClass(row.original)}`,
+            class: `inline-flex items-center justify-end gap-1 whitespace-nowrap font-medium ${presentation.amountClass}`,
           },
           [
-            row.original.txnKind === 'TRANSFER'
+            presentation.indicator === 'transfer'
               ? h(ArrowLeftRight, { class: 'size-3' })
-              : h('span', {}, row.original.txnKind === 'EXPENSE' ? '-' : '+'),
+              : h('span', {}, presentation.indicator === 'minus' ? '-' : '+'),
             txnDisplayAmount(row.original),
           ],
-        ),
+        )
+      },
     }),
   ]
 
@@ -432,6 +431,12 @@ function resetForms(): void {
   transferAmount.value = 0
   transferDescription.value = ''
 
+  debtPaymentDate.value = todayString()
+  debtPaymentPayFrom.value = ''
+  debtPaymentLiabilityAccount.value = ''
+  debtPaymentAmount.value = 0
+  debtPaymentDescription.value = ''
+
   submitError.value = ''
 }
 
@@ -480,14 +485,19 @@ async function submitTransaction(): Promise<void> {
           <DialogContent class="max-w-lg">
             <DialogHeader>
               <DialogTitle>Create Transaction</DialogTitle>
-              <DialogDescription> Record an expense, income, or transfer. </DialogDescription>
+              <DialogDescription>
+                Record an expense, income, transfer, or debt payment.
+              </DialogDescription>
             </DialogHeader>
 
             <Tabs v-model="activeTab" class="w-full">
-              <TabsList class="w-full">
-                <TabsTrigger value="expense" class="flex-1">Expense</TabsTrigger>
-                <TabsTrigger value="income" class="flex-1">Income</TabsTrigger>
-                <TabsTrigger value="transfer" class="flex-1">Transfer</TabsTrigger>
+              <TabsList class="grid h-auto w-full grid-cols-2 gap-1 sm:grid-cols-4">
+                <TabsTrigger value="expense" class="text-xs sm:text-sm">Expense</TabsTrigger>
+                <TabsTrigger value="income" class="text-xs sm:text-sm">Income</TabsTrigger>
+                <TabsTrigger value="transfer" class="text-xs sm:text-sm">Transfer</TabsTrigger>
+                <TabsTrigger value="debt-payment" class="text-xs sm:text-sm">
+                  Debt Payment
+                </TabsTrigger>
               </TabsList>
 
               <!-- Expense Tab -->
@@ -621,6 +631,47 @@ async function submitTransaction(): Promise<void> {
                   class="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-300"
                 >
                   This is a cross-user transfer between household members.
+                </div>
+              </TabsContent>
+
+              <!-- Debt Payment Tab -->
+              <TabsContent value="debt-payment" class="space-y-4 pt-4">
+                <div class="grid gap-2">
+                  <Label for="debt-payment-date">Date</Label>
+                  <Input id="debt-payment-date" v-model="debtPaymentDate" type="date" />
+                </div>
+                <div class="grid gap-2">
+                  <Label>Pay from (Asset)</Label>
+                  <AccountSelector
+                    v-model="debtPaymentPayFrom"
+                    :allowed-types="['ASSET']"
+                    placeholder="Select asset account"
+                  />
+                </div>
+                <div class="grid gap-2">
+                  <Label>Liability account</Label>
+                  <AccountSelector
+                    v-model="debtPaymentLiabilityAccount"
+                    :allowed-types="['LIABILITY']"
+                    :currency="debtPaymentCurrency || undefined"
+                    placeholder="Select liability account"
+                  />
+                </div>
+                <div class="grid gap-2">
+                  <Label>Amount</Label>
+                  <CurrencyAmountInput
+                    v-model="debtPaymentAmount"
+                    :minor-unit="debtPaymentMinorUnit"
+                    :currency-code="debtPaymentCurrency"
+                  />
+                </div>
+                <div class="grid gap-2">
+                  <Label for="debt-payment-desc">Description</Label>
+                  <Input
+                    id="debt-payment-desc"
+                    v-model="debtPaymentDescription"
+                    placeholder="Debt payment note"
+                  />
                 </div>
               </TabsContent>
             </Tabs>

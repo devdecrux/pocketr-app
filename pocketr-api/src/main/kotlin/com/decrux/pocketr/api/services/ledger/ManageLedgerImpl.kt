@@ -15,6 +15,7 @@ import com.decrux.pocketr.api.entities.dtos.TxnCreatorDto
 import com.decrux.pocketr.api.exceptions.BadRequestException
 import com.decrux.pocketr.api.exceptions.ForbiddenException
 import com.decrux.pocketr.api.exceptions.NotFoundException
+import com.decrux.pocketr.api.repositories.AccountCurrentBalanceRepository
 import com.decrux.pocketr.api.repositories.AccountRepository
 import com.decrux.pocketr.api.repositories.CategoryTagRepository
 import com.decrux.pocketr.api.repositories.CurrencyRepository
@@ -32,18 +33,24 @@ import com.decrux.pocketr.api.services.ledger.validations.PositiveSplitAmountVal
 import com.decrux.pocketr.api.services.ledger.validations.SplitSideValueValidator
 import com.decrux.pocketr.api.services.ledger.validations.TransactionAccountCurrencyValidator
 import com.decrux.pocketr.api.services.user_avatar.UserAvatarService
+import org.slf4j.LoggerFactory
+import org.springframework.beans.factory.annotation.Value
+import org.springframework.dao.DataAccessException
 import org.springframework.data.domain.PageRequest
 import org.springframework.data.domain.Sort
 import org.springframework.data.jpa.domain.Specification
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import java.time.Clock
 import java.time.LocalDate
-import java.util.UUID
+import java.util.*
+import java.util.concurrent.TimeUnit
 
 @Service
 class ManageLedgerImpl(
     private val ledgerTxnRepository: LedgerTxnRepository,
     private val ledgerSplitRepository: LedgerSplitRepository,
+    private val accountCurrentBalanceRepository: AccountCurrentBalanceRepository,
     private val accountRepository: AccountRepository,
     private val currencyRepository: CurrencyRepository,
     private val categoryTagRepository: CategoryTagRepository,
@@ -59,8 +66,11 @@ class ManageLedgerImpl(
     private val householdMembershipValidator: HouseholdMembershipValidator,
     private val householdSharedAccountValidator: HouseholdSharedAccountValidator,
     private val crossUserAssetAccountTypeValidator: CrossUserAssetAccountTypeValidator,
+    @Value("\${ledger.accounts.snapshot.balance.enabled:false}")
+    private val currentBalanceSnapshotEnabled: Boolean,
+    private val currentBalanceSnapshotReadiness: CurrentBalanceSnapshotReadiness,
+    private val clock: Clock = Clock.systemDefaultZone(),
 ) : ManageLedger {
-
     @Transactional
     override fun createTransaction(
         dto: CreateTransactionDto,
@@ -101,7 +111,7 @@ class ManageLedgerImpl(
             val hhId = householdIdPresenceValidator.validate(dto.householdId)
             householdMembershipValidator.validate(manageHousehold, hhId, userId)
             householdSharedAccountValidator.validate(nonOwnedAccounts, manageHousehold, hhId)
-            crossUserAssetAccountTypeValidator.validate(accounts)
+            crossUserAssetAccountTypeValidator.validate(accounts, dto.splits, userId)
         }
 
         // 9. Validate category tags
@@ -149,6 +159,7 @@ class ManageLedgerImpl(
         txn.splits = splits.toMutableList()
 
         val savedTxn = ledgerTxnRepository.save(txn)
+        applyCurrentBalanceProjection(savedTxn.splits)
         return savedTxn.toDto(userAvatarService)
     }
 
@@ -236,14 +247,7 @@ class ManageLedgerImpl(
             throw ForbiddenException("Not the owner of this account")
         }
 
-        val rawBalancesByAccountId =
-            ledgerSplitRepository
-                .computeRawBalancesByAccountIds(
-                    uniqueAccountIds,
-                    asOf,
-                    SplitSide.DEBIT,
-                    SplitSide.CREDIT,
-                ).associate { it.accountId to it.rawBalance }
+        val rawBalancesByAccountId = resolveRawBalances(uniqueAccountIds, asOf)
 
         val accountById = accounts.associateBy { requireNotNull(it.id) }
         return uniqueAccountIds.map { accountId ->
@@ -288,13 +292,8 @@ class ManageLedgerImpl(
             throw ForbiddenException("Not the owner of this account")
         }
 
-        val isDebitNormal = account.type in setOf(AccountType.ASSET, AccountType.EXPENSE)
-        val balanceMinor =
-            if (isDebitNormal) {
-                ledgerSplitRepository.computeBalance(accountId, asOf, SplitSide.DEBIT, SplitSide.CREDIT)
-            } else {
-                ledgerSplitRepository.computeBalance(accountId, asOf, SplitSide.CREDIT, SplitSide.DEBIT)
-            }
+        val rawBalance = resolveRawBalance(accountId, asOf)
+        val balanceMinor = if (account.type in DEBIT_NORMAL_TYPES) rawBalance else -rawBalance
 
         return BalanceDto(
             accountId = requireNotNull(account.id),
@@ -306,7 +305,231 @@ class ManageLedgerImpl(
         )
     }
 
+    private fun applyCurrentBalanceProjection(splits: List<LedgerSplit>) {
+        val deltasByAccountId = accumulateDeltasByAccount(splits)
+        val orderedDeltasByAccountId = deltasByAccountId.toSortedMap()
+
+        try {
+            // Apply projection deltas in a stable account-id order to avoid deadlocks when
+            // concurrent transactions touch the same set of accounts through different split orders.
+            orderedDeltasByAccountId.forEach { (accountId, delta) ->
+                accountCurrentBalanceRepository.addDelta(accountId, delta)
+            }
+        } catch (ex: RuntimeException) {
+            logger.error(
+                "Failed to update snapshot balance delta for the transaction; rolling back the entire transaction due to {}",
+                ex.message,
+                ex,
+            )
+            throw ex
+        }
+
+        logger.debug(
+            "Applied current balance snapshot updates for {} account(s) from {} split(s).",
+            orderedDeltasByAccountId.size,
+            splits.size,
+        )
+    }
+
+    private fun accumulateDeltasByAccount(splits: List<LedgerSplit>): MutableMap<UUID, Long> {
+        val deltasByAccountId = mutableMapOf<UUID, Long>()
+
+        splits.forEach { split ->
+            val accountId = split.requireAccountId()
+            val signedDelta = split.toRawSignedDelta()
+            val newComputedDelta =
+                deltasByAccountId[accountId]
+                    ?.let { currentDelta -> Math.addExact(currentDelta, signedDelta) }
+                    ?: signedDelta
+
+            if (newComputedDelta == 0L) {
+                deltasByAccountId.remove(accountId)
+            } else {
+                deltasByAccountId[accountId] = newComputedDelta
+            }
+        }
+
+        return deltasByAccountId
+    }
+
+    private fun LedgerSplit.requireAccountId(): UUID =
+        requireNotNull(account?.id) { "Split account ID must not be null" }
+
+    private fun LedgerSplit.toRawSignedDelta(): Long =
+        when (side) {
+            SplitSide.DEBIT -> amountMinor
+            SplitSide.CREDIT -> -amountMinor
+        }
+
+    private fun resolveRawBalances(
+        accountIds: Collection<UUID>,
+        asOf: LocalDate,
+    ): Map<UUID, Long> {
+        val startedAt = System.nanoTime()
+        if (!isSnapshotFeatureEligible(asOf)) {
+            return computeRawBalancesFromLedger(
+                accountIds = accountIds,
+                asOf = asOf,
+                reason = "snapshot balances are only available for today",
+            )
+        }
+
+        val snapshotEligibleAccountIds =
+            accountIds
+                .asSequence()
+                .filter { accountId -> currentBalanceSnapshotReadiness.isSnapshotAllowed(accountId) }
+                .toList()
+        if (snapshotEligibleAccountIds.isEmpty()) {
+            return computeRawBalancesFromLedger(
+                accountIds = accountIds,
+                asOf = asOf,
+                reason = "snapshots are not allowed for the requested accounts",
+            )
+        }
+
+        val snapshotEligibleAccountId = snapshotEligibleAccountIds.toSet()
+        val notSnapshotEligibleAccountId = accountIds.filterNot { it in snapshotEligibleAccountId }
+
+        return try {
+            val balancesByAccountId =
+                accountCurrentBalanceRepository
+                    .findAllByAccountIdIn(snapshotEligibleAccountIds)
+                    .associate { requireNotNull(it.accountId) to it.rawBalanceMinor }
+                    .toMutableMap()
+
+            if (notSnapshotEligibleAccountId.isNotEmpty()) {
+                balancesByAccountId.putAll(computeRawBalancesFromLedger(notSnapshotEligibleAccountId, asOf))
+                logger.debug(
+                    "Resolved balances for {} account(s) as of {} using {} snapshot balance(s) and {} computed ledger balance(s). Took {} ms.",
+                    accountIds.size,
+                    asOf,
+                    snapshotEligibleAccountIds.size,
+                    notSnapshotEligibleAccountId.size,
+                    elapsedMillis(startedAt),
+                )
+            } else {
+                logger.debug(
+                    "Resolved balances for {} account(s) as of {} using current balance snapshots. Took {} ms.",
+                    accountIds.size,
+                    asOf,
+                    elapsedMillis(startedAt),
+                )
+            }
+
+            balancesByAccountId
+        } catch (ex: DataAccessException) {
+            logger.warn(
+                "Failed to read current balance snapshots for {} account(s) as of {}; falling back to computed ledger totals. Took {} ms.",
+                accountIds.size,
+                asOf,
+                elapsedMillis(startedAt),
+                ex,
+            )
+            computeRawBalancesFromLedger(accountIds, asOf)
+        }
+    }
+
+    private fun resolveRawBalance(
+        accountId: UUID,
+        asOf: LocalDate,
+    ): Long {
+        val startedAt = System.nanoTime()
+        if (!shouldUseSnapshotBalance(accountId, asOf)) {
+            return computeRawBalanceFromLedger(
+                accountId = accountId,
+                asOf = asOf,
+                reason = "snapshot balances are unavailable for this account and date",
+            )
+        }
+
+        return try {
+            logger.debug(
+                "Resolved balance for account {} as of {} using the current balance snapshot. Took {} ms.",
+                accountId,
+                asOf,
+                elapsedMillis(startedAt),
+            )
+            accountCurrentBalanceRepository
+                .findById(accountId)
+                .map { it.rawBalanceMinor }
+                .orElse(0L)
+        } catch (ex: DataAccessException) {
+            logger.warn(
+                "Failed to read the current balance snapshot for account {} as of {}; falling back to computed ledger totals. Took {} ms.",
+                accountId,
+                asOf,
+                elapsedMillis(startedAt),
+                ex,
+            )
+            computeRawBalanceFromLedger(accountId, asOf)
+        }
+    }
+
+    private fun computeRawBalancesFromLedger(
+        accountIds: Collection<UUID>,
+        asOf: LocalDate,
+        reason: String? = null,
+    ): Map<UUID, Long> {
+        val startedAt = System.nanoTime()
+        val rawBalancesByAccountId =
+            ledgerSplitRepository
+                .computeRawBalancesByAccountIds(
+                    accountIds,
+                    asOf,
+                    SplitSide.DEBIT,
+                    SplitSide.CREDIT,
+                )
+                .associate { it.accountId to it.rawBalance }
+
+        if (reason != null) {
+            logger.debug(
+                "Resolved balances for {} account(s) as of {} using computed ledger totals because {}. Took {} ms.",
+                accountIds.size,
+                asOf,
+                reason,
+                elapsedMillis(startedAt),
+            )
+        }
+
+        return rawBalancesByAccountId
+    }
+
+    private fun computeRawBalanceFromLedger(
+        accountId: UUID,
+        asOf: LocalDate,
+        reason: String? = null,
+    ): Long {
+        val startedAt = System.nanoTime()
+        val rawBalance = ledgerSplitRepository.computeBalance(accountId, asOf, SplitSide.DEBIT, SplitSide.CREDIT)
+
+        if (reason != null) {
+            logger.debug(
+                "Resolved balance for account {} as of {} using computed ledger totals because {}. Took {} ms.",
+                accountId,
+                asOf,
+                reason,
+                elapsedMillis(startedAt),
+            )
+        }
+
+        return rawBalance
+    }
+
+    private fun shouldUseSnapshotBalance(
+        accountId: UUID,
+        asOf: LocalDate,
+    ): Boolean =
+        isSnapshotFeatureEligible(asOf) &&
+            currentBalanceSnapshotReadiness.isSnapshotAllowed(accountId)
+
+    private fun isSnapshotFeatureEligible(asOf: LocalDate): Boolean =
+        currentBalanceSnapshotEnabled &&
+            asOf == LocalDate.now(clock)
+
+    private fun elapsedMillis(startedAtNanos: Long): Long = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startedAtNanos)
+
     private companion object {
+        private val logger = LoggerFactory.getLogger(ManageLedgerImpl::class.java)
         val DEBIT_NORMAL_TYPES = setOf(AccountType.ASSET, AccountType.EXPENSE)
         val TRANSFER_TYPES = setOf(AccountType.ASSET, AccountType.LIABILITY, AccountType.EQUITY)
 
@@ -337,11 +560,43 @@ class ManageLedgerImpl(
         fun deriveTxnKind(splits: List<LedgerSplit>): String {
             val accountTypes = splits.mapNotNull { it.account?.type }.toSet()
             return when {
+                isOpeningBalanceEntry(splits, accountTypes) -> "OPENING_BALANCE"
+                isOpeningDebtEntry(splits, accountTypes) -> "OPENING_DEBT"
+                isDebtPayment(splits) -> "DEBT_PAYMENT"
                 accountTypes.all { it in TRANSFER_TYPES } -> "TRANSFER"
                 accountTypes.any { it == AccountType.EXPENSE } -> "EXPENSE"
                 accountTypes.any { it == AccountType.INCOME } -> "INCOME"
                 else -> "TRANSFER"
             }
+        }
+
+        fun isOpeningBalanceEntry(
+            splits: List<LedgerSplit>,
+            accountTypes: Set<AccountType> = splits.mapNotNull { it.account?.type }.toSet(),
+        ): Boolean =
+            splits.size == 2 &&
+                accountTypes == setOf(AccountType.ASSET, AccountType.EQUITY)
+
+        fun isOpeningDebtEntry(
+            splits: List<LedgerSplit>,
+            accountTypes: Set<AccountType> = splits.mapNotNull { it.account?.type }.toSet(),
+        ): Boolean =
+            splits.size == 2 &&
+                accountTypes == setOf(AccountType.LIABILITY, AccountType.EQUITY)
+
+        fun isDebtPayment(splits: List<LedgerSplit>): Boolean {
+            val accountTypes = splits.mapNotNull { it.account?.type }.toSet()
+            val hasLiabilityDebit =
+                splits.any {
+                    it.account?.type == AccountType.LIABILITY && it.side == SplitSide.DEBIT
+                }
+            val hasAssetCredit =
+                splits.any {
+                    it.account?.type == AccountType.ASSET && it.side == SplitSide.CREDIT
+                }
+            return accountTypes.all { it == AccountType.ASSET || it == AccountType.LIABILITY } &&
+                hasLiabilityDebit &&
+                hasAssetCredit
         }
 
         fun LedgerSplit.toDto(): SplitDto {

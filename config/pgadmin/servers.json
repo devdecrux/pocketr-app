@@ -1,0 +1,16 @@
+{
+  "Servers": {
+    "1": {
+      "Name": "Pocketr Local DB",
+      "Group": "Pocketr",
+      "Host": "db",
+      "Port": 5432,
+      "Username": "pocketr_user",
+      "MaintenanceDB": "pocketr_db",
+      "SSLMode": "prefer",
+      "ConnectionParameters": {
+        "passfile": "/tmp/pocketr.pgpass"
+      }
+    }
+  }
+}
