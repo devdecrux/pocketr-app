@@ -1,12 +1,7 @@
 <script setup lang="ts">
 import { HTTPError } from 'ky'
 import { computed, h, onMounted, ref, watch } from 'vue'
-import {
-  createColumnHelper,
-  getCoreRowModel,
-  getExpandedRowModel,
-  useVueTable,
-} from '@tanstack/vue-table'
+import { createColumnHelper, getCoreRowModel, getExpandedRowModel, useVueTable } from '@tanstack/vue-table'
 import { createTxn } from '@/api/ledger'
 import { useAccountStore } from '@/stores/account'
 import { useCategoryStore } from '@/stores/category'
@@ -15,12 +10,8 @@ import { useHouseholdStore } from '@/stores/household'
 import { useLedgerStore } from '@/stores/ledger'
 import { useModeStore } from '@/stores/mode'
 import type { LedgerSplit, LedgerTxn } from '@/types/ledger'
-import {
-  debtPaymentStrategy,
-  expenseStrategy,
-  incomeStrategy,
-  transferStrategy,
-} from '@/utils/txnStrategies'
+import { debtPaymentStrategy, expenseStrategy, incomeStrategy, transferStrategy } from '@/utils/txnStrategies'
+import { getTxnPresentation } from '@/utils/txnPresentation'
 import { formatMinor } from '@/utils/money'
 import AccountSelector from '@/components/AccountSelector.vue'
 import CategoryTagSelector from '@/components/CategoryTagSelector.vue'
@@ -29,15 +20,7 @@ import CurrencyAmountInput from '@/components/CurrencyAmountInput.vue'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -205,27 +188,6 @@ function getStrategyResult(): {
   return { error: 'Unknown tab.' }
 }
 
-// Derive txn kind display label from the backend-provided txnKind field
-function deriveTxnKind(txn: LedgerTxn): string {
-  switch (txn.txnKind) {
-    case 'EXPENSE':
-      return 'Expense'
-    case 'INCOME':
-      return 'Income'
-    case 'DEBT_PAYMENT':
-      return 'Debt Payment'
-    default:
-      return 'Transfer'
-  }
-}
-
-function txnKindVariant(kind: string) {
-  if (kind === 'Expense') return 'destructive' as const
-  if (kind === 'Income') return 'default' as const
-  if (kind === 'Debt Payment') return 'destructive' as const
-  return 'secondary' as const
-}
-
 // Unique categories across all splits of a transaction
 function txnCategories(txn: LedgerTxn): { name: string; color?: string | null }[] {
   const seen = new Set<string>()
@@ -252,16 +214,8 @@ function txnDisplayAmount(txn: LedgerTxn): string {
   return formatMinor(total, txn.currency, minorUnit)
 }
 
-function txnAmountClass(txn: LedgerTxn): string {
-  switch (txn.txnKind) {
-    case 'EXPENSE':
-    case 'DEBT_PAYMENT':
-      return 'text-red-500'
-    case 'INCOME':
-      return 'text-green-500'
-    default:
-      return 'text-muted-foreground'
-  }
+function txnPresentation(txn: LedgerTxn) {
+  return getTxnPresentation(txn.txnKind)
 }
 
 // Filtered transactions
@@ -297,10 +251,12 @@ const columns = computed(() => {
     columnHelper.display({
       id: 'kind',
       header: 'Type',
-      cell: ({ row }) =>
-        h(Badge, { variant: txnKindVariant(deriveTxnKind(row.original)), class: 'text-xs' }, () =>
-          deriveTxnKind(row.original),
-        ),
+      cell: ({ row }) => {
+        const presentation = txnPresentation(row.original)
+        return h(Badge, { variant: presentation.badgeVariant, class: 'text-xs' }, () =>
+          presentation.label,
+        )
+      },
     }),
     columnHelper.display({
       id: 'categories',
@@ -331,25 +287,21 @@ const columns = computed(() => {
     columnHelper.display({
       id: 'amount',
       header: 'Amount',
-      cell: ({ row }) =>
-        h(
+      cell: ({ row }) => {
+        const presentation = txnPresentation(row.original)
+        return h(
           'span',
           {
-            class: `inline-flex items-center justify-end gap-1 whitespace-nowrap font-medium ${txnAmountClass(row.original)}`,
+            class: `inline-flex items-center justify-end gap-1 whitespace-nowrap font-medium ${presentation.amountClass}`,
           },
           [
-            row.original.txnKind === 'TRANSFER'
+            presentation.indicator === 'transfer'
               ? h(ArrowLeftRight, { class: 'size-3' })
-              : h(
-                  'span',
-                  {},
-                  row.original.txnKind === 'EXPENSE' || row.original.txnKind === 'DEBT_PAYMENT'
-                    ? '-'
-                    : '+',
-                ),
+              : h('span', {}, presentation.indicator === 'minus' ? '-' : '+'),
             txnDisplayAmount(row.original),
           ],
-        ),
+        )
+      },
     }),
   ]
 
