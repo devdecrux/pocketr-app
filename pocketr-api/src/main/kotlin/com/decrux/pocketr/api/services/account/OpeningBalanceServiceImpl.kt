@@ -24,34 +24,48 @@ class OpeningBalanceServiceImpl(
     private val ownershipGuard: OwnershipGuard,
 ) : OpeningBalanceService {
     @Transactional
-    override fun createForNewAssetAccount(
+    override fun createForNewAccount(
         owner: User,
-        assetAccount: Account,
+        account: Account,
         openingBalanceMinor: Long,
         txnDate: LocalDate,
     ) {
         val ownerId = requireNotNull(owner.userId) { "User ID must not be null" }
-        val assetAccountId = requireNotNull(assetAccount.id) { "Account ID must not be null" }
-        val currency = requireNotNull(assetAccount.currency) { "Currency must not be null" }
+        val accountId = requireNotNull(account.id) { "Account ID must not be null" }
+        val currency = requireNotNull(account.currency) { "Currency must not be null" }
         val currencyCode = currency.code
 
-        if (assetAccount.type != AccountType.ASSET) {
-            throw BadRequestException("Opening balance is supported only for ASSET accounts")
+        if (account.type !in SUPPORTED_OPENING_BALANCE_TYPES) {
+            throw BadRequestException("Opening balance is supported only for ASSET and LIABILITY accounts")
         }
-        ownershipGuard.requireOwner(assetAccount.owner?.userId, ownerId, "Not the owner of this account")
+        ownershipGuard.requireOwner(account.owner?.userId, ownerId, "Not the owner of this account")
         if (openingBalanceMinor == 0L) {
             throw BadRequestException("openingBalanceMinor must not be zero")
         }
         if (openingBalanceMinor == Long.MIN_VALUE) {
             throw BadRequestException("openingBalanceMinor is out of supported range")
         }
+        if (account.type == AccountType.LIABILITY && openingBalanceMinor < 0L) {
+            throw BadRequestException("Opening debt must be positive for LIABILITY accounts")
+        }
 
         val openingEquity = getOrCreateOpeningEquityAccount(owner, currencyCode, currency)
         val openingEquityId = requireNotNull(openingEquity.id) { "Opening equity account ID must not be null" }
         val absoluteAmount = if (openingBalanceMinor > 0) openingBalanceMinor else -openingBalanceMinor
+        val (accountSide, equitySide) =
+            when (account.type) {
+                AccountType.ASSET -> {
+                    if (openingBalanceMinor > 0) {
+                        "DEBIT" to "CREDIT"
+                    } else {
+                        "CREDIT" to "DEBIT"
+                    }
+                }
 
-        val assetSide = if (openingBalanceMinor > 0) "DEBIT" else "CREDIT"
-        val equitySide = if (openingBalanceMinor > 0) "CREDIT" else "DEBIT"
+                AccountType.LIABILITY -> "CREDIT" to "DEBIT"
+                else -> throw BadRequestException("Unsupported account type for opening balance")
+            }
+        val descriptionPrefix = if (account.type == AccountType.LIABILITY) "Opening debt" else "Opening balance"
 
         manageLedger.createTransaction(
             dto =
@@ -60,12 +74,12 @@ class OpeningBalanceServiceImpl(
                     householdId = null,
                     txnDate = txnDate,
                     currency = currencyCode,
-                    description = "Opening balance - ${assetAccount.name}",
+                    description = "$descriptionPrefix - ${account.name}",
                     splits =
                         listOf(
                             CreateSplitDto(
-                                accountId = assetAccountId,
-                                side = assetSide,
+                                accountId = accountId,
+                                side = accountSide,
                                 amountMinor = absoluteAmount,
                             ),
                             CreateSplitDto(
@@ -111,5 +125,6 @@ class OpeningBalanceServiceImpl(
 
     private companion object {
         const val OPENING_EQUITY_NAME = "Opening Equity"
+        val SUPPORTED_OPENING_BALANCE_TYPES = setOf(AccountType.ASSET, AccountType.LIABILITY)
     }
 }

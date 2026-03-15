@@ -560,11 +560,27 @@ class ManageLedgerImpl(
         fun deriveTxnKind(splits: List<LedgerSplit>): String {
             val accountTypes = splits.mapNotNull { it.account?.type }.toSet()
             return when {
+                isDebtPayment(splits) -> "DEBT_PAYMENT"
                 accountTypes.all { it in TRANSFER_TYPES } -> "TRANSFER"
                 accountTypes.any { it == AccountType.EXPENSE } -> "EXPENSE"
                 accountTypes.any { it == AccountType.INCOME } -> "INCOME"
                 else -> "TRANSFER"
             }
+        }
+
+        fun isDebtPayment(splits: List<LedgerSplit>): Boolean {
+            val accountTypes = splits.mapNotNull { it.account?.type }.toSet()
+            val hasLiabilityDebit =
+                splits.any {
+                    it.account?.type == AccountType.LIABILITY && it.side == SplitSide.DEBIT
+                }
+            val hasAssetCredit =
+                splits.any {
+                    it.account?.type == AccountType.ASSET && it.side == SplitSide.CREDIT
+                }
+            return accountTypes.all { it == AccountType.ASSET || it == AccountType.LIABILITY } &&
+                hasLiabilityDebit &&
+                hasAssetCredit
         }
 
         fun LedgerSplit.toDto(): SplitDto {

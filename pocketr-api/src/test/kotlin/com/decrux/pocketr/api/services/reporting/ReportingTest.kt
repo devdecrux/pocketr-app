@@ -11,6 +11,7 @@ import com.decrux.pocketr.api.exceptions.NotFoundException
 import com.decrux.pocketr.api.repositories.AccountRepository
 import com.decrux.pocketr.api.repositories.LedgerSplitRepository
 import com.decrux.pocketr.api.repositories.projections.DailyNetProjection
+import com.decrux.pocketr.api.repositories.projections.LiabilityPaymentProjection
 import com.decrux.pocketr.api.repositories.projections.MonthlyExpenseProjection
 import com.decrux.pocketr.api.services.household.ManageHousehold
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -25,8 +26,7 @@ import org.mockito.Mockito.mock
 import org.mockito.Mockito.`when`
 import java.time.LocalDate
 import java.time.YearMonth
-import java.util.Optional
-import java.util.UUID
+import java.util.*
 
 /**
  * Unit tests for GenerateReportImpl (Section 12.3).
@@ -151,6 +151,8 @@ class ReportingTest {
                     MonthlyExpenseProjection(utilitiesId, "Utilities", electricityTagId, "Electricity", "EUR", 4500L),
                 ),
             )
+            `when`(ledgerSplitRepository.monthlyLiabilityPaymentsByUser(1L, janStart, janEnd, SplitSide.DEBIT, SplitSide.CREDIT))
+                .thenReturn(emptyList())
 
             val result = service.getMonthlyExpenses(userA, jan2026, "INDIVIDUAL", null)
 
@@ -171,10 +173,14 @@ class ReportingTest {
             `when`(ledgerSplitRepository.monthlyExpensesByUser(1L, janStart, janEnd, SplitSide.DEBIT, SplitSide.CREDIT)).thenReturn(
                 listOf(MonthlyExpenseProjection(groceriesId, "Groceries", foodTagId, "Food", "EUR", 8500L)),
             )
+            `when`(ledgerSplitRepository.monthlyLiabilityPaymentsByUser(1L, janStart, janEnd, SplitSide.DEBIT, SplitSide.CREDIT))
+                .thenReturn(emptyList())
             // February has different expenses
             `when`(ledgerSplitRepository.monthlyExpensesByUser(1L, febStart, febEnd, SplitSide.DEBIT, SplitSide.CREDIT)).thenReturn(
                 listOf(MonthlyExpenseProjection(groceriesId, "Groceries", foodTagId, "Food", "EUR", 6000L)),
             )
+            `when`(ledgerSplitRepository.monthlyLiabilityPaymentsByUser(1L, febStart, febEnd, SplitSide.DEBIT, SplitSide.CREDIT))
+                .thenReturn(emptyList())
 
             val janResult = service.getMonthlyExpenses(userA, jan2026, "INDIVIDUAL", null)
             val febResult = service.getMonthlyExpenses(userA, feb2026, "INDIVIDUAL", null)
@@ -196,6 +202,9 @@ class ReportingTest {
                     MonthlyExpenseProjection(utilitiesId, "Utilities", electricityTagId, "Electricity", "EUR", 3000L),
                 ),
             )
+            `when`(
+                ledgerSplitRepository.monthlyLiabilityPaymentsByHousehold(householdId, janStart, janEnd, SplitSide.DEBIT, SplitSide.CREDIT),
+            ).thenReturn(emptyList())
 
             val result = service.getMonthlyExpenses(userA, jan2026, "HOUSEHOLD", householdId)
 
@@ -237,6 +246,9 @@ class ReportingTest {
             ).thenReturn(
                 listOf(MonthlyExpenseProjection(groceriesId, "Groceries", foodTagId, "Food", "EUR", 7000L)),
             )
+            `when`(
+                ledgerSplitRepository.monthlyLiabilityPaymentsByHousehold(householdId, janStart, janEnd, SplitSide.DEBIT, SplitSide.CREDIT),
+            ).thenReturn(emptyList())
 
             val result = service.getMonthlyExpenses(userA, jan2026, "HOUSEHOLD", householdId)
 
@@ -266,6 +278,8 @@ class ReportingTest {
                     MonthlyExpenseProjection(utilitiesId, "Utilities", null, null, "EUR", 2000L),
                 ),
             )
+            `when`(ledgerSplitRepository.monthlyLiabilityPaymentsByUser(1L, janStart, janEnd, SplitSide.DEBIT, SplitSide.CREDIT))
+                .thenReturn(emptyList())
 
             val result = service.getMonthlyExpenses(userA, jan2026, "INDIVIDUAL", null)
 
@@ -284,9 +298,35 @@ class ReportingTest {
             `when`(
                 ledgerSplitRepository.monthlyExpensesByUser(1L, janStart, janEnd, SplitSide.DEBIT, SplitSide.CREDIT),
             ).thenReturn(emptyList())
+            `when`(ledgerSplitRepository.monthlyLiabilityPaymentsByUser(1L, janStart, janEnd, SplitSide.DEBIT, SplitSide.CREDIT))
+                .thenReturn(emptyList())
 
             val result = service.getMonthlyExpenses(userA, jan2026, "INDIVIDUAL", null)
             assertTrue(result.isEmpty())
+        }
+
+        @Test
+        @DisplayName("liability repayments are included as debt payment spending")
+        fun liabilityRepaymentsIncludedAsSpending() {
+            `when`(
+                ledgerSplitRepository.monthlyExpensesByUser(1L, janStart, janEnd, SplitSide.DEBIT, SplitSide.CREDIT),
+            ).thenReturn(
+                listOf(MonthlyExpenseProjection(groceriesId, "Groceries", foodTagId, "Food", "EUR", 8500L)),
+            )
+            `when`(
+                ledgerSplitRepository.monthlyLiabilityPaymentsByUser(1L, janStart, janEnd, SplitSide.DEBIT, SplitSide.CREDIT),
+            ).thenReturn(
+                listOf(LiabilityPaymentProjection(mortgageId, "Mortgage", "EUR", 120000L)),
+            )
+
+            val result = service.getMonthlyExpenses(userA, jan2026, "INDIVIDUAL", null)
+
+            assertEquals(2, result.size)
+            val liabilityResult = result.first { it.expenseAccountId == mortgageId }
+            assertEquals("Mortgage", liabilityResult.expenseAccountName)
+            assertNull(liabilityResult.categoryTagId)
+            assertEquals("Debt Payment", liabilityResult.categoryTagName)
+            assertEquals(120000L, liabilityResult.netMinor)
         }
     }
 

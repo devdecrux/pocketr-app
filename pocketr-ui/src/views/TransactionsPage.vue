@@ -15,7 +15,12 @@ import { useHouseholdStore } from '@/stores/household'
 import { useLedgerStore } from '@/stores/ledger'
 import { useModeStore } from '@/stores/mode'
 import type { LedgerSplit, LedgerTxn } from '@/types/ledger'
-import { expenseStrategy, incomeStrategy, transferStrategy } from '@/utils/txnStrategies'
+import {
+  debtPaymentStrategy,
+  expenseStrategy,
+  incomeStrategy,
+  transferStrategy,
+} from '@/utils/txnStrategies'
 import { formatMinor } from '@/utils/money'
 import AccountSelector from '@/components/AccountSelector.vue'
 import CategoryTagSelector from '@/components/CategoryTagSelector.vue'
@@ -83,6 +88,13 @@ const transferTo = ref('')
 const transferAmount = ref(0)
 const transferDescription = ref('')
 
+// Debt payment form
+const debtPaymentDate = ref(todayString())
+const debtPaymentPayFrom = ref('')
+const debtPaymentLiabilityAccount = ref('')
+const debtPaymentAmount = ref(0)
+const debtPaymentDescription = ref('')
+
 function todayString(): string {
   return new Date().toISOString().slice(0, 10)
 }
@@ -110,6 +122,14 @@ const transferCurrency = computed(() => {
 })
 
 const transferMinorUnit = computed(() => currencyStore.getMinorUnit(transferCurrency.value))
+
+// Derived currency for debt payment (from asset account)
+const debtPaymentCurrency = computed(() => {
+  const acc = accountStore.accountMap.get(debtPaymentPayFrom.value)
+  return acc?.currency ?? ''
+})
+
+const debtPaymentMinorUnit = computed(() => currencyStore.getMinorUnit(debtPaymentCurrency.value))
 
 // Cross-user transfer info
 const isCrossUserTransfer = computed(() => {
@@ -167,6 +187,21 @@ function getStrategyResult(): {
     return error ? { error } : { error: null, request: transferStrategy.buildRequest(ctx, fields) }
   }
 
+  if (activeTab.value === 'debt-payment') {
+    const fields = {
+      date: debtPaymentDate.value,
+      payFrom: debtPaymentPayFrom.value,
+      liabilityAccount: debtPaymentLiabilityAccount.value,
+      amount: debtPaymentAmount.value,
+      currency: debtPaymentCurrency.value,
+      description: debtPaymentDescription.value,
+    }
+    const error = debtPaymentStrategy.validate(fields)
+    return error
+      ? { error }
+      : { error: null, request: debtPaymentStrategy.buildRequest(ctx, fields) }
+  }
+
   return { error: 'Unknown tab.' }
 }
 
@@ -177,6 +212,8 @@ function deriveTxnKind(txn: LedgerTxn): string {
       return 'Expense'
     case 'INCOME':
       return 'Income'
+    case 'DEBT_PAYMENT':
+      return 'Debt Payment'
     default:
       return 'Transfer'
   }
@@ -185,6 +222,7 @@ function deriveTxnKind(txn: LedgerTxn): string {
 function txnKindVariant(kind: string) {
   if (kind === 'Expense') return 'destructive' as const
   if (kind === 'Income') return 'default' as const
+  if (kind === 'Debt Payment') return 'destructive' as const
   return 'secondary' as const
 }
 
@@ -217,6 +255,7 @@ function txnDisplayAmount(txn: LedgerTxn): string {
 function txnAmountClass(txn: LedgerTxn): string {
   switch (txn.txnKind) {
     case 'EXPENSE':
+    case 'DEBT_PAYMENT':
       return 'text-red-500'
     case 'INCOME':
       return 'text-green-500'
@@ -301,7 +340,13 @@ const columns = computed(() => {
           [
             row.original.txnKind === 'TRANSFER'
               ? h(ArrowLeftRight, { class: 'size-3' })
-              : h('span', {}, row.original.txnKind === 'EXPENSE' ? '-' : '+'),
+              : h(
+                  'span',
+                  {},
+                  row.original.txnKind === 'EXPENSE' || row.original.txnKind === 'DEBT_PAYMENT'
+                    ? '-'
+                    : '+',
+                ),
             txnDisplayAmount(row.original),
           ],
         ),
@@ -432,6 +477,12 @@ function resetForms(): void {
   transferAmount.value = 0
   transferDescription.value = ''
 
+  debtPaymentDate.value = todayString()
+  debtPaymentPayFrom.value = ''
+  debtPaymentLiabilityAccount.value = ''
+  debtPaymentAmount.value = 0
+  debtPaymentDescription.value = ''
+
   submitError.value = ''
 }
 
@@ -480,14 +531,19 @@ async function submitTransaction(): Promise<void> {
           <DialogContent class="max-w-lg">
             <DialogHeader>
               <DialogTitle>Create Transaction</DialogTitle>
-              <DialogDescription> Record an expense, income, or transfer. </DialogDescription>
+              <DialogDescription>
+                Record an expense, income, transfer, or debt payment.
+              </DialogDescription>
             </DialogHeader>
 
             <Tabs v-model="activeTab" class="w-full">
-              <TabsList class="w-full">
-                <TabsTrigger value="expense" class="flex-1">Expense</TabsTrigger>
-                <TabsTrigger value="income" class="flex-1">Income</TabsTrigger>
-                <TabsTrigger value="transfer" class="flex-1">Transfer</TabsTrigger>
+              <TabsList class="grid h-auto w-full grid-cols-2 gap-1 sm:grid-cols-4">
+                <TabsTrigger value="expense" class="text-xs sm:text-sm">Expense</TabsTrigger>
+                <TabsTrigger value="income" class="text-xs sm:text-sm">Income</TabsTrigger>
+                <TabsTrigger value="transfer" class="text-xs sm:text-sm">Transfer</TabsTrigger>
+                <TabsTrigger value="debt-payment" class="text-xs sm:text-sm">
+                  Debt Payment
+                </TabsTrigger>
               </TabsList>
 
               <!-- Expense Tab -->
@@ -621,6 +677,47 @@ async function submitTransaction(): Promise<void> {
                   class="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-300"
                 >
                   This is a cross-user transfer between household members.
+                </div>
+              </TabsContent>
+
+              <!-- Debt Payment Tab -->
+              <TabsContent value="debt-payment" class="space-y-4 pt-4">
+                <div class="grid gap-2">
+                  <Label for="debt-payment-date">Date</Label>
+                  <Input id="debt-payment-date" v-model="debtPaymentDate" type="date" />
+                </div>
+                <div class="grid gap-2">
+                  <Label>Pay from (Asset)</Label>
+                  <AccountSelector
+                    v-model="debtPaymentPayFrom"
+                    :allowed-types="['ASSET']"
+                    placeholder="Select asset account"
+                  />
+                </div>
+                <div class="grid gap-2">
+                  <Label>Liability account</Label>
+                  <AccountSelector
+                    v-model="debtPaymentLiabilityAccount"
+                    :allowed-types="['LIABILITY']"
+                    :currency="debtPaymentCurrency || undefined"
+                    placeholder="Select liability account"
+                  />
+                </div>
+                <div class="grid gap-2">
+                  <Label>Amount</Label>
+                  <CurrencyAmountInput
+                    v-model="debtPaymentAmount"
+                    :minor-unit="debtPaymentMinorUnit"
+                    :currency-code="debtPaymentCurrency"
+                  />
+                </div>
+                <div class="grid gap-2">
+                  <Label for="debt-payment-desc">Description</Label>
+                  <Input
+                    id="debt-payment-desc"
+                    v-model="debtPaymentDescription"
+                    placeholder="Debt payment note"
+                  />
                 </div>
               </TabsContent>
             </Tabs>

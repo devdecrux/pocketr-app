@@ -554,6 +554,7 @@ class LedgerTransactionValidationTest {
 
             val result = service.createTransaction(dto, userA)
             assertNotNull(result.id)
+            assertEquals("DEBT_PAYMENT", result.txnKind)
         }
 
         @Test

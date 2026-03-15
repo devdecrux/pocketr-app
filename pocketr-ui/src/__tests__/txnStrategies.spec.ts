@@ -1,12 +1,14 @@
 import { describe, expect, it } from 'vitest'
 import {
+  type DebtPaymentFields,
+  debtPaymentStrategy,
   type ExpenseFields,
   expenseStrategy,
   type IncomeFields,
   incomeStrategy,
   type TransferFields,
   transferStrategy,
-  type TxnModeContext
+  type TxnModeContext,
 } from '@/utils/txnStrategies'
 
 const ctx: TxnModeContext = { mode: 'INDIVIDUAL', householdId: null }
@@ -144,5 +146,41 @@ describe('transferStrategy.buildRequest', () => {
     const req = transferStrategy.buildRequest(householdCtx, validTransfer())
     expect(req.mode).toBe('HOUSEHOLD')
     expect(req.householdId).toBe('hh-1')
+  })
+})
+
+// --- Debt payment ---
+
+function validDebtPayment(): DebtPaymentFields {
+  return {
+    date: '2026-02-24',
+    payFrom: 'acc-1',
+    liabilityAccount: 'acc-2',
+    amount: 1500,
+    currency: 'EUR',
+    description: 'Car lease payment',
+  }
+}
+
+describe('debtPaymentStrategy.validate', () => {
+  it('returns null for valid fields', () => {
+    expect(debtPaymentStrategy.validate(validDebtPayment())).toBeNull()
+  })
+
+  it.each([
+    ['payFrom', { payFrom: '' }],
+    ['liabilityAccount', { liabilityAccount: '' }],
+    ['amount zero', { amount: 0 }],
+    ['description whitespace', { description: '   ' }],
+  ])('rejects when %s is invalid', (_label, override) => {
+    expect(debtPaymentStrategy.validate({ ...validDebtPayment(), ...override })).toBe(MSG)
+  })
+})
+
+describe('debtPaymentStrategy.buildRequest', () => {
+  it('builds correct splits (CREDIT asset, DEBIT liability)', () => {
+    const req = debtPaymentStrategy.buildRequest(ctx, validDebtPayment())
+    expect(req.splits[0]).toEqual({ accountId: 'acc-1', side: 'CREDIT', amountMinor: 1500 })
+    expect(req.splits[1]).toEqual({ accountId: 'acc-2', side: 'DEBIT', amountMinor: 1500 })
   })
 })

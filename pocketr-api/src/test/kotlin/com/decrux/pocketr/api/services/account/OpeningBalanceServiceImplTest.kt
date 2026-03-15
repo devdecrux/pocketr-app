@@ -25,8 +25,7 @@ import org.mockito.Mockito.verify
 import org.mockito.Mockito.verifyNoInteractions
 import org.mockito.Mockito.`when`
 import java.time.LocalDate
-import java.util.Optional
-import java.util.UUID
+import java.util.*
 
 @DisplayName("OpeningBalanceServiceImpl")
 class OpeningBalanceServiceImplTest {
@@ -51,7 +50,7 @@ class OpeningBalanceServiceImplTest {
     private val eur = Currency(code = "EUR", minorUnit = 2, name = "Euro")
 
     @Test
-    @DisplayName("creates positive opening balance as DEBIT(asset)/CREDIT(equity)")
+    @DisplayName("creates positive asset opening balance as DEBIT(asset)/CREDIT(equity)")
     fun createsPositiveOpeningBalance() {
         val assetAccount =
             Account(
@@ -78,7 +77,7 @@ class OpeningBalanceServiceImplTest {
             saved
         }
 
-        service.createForNewAssetAccount(owner, assetAccount, 100_000, LocalDate.parse("2026-02-15"))
+        service.createForNewAccount(owner, assetAccount, 100_000, LocalDate.parse("2026-02-15"))
 
         assertEquals(1, manageLedger.calls.size)
         val call = manageLedger.calls.single()
@@ -97,7 +96,7 @@ class OpeningBalanceServiceImplTest {
     }
 
     @Test
-    @DisplayName("creates negative opening balance as CREDIT(asset)/DEBIT(equity)")
+    @DisplayName("creates negative asset opening balance as CREDIT(asset)/DEBIT(equity)")
     fun createsNegativeOpeningBalance() {
         val assetAccount =
             Account(
@@ -126,7 +125,7 @@ class OpeningBalanceServiceImplTest {
             ),
         ).thenReturn(equityAccount)
 
-        service.createForNewAssetAccount(owner, assetAccount, -5000, LocalDate.parse("2026-02-15"))
+        service.createForNewAccount(owner, assetAccount, -5000, LocalDate.parse("2026-02-15"))
 
         assertEquals(1, manageLedger.calls.size)
         val call = manageLedger.calls.single()
@@ -142,9 +141,71 @@ class OpeningBalanceServiceImplTest {
     }
 
     @Test
-    @DisplayName("rejects opening balance for non-ASSET account")
-    fun rejectsNonAsset() {
-        val liability =
+    @DisplayName("creates liability opening debt as CREDIT(liability)/DEBIT(equity)")
+    fun createsLiabilityOpeningDebt() {
+        val liabilityAccount =
+            Account(
+                id = UUID.randomUUID(),
+                owner = owner,
+                name = "Loan",
+                type = AccountType.LIABILITY,
+                currency = eur,
+            )
+
+        val equityAccount =
+            Account(
+                id = UUID.randomUUID(),
+                owner = owner,
+                name = "Opening Equity",
+                type = AccountType.EQUITY,
+                currency = eur,
+            )
+
+        `when`(userRepository.findByUserIdForUpdate(1L)).thenReturn(Optional.of(owner))
+        `when`(
+            accountRepository.findByOwnerUserIdAndTypeAndCurrencyCodeAndName(
+                1L,
+                AccountType.EQUITY,
+                "EUR",
+                "Opening Equity",
+            ),
+        ).thenReturn(equityAccount)
+
+        service.createForNewAccount(owner, liabilityAccount, 25_000, LocalDate.parse("2026-02-15"))
+
+        val dto = manageLedger.calls.single().dto
+        assertEquals("Opening debt - Loan", dto.description)
+        assertEquals(liabilityAccount.id, dto.splits[0].accountId)
+        assertEquals("CREDIT", dto.splits[0].side)
+        assertEquals(25_000, dto.splits[0].amountMinor)
+        assertEquals(equityAccount.id, dto.splits[1].accountId)
+        assertEquals("DEBIT", dto.splits[1].side)
+        assertEquals(25_000, dto.splits[1].amountMinor)
+    }
+
+    @Test
+    @DisplayName("rejects opening balance for unsupported account type")
+    fun rejectsUnsupportedType() {
+        val incomeAccount =
+            Account(
+                id = UUID.randomUUID(),
+                owner = owner,
+                name = "Salary",
+                type = AccountType.INCOME,
+                currency = eur,
+            )
+
+        assertThrows(BadRequestException::class.java) {
+            service.createForNewAccount(owner, incomeAccount, 1000, LocalDate.parse("2026-02-15"))
+        }
+        verifyNoInteractions(userRepository)
+        assertEquals(0, manageLedger.calls.size)
+    }
+
+    @Test
+    @DisplayName("rejects negative liability opening debt")
+    fun rejectsNegativeLiabilityOpeningDebt() {
+        val liabilityAccount =
             Account(
                 id = UUID.randomUUID(),
                 owner = owner,
@@ -154,7 +215,7 @@ class OpeningBalanceServiceImplTest {
             )
 
         assertThrows(BadRequestException::class.java) {
-            service.createForNewAssetAccount(owner, liability, 1000, LocalDate.parse("2026-02-15"))
+            service.createForNewAccount(owner, liabilityAccount, -1000, LocalDate.parse("2026-02-15"))
         }
         verifyNoInteractions(userRepository)
         assertEquals(0, manageLedger.calls.size)
@@ -179,7 +240,7 @@ class OpeningBalanceServiceImplTest {
             )
 
         assertThrows(ForbiddenException::class.java) {
-            service.createForNewAssetAccount(owner, assetAccount, 1000, LocalDate.parse("2026-02-15"))
+            service.createForNewAccount(owner, assetAccount, 1000, LocalDate.parse("2026-02-15"))
         }
         verifyNoInteractions(userRepository)
         assertEquals(0, manageLedger.calls.size)
