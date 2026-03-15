@@ -58,7 +58,7 @@ class ManageLedgerCurrentBalanceIntegrationTest
                 )
             }
 
-        currentAccountBalanceMonitor.logMismatchCountOnStartup()
+        currentAccountBalanceMonitor.logIntegrityStatusOnStartup()
     }
 
     @Test
@@ -204,8 +204,8 @@ class ManageLedgerCurrentBalanceIntegrationTest
     }
 
     @Test
-    @DisplayName("normal posting keeps reconciliation mismatch count at zero")
-    fun normalPostingKeepsReconciliationMismatchCountZero() {
+    @DisplayName("normal posting keeps integrity mismatch count at zero")
+    fun normalPostingKeepsIntegrityMismatchCountZero() {
         val user = persistUser("integration-reconcile-ok")
         val cash = persistAccount(user, "Cash Reconcile", AccountType.ASSET)
         val expense = persistAccount(user, "Expense Reconcile", AccountType.EXPENSE)
@@ -226,14 +226,14 @@ class ManageLedgerCurrentBalanceIntegrationTest
             creator = user,
         )
 
-        currentAccountBalanceMonitor.logMismatchCountOnStartup()
+        currentAccountBalanceMonitor.logIntegrityStatusOnStartup()
         assertEquals(0L, accountCurrentBalanceRepository.countAccountsBalanceMismatch())
     }
 
     @Test
-    @DisplayName("reconciliation mismatch disables snapshot only for mismatched account")
+    @DisplayName("integrity mismatch disables snapshot only for mismatched account")
     @Transactional
-    fun reconciliationMismatchDisablesSnapshotBalance() {
+    fun integrityMismatchDisablesSnapshotBalance() {
         val user = persistUser("integration-snapshot-balance-gate")
         val cash = persistAccount(user, "Cash Gate", AccountType.ASSET)
         val expense = persistAccount(user, "Expense Gate", AccountType.EXPENSE)
@@ -257,9 +257,9 @@ class ManageLedgerCurrentBalanceIntegrationTest
         )
 
         accountCurrentBalanceRepository.addDelta(cashId, 5_000L)
-        currentAccountBalanceMonitor.logMismatchCountOnStartup()
+        currentAccountBalanceMonitor.logIntegrityStatusOnStartup()
 
-        // Tamper a healthy account after reconciliation to verify it still uses snapshot reads.
+        // Tamper a healthy account after the integrity check to verify it still uses snapshot reads.
         accountCurrentBalanceRepository.addDelta(expenseId, 700L)
 
         val cashBalance = manageLedger.getAccountBalance(cashId, today, user, null)

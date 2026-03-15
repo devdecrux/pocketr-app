@@ -20,14 +20,14 @@ class CurrentAccountBalanceMonitorTest {
             CurrentAccountBalanceMonitor(
                 accountCurrentBalanceRepository = repository,
                 currentBalanceSnapshotReadinessState = readiness,
-                reconciliationLogOnStartup = true,
+                integrityLogOnStartup = true,
             )
         val mismatchedAccountId = UUID.randomUUID()
         val healthyAccountId = UUID.randomUUID()
 
         `when`(repository.findAccountsBalanceMismatch()).thenReturn(listOf(mismatchedAccountId))
 
-        monitor.logMismatchCountOnStartup()
+        monitor.logIntegrityStatusOnStartup()
 
         assertTrue(readiness.isSnapshotAvailable())
         assertFalse(readiness.isSnapshotAllowed(mismatchedAccountId))
@@ -35,20 +35,20 @@ class CurrentAccountBalanceMonitorTest {
     }
 
     @Test
-    @DisplayName("marks snapshot unavailable when reconciliation fails")
-    fun marksSnapshotUnavailableWhenReconciliationFails() {
+    @DisplayName("marks snapshot unavailable when integrity check fails")
+    fun marksSnapshotUnavailableWhenIntegrityCheckFails() {
         val repository = mock(AccountCurrentBalanceRepository::class.java)
         val readiness = CurrentBalanceSnapshotReadinessState()
         val monitor =
             CurrentAccountBalanceMonitor(
                 accountCurrentBalanceRepository = repository,
                 currentBalanceSnapshotReadinessState = readiness,
-                reconciliationLogOnStartup = true,
+                integrityLogOnStartup = true,
             )
 
-        `when`(repository.findAccountsBalanceMismatch()).thenThrow(RuntimeException("reconciliation failed"))
+        `when`(repository.findAccountsBalanceMismatch()).thenThrow(RuntimeException("integrity check failed"))
 
-        monitor.logMismatchCountOnStartup()
+        monitor.logIntegrityStatusOnStartup()
 
         assertFalse(readiness.isSnapshotAvailable())
         assertFalse(readiness.isSnapshotAllowed(UUID.randomUUID()))

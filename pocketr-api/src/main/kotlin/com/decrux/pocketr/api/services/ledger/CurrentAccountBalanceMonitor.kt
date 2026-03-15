@@ -18,46 +18,50 @@ import org.springframework.stereotype.Component
 class CurrentAccountBalanceMonitor(
     private val accountCurrentBalanceRepository: AccountCurrentBalanceRepository,
     private val currentBalanceSnapshotReadinessState: CurrentBalanceSnapshotReadinessState,
-    @Value("\${ledger.current-balance.reconciliation-log-on-startup:true}")
-    private val reconciliationLogOnStartup: Boolean,
+    @Value("\${ledger.current-balance.integrity-log-on-startup:\${ledger.current-balance.reconciliation-log-on-startup:true}}")
+    private val integrityLogOnStartup: Boolean,
 ) {
     @EventListener(ApplicationReadyEvent::class)
-    fun reconcileOnStartup() {
-        reconcileSnapshotReadiness()
+    fun checkIntegrityOnStartup() {
+        updateSnapshotIntegrityState()
     }
 
     /**
      * Manual trigger used in tests and operational troubleshooting.
      */
-    fun logMismatchCountOnStartup() {
-        reconcileSnapshotReadiness()
+    fun logIntegrityStatusOnStartup() {
+        updateSnapshotIntegrityState()
     }
 
-    private fun reconcileSnapshotReadiness() {
+    private fun updateSnapshotIntegrityState() {
         try {
             val mismatchedAccountIds = accountCurrentBalanceRepository.findAccountsBalanceMismatch().toSet()
             currentBalanceSnapshotReadinessState.updateFromMismatchedAccounts(mismatchedAccountIds)
-            logReconciliationResult(mismatchedAccountIds.size)
+            logIntegrityCheckResult(mismatchedAccountIds.size)
         } catch (ex: RuntimeException) {
             currentBalanceSnapshotReadinessState.markUnavailable()
             logger.error(
-                "reconciliation_check_failed=true snapshot_available={}",
-                currentBalanceSnapshotReadinessState.isSnapshotAvailable(),
+                "Failed to run the startup integrity check between snapshot raw balance and computed raw balance. Snapshot reads are now disabled for all accounts.",
                 ex,
             )
         }
     }
 
-    private fun logReconciliationResult(mismatchCount: Int) {
-        if (!reconciliationLogOnStartup && mismatchCount == 0) {
+    private fun logIntegrityCheckResult(mismatchCount: Int) {
+        if (!integrityLogOnStartup && mismatchCount == 0) {
+            return
+        }
+
+        if (mismatchCount == 0) {
+            logger.info(
+                "Startup integrity check passed: snapshot raw balance matches computed raw balance for all checked accounts. Snapshot reads remain available for all accounts.",
+            )
             return
         }
 
         logger.info(
-            "reconciliation_mismatch={} reconciliation_mismatch_count={} snapshot_available={} snapshot_disabled_account_count={}",
-            mismatchCount > 0,
+            "Startup integrity check found {} account(s) where snapshot raw balance differs from computed raw balance. Snapshot reads remain available, but are disabled for those {} mismatched account(s).",
             mismatchCount,
-            currentBalanceSnapshotReadinessState.isSnapshotAvailable(),
             currentBalanceSnapshotReadinessState.mismatchedAccountCount(),
         )
     }

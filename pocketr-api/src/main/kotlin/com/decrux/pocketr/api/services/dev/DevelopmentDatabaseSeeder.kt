@@ -26,6 +26,7 @@ import com.decrux.pocketr.api.repositories.UserRepository
 import org.slf4j.LoggerFactory
 import org.springframework.boot.ApplicationArguments
 import org.springframework.boot.ApplicationRunner
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Profile
 import org.springframework.core.annotation.Order
 import org.springframework.security.crypto.password.PasswordEncoder
@@ -36,6 +37,7 @@ import java.time.LocalDate
 
 @Component
 @Profile("dev")
+@ConditionalOnProperty(prefix = "pocketr.dev.seed", name = ["enabled"], havingValue = "true")
 @Order(1)
 class DevelopmentDatabaseSeeder(
     private val userRepository: UserRepository,

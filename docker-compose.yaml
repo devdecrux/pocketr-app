@@ -3,68 +3,21 @@ name: pocketr
 services:
   db:
     image: postgres:18.0-alpine3.22
-    container_name: pocketr-db
-    ports:
-      - "127.0.0.1:5432:5432"
     restart: unless-stopped
     environment:
-      POSTGRES_USER: pocketr_user
-      POSTGRES_PASSWORD: pocketr_password
-      POSTGRES_DB: pocketr_db
+      POSTGRES_USER: ${POSTGRES_USER:-pocketr_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      POSTGRES_DB: ${POSTGRES_DB:-pocketr_db}
+    ports:
+      - "${POSTGRES_BIND_ADDRESS:-127.0.0.1}:${POSTGRES_PORT:-5432}:5432"
     volumes:
       - db-data:/var/lib/postgresql/data
-    networks:
-      - pocketr-network
-
-  pgadmin:
-    image: dpage/pgadmin4:9.13.0
-    container_name: pocketr-pgadmin
-    depends_on:
-      - db
-    entrypoint:
-      - /bin/sh
-      - -ec
-      - cp /pgadmin4/pocketr.pgpass /tmp/pocketr.pgpass && chmod 600 /tmp/pocketr.pgpass && exec /entrypoint.sh
-    ports:
-      - "127.0.0.1:5050:80"
-    restart: unless-stopped
-    environment:
-      # Required by the pgAdmin image startup even when server mode is disabled.
-      PGADMIN_DEFAULT_EMAIL: admin@example.com
-      PGADMIN_DEFAULT_PASSWORD: pocketr_pgadmin_password
-      PGADMIN_REPLACE_SERVERS_ON_STARTUP: "True"
-      PGADMIN_CONFIG_SERVER_MODE: "False"
-      PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: "False"
-      PGPASS_FILE: /tmp/pocketr.pgpass
-    volumes:
-      - ./config/pgadmin/servers.json:/pgadmin4/servers.json:ro
-      - ./config/pgadmin/pocketr.pgpass:/pgadmin4/pocketr.pgpass:ro
-      - ./storage/pgadmin:/var/lib/pgadmin/storage
-      - pgadmin-data:/var/lib/pgadmin
-    networks:
-      - pocketr-network
-
-  traefik-reverse-proxy:
-    image: traefik:v3.6.2
-    container_name: pocketr-traefik
-    ports:
-      - "127.0.0.1:80:80"
-    restart: unless-stopped
-    # Keep privilege escalation disabled; routing model remains unchanged.
-    security_opt:
-      - no-new-privileges:true
-    volumes:
-      - ./config/traefik/traefik.yml:/etc/traefik/traefik.yml:ro
-      - ./config/traefik/dynamic.yml:/etc/traefik/dynamic/dynamic.yml:ro
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    networks:
-      - pocketr-network
-
-networks:
-  pocketr-network:
-    driver: bridge
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-pocketr_user} -d ${POSTGRES_DB:-pocketr_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
 
 volumes:
   db-data:
-  pgadmin-data:

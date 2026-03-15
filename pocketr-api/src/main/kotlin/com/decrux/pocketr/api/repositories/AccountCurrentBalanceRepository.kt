@@ -35,7 +35,7 @@ interface AccountCurrentBalanceRepository : JpaRepository<AccountCurrentBalance,
     /**
      * Counts accounts where the snapshot balance differs from the value computed from ledger splits.
      *
-     * Used by reconciliation/health logic to decide whether snapshot reads are safe to serve.
+     * Used by integrity/health logic to decide whether snapshot reads are safe to serve.
      */
     @Query(
         value = """
@@ -82,7 +82,7 @@ interface AccountCurrentBalanceRepository : JpaRepository<AccountCurrentBalance,
     /**
      * Recomputes and upserts snapshot balances from ledger data for the provided account IDs.
      *
-     * Intended for operational reconciliation/repair flows after mismatch detection. This method is
+     * Intended for operational integrity/repair flows after mismatch detection. This method is
      * intentionally repository-internal for now and is not exposed through service/controller APIs.
      */
     @Modifying

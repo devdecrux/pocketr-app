@@ -9,12 +9,13 @@
   - Unit tests: `pocketr-ui/src/__tests__`
   - E2E tests: `pocketr-ui/e2e`
 - Root infrastructure/docs:
-  - `docker-compose.yaml` and `config/` (Traefik) are development-only for local app deployment and debugging.
+  - `docker-compose.dev.yaml` and `config/` (Traefik) are development-only for local app deployment and debugging.
+  - `docker-compose.yaml` is the production-oriented Docker Compose file and currently provisions only PostgreSQL.
   - `docs/`, `bruno/` (API collection), `storage/`.
 
 ## Build, Test, and Development Commands
-- Start local infra (root): `docker compose up -d db traefik-reverse-proxy`
-- Stop infra: `docker compose down`
+- Start local infra (root): `docker compose -f docker-compose.dev.yaml up -d db traefik-reverse-proxy`
+- Stop local infra: `docker compose -f docker-compose.dev.yaml down`
 - Backend dev server: `cd pocketr-api && ./gradlew bootRun`
 - Backend checks:
   - `./gradlew build` (compile, test, and package backend)

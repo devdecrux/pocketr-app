@@ -35,6 +35,17 @@ _Planned ahead:_
 3. IntelliJ will automatically load the `.run` configurations from the repository.
 4. Run the `Pocketr Local Dev` run configuration.
 
+## Docker Compose Files
+
+- `docker-compose.yaml`: production-oriented Docker Compose file. It currently provisions only PostgreSQL and expects `POSTGRES_PASSWORD` to be set.
+- `docker-compose.dev.yaml`: local development infrastructure with PostgreSQL, pgAdmin, and Traefik.
+
+### Useful Commands
+
+- Start the production database only: `POSTGRES_PASSWORD=change-me docker compose up -d`
+- Start development infrastructure: `docker compose -f docker-compose.dev.yaml up -d db traefik-reverse-proxy`
+- Stop development infrastructure: `docker compose -f docker-compose.dev.yaml down`
+
 ## Runtime Contract (LXC/Production)
 
 - Frontend URL: `http://<HOST>:8081/frontend`

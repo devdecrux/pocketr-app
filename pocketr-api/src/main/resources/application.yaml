@@ -27,4 +27,4 @@ ledger:
       balance:
         enabled: true
   current-balance:
-    reconciliation-log-on-startup: true
+    integrity-log-on-startup: true

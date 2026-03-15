@@ -16,7 +16,7 @@
             <option value="pgadmin" />
           </list>
         </option>
-        <option name="sourceFilePath" value="docker-compose.yaml" />
+        <option name="sourceFilePath" value="docker-compose.dev.yaml" />
       </settings>
     </deployment>
     <method v="2" />

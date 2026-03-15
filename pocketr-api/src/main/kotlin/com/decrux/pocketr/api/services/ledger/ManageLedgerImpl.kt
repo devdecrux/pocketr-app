@@ -45,7 +45,6 @@ import java.time.Clock
 import java.time.LocalDate
 import java.util.*
 import java.util.concurrent.TimeUnit
-import java.util.concurrent.atomic.LongAdder
 
 @Service
 class ManageLedgerImpl(
@@ -326,7 +325,7 @@ class ManageLedgerImpl(
         }
 
         logger.info(
-            "projection_delta_accounts={} total_split_count={}",
+            "Applied current balance snapshot updates for {} account(s) from {} split(s).",
             orderedDeltasByAccountId.size,
             splits.size,
         )
@@ -368,15 +367,11 @@ class ManageLedgerImpl(
     ): Map<UUID, Long> {
         val startedAt = System.nanoTime()
         if (!isSnapshotFeatureEligible(asOf)) {
-            computedBalancePathCount.increment()
-            logger.info(
-                "balance_path=computed_balance endpoint=getAccountBalances account_count={} as_of={} computed_balance_path_count={} latency_ms={}",
-                accountIds.size,
-                asOf,
-                computedBalancePathCount.sum(),
-                elapsedMillis(startedAt),
+            return computeRawBalancesFromLedger(
+                accountIds = accountIds,
+                asOf = asOf,
+                reason = "snapshot balances are only available for today",
             )
-            return computeComputedBalanceRawBalances(accountIds, asOf)
         }
 
         val snapshotEligibleAccountIds =
@@ -385,63 +380,52 @@ class ManageLedgerImpl(
                 .filter { accountId -> currentBalanceSnapshotReadiness.isSnapshotAllowed(accountId) }
                 .toList()
         if (snapshotEligibleAccountIds.isEmpty()) {
-            computedBalancePathCount.increment()
-            logger.info(
-                "balance_path=computed_balance endpoint=getAccountBalances account_count={} as_of={} computed_balance_path_count={} reason=snapshot_not_allowed latency_ms={}",
-                accountIds.size,
-                asOf,
-                computedBalancePathCount.sum(),
-                elapsedMillis(startedAt),
+            return computeRawBalancesFromLedger(
+                accountIds = accountIds,
+                asOf = asOf,
+                reason = "snapshots are not allowed for the requested accounts",
             )
-            return computeComputedBalanceRawBalances(accountIds, asOf)
         }
 
-        val snapshotEligibleAccountIdSet = snapshotEligibleAccountIds.toSet()
-        val computedAccountIds = accountIds.filterNot { it in snapshotEligibleAccountIdSet }
+        val snapshotEligibleAccountId = snapshotEligibleAccountIds.toSet()
+        val notSnapshotEligibleAccountId = accountIds.filterNot { it in snapshotEligibleAccountId }
 
         return try {
-            snapshotBalanceHitCount.increment()
             val balancesByAccountId =
                 accountCurrentBalanceRepository
-                .findAllByAccountIdIn(snapshotEligibleAccountIds)
-                .associate { requireNotNull(it.accountId) to it.rawBalanceMinor }
-                .toMutableMap()
+                    .findAllByAccountIdIn(snapshotEligibleAccountIds)
+                    .associate { requireNotNull(it.accountId) to it.rawBalanceMinor }
+                    .toMutableMap()
 
-            if (computedAccountIds.isNotEmpty()) {
-                computedBalanceFallbackCount.increment()
-                balancesByAccountId.putAll(computeComputedBalanceRawBalances(computedAccountIds, asOf))
+            if (notSnapshotEligibleAccountId.isNotEmpty()) {
+                balancesByAccountId.putAll(computeRawBalancesFromLedger(notSnapshotEligibleAccountId, asOf))
                 logger.info(
-                    "balance_path=mixed endpoint=getAccountBalances account_count={} snapshot_account_count={} computed_balance_account_count={} snapshot_balance_hit_count={} computed_balance_fallback_count={} as_of={} latency_ms={}",
+                    "Resolved balances for {} account(s) as of {} using {} snapshot balance(s) and {} computed ledger balance(s). Took {} ms.",
                     accountIds.size,
-                    snapshotEligibleAccountIds.size,
-                    computedAccountIds.size,
-                    snapshotBalanceHitCount.sum(),
-                    computedBalanceFallbackCount.sum(),
                     asOf,
+                    snapshotEligibleAccountIds.size,
+                    notSnapshotEligibleAccountId.size,
                     elapsedMillis(startedAt),
                 )
             } else {
                 logger.info(
-                    "balance_path=snapshot endpoint=getAccountBalances account_count={} as_of={} snapshot_balance_hit_count={} latency_ms={}",
+                    "Resolved balances for {} account(s) as of {} using current balance snapshots. Took {} ms.",
                     accountIds.size,
                     asOf,
-                    snapshotBalanceHitCount.sum(),
                     elapsedMillis(startedAt),
                 )
             }
 
             balancesByAccountId
         } catch (ex: DataAccessException) {
-            computedBalanceFallbackCount.increment()
             logger.warn(
-                "balance_path=computed_balance endpoint=getAccountBalances account_count={} as_of={} fallback_reason=projection_read_error computed_balance_fallback_count={} latency_ms={}",
+                "Failed to read current balance snapshots for {} account(s) as of {}; falling back to computed ledger totals. Took {} ms.",
                 accountIds.size,
                 asOf,
-                computedBalanceFallbackCount.sum(),
                 elapsedMillis(startedAt),
                 ex,
             )
-            computeComputedBalanceRawBalances(accountIds, asOf)
+            computeRawBalancesFromLedger(accountIds, asOf)
         }
     }
 
@@ -451,22 +435,18 @@ class ManageLedgerImpl(
     ): Long {
         val startedAt = System.nanoTime()
         if (!shouldUseSnapshotBalance(accountId, asOf)) {
-            computedBalancePathCount.increment()
-            logger.info(
-                "balance_path=computed_balance endpoint=getAccountBalance account_count=1 as_of={} computed_balance_path_count={} latency_ms={}",
-                asOf,
-                computedBalancePathCount.sum(),
-                elapsedMillis(startedAt),
+            return computeRawBalanceFromLedger(
+                accountId = accountId,
+                asOf = asOf,
+                reason = "snapshot balances are unavailable for this account and date",
             )
-            return computeComputedBalanceRawBalance(accountId, asOf)
         }
 
         return try {
-            snapshotBalanceHitCount.increment()
             logger.info(
-                "balance_path=snapshot endpoint=getAccountBalance account_count=1 as_of={} snapshot_balance_hit_count={} latency_ms={}",
+                "Resolved balance for account {} as of {} using the current balance snapshot. Took {} ms.",
+                accountId,
                 asOf,
-                snapshotBalanceHitCount.sum(),
                 elapsedMillis(startedAt),
             )
             accountCurrentBalanceRepository
@@ -474,35 +454,66 @@ class ManageLedgerImpl(
                 .map { it.rawBalanceMinor }
                 .orElse(0L)
         } catch (ex: DataAccessException) {
-            computedBalanceFallbackCount.increment()
             logger.warn(
-                "balance_path=computed_balance endpoint=getAccountBalance account_count=1 as_of={} fallback_reason=projection_read_error computed_balance_fallback_count={} latency_ms={}",
+                "Failed to read the current balance snapshot for account {} as of {}; falling back to computed ledger totals. Took {} ms.",
+                accountId,
                 asOf,
-                computedBalanceFallbackCount.sum(),
                 elapsedMillis(startedAt),
                 ex,
             )
-            computeComputedBalanceRawBalance(accountId, asOf)
+            computeRawBalanceFromLedger(accountId, asOf)
         }
     }
 
-    private fun computeComputedBalanceRawBalances(
+    private fun computeRawBalancesFromLedger(
         accountIds: Collection<UUID>,
         asOf: LocalDate,
-    ): Map<UUID, Long> =
-        ledgerSplitRepository
-            .computeRawBalancesByAccountIds(
-                accountIds,
-                asOf,
-                SplitSide.DEBIT,
-                SplitSide.CREDIT,
-            )
-            .associate { it.accountId to it.rawBalance }
+        reason: String? = null,
+    ): Map<UUID, Long> {
+        val startedAt = System.nanoTime()
+        val rawBalancesByAccountId =
+            ledgerSplitRepository
+                .computeRawBalancesByAccountIds(
+                    accountIds,
+                    asOf,
+                    SplitSide.DEBIT,
+                    SplitSide.CREDIT,
+                )
+                .associate { it.accountId to it.rawBalance }
 
-    private fun computeComputedBalanceRawBalance(
+        if (reason != null) {
+            logger.info(
+                "Resolved balances for {} account(s) as of {} using computed ledger totals because {}. Took {} ms.",
+                accountIds.size,
+                asOf,
+                reason,
+                elapsedMillis(startedAt),
+            )
+        }
+
+        return rawBalancesByAccountId
+    }
+
+    private fun computeRawBalanceFromLedger(
         accountId: UUID,
         asOf: LocalDate,
-    ): Long = ledgerSplitRepository.computeBalance(accountId, asOf, SplitSide.DEBIT, SplitSide.CREDIT)
+        reason: String? = null,
+    ): Long {
+        val startedAt = System.nanoTime()
+        val rawBalance = ledgerSplitRepository.computeBalance(accountId, asOf, SplitSide.DEBIT, SplitSide.CREDIT)
+
+        if (reason != null) {
+            logger.info(
+                "Resolved balance for account {} as of {} using computed ledger totals because {}. Took {} ms.",
+                accountId,
+                asOf,
+                reason,
+                elapsedMillis(startedAt),
+            )
+        }
+
+        return rawBalance
+    }
 
     private fun shouldUseSnapshotBalance(
         accountId: UUID,
@@ -519,9 +530,6 @@ class ManageLedgerImpl(
 
     private companion object {
         private val logger = LoggerFactory.getLogger(ManageLedgerImpl::class.java)
-        private val snapshotBalanceHitCount = LongAdder()
-        private val computedBalancePathCount = LongAdder()
-        private val computedBalanceFallbackCount = LongAdder()
         val DEBIT_NORMAL_TYPES = setOf(AccountType.ASSET, AccountType.EXPENSE)
         val TRANSFER_TYPES = setOf(AccountType.ASSET, AccountType.LIABILITY, AccountType.EQUITY)
 

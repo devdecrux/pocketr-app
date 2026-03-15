@@ -21,5 +21,8 @@ app:
     csrf-cookie-path: /
 
 pocketr:
+  dev:
+    seed:
+      enabled: false
   avatar:
     storage-dir: ${AVATAR_STORAGE_DIR:storage/avatars}
