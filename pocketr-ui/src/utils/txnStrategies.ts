@@ -33,6 +33,15 @@ export interface TransferFields {
   description: string
 }
 
+export interface DebtPaymentFields {
+  date: string
+  payFrom: string
+  liabilityAccount: string
+  amount: number
+  currency: string
+  description: string
+}
+
 const VALIDATION_MSG = 'Please fill in all required fields and enter a positive amount.'
 
 export interface TxnTabStrategy<F> {
@@ -123,6 +132,36 @@ export const transferStrategy: TxnTabStrategy<TransferFields> = {
         },
         {
           accountId: f.to,
+          side: 'DEBIT' as SplitSide,
+          amountMinor: f.amount,
+        },
+      ],
+    }
+  },
+}
+
+export const debtPaymentStrategy: TxnTabStrategy<DebtPaymentFields> = {
+  validate(f) {
+    if (!f.payFrom || !f.liabilityAccount || f.amount <= 0 || !f.description.trim()) {
+      return VALIDATION_MSG
+    }
+    return null
+  },
+  buildRequest(ctx, f) {
+    return {
+      mode: ctx.mode,
+      householdId: ctx.householdId,
+      txnDate: f.date,
+      currency: f.currency,
+      description: f.description.trim(),
+      splits: [
+        {
+          accountId: f.payFrom,
+          side: 'CREDIT' as SplitSide,
+          amountMinor: f.amount,
+        },
+        {
+          accountId: f.liabilityAccount,
           side: 'DEBIT' as SplitSide,
           amountMinor: f.amount,
         },

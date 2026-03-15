@@ -111,7 +111,7 @@ class ManageLedgerImpl(
             val hhId = householdIdPresenceValidator.validate(dto.householdId)
             householdMembershipValidator.validate(manageHousehold, hhId, userId)
             householdSharedAccountValidator.validate(nonOwnedAccounts, manageHousehold, hhId)
-            crossUserAssetAccountTypeValidator.validate(accounts)
+            crossUserAssetAccountTypeValidator.validate(accounts, dto.splits, userId)
         }
 
         // 9. Validate category tags
@@ -560,11 +560,43 @@ class ManageLedgerImpl(
         fun deriveTxnKind(splits: List<LedgerSplit>): String {
             val accountTypes = splits.mapNotNull { it.account?.type }.toSet()
             return when {
+                isOpeningBalanceEntry(splits, accountTypes) -> "OPENING_BALANCE"
+                isOpeningDebtEntry(splits, accountTypes) -> "OPENING_DEBT"
+                isDebtPayment(splits) -> "DEBT_PAYMENT"
                 accountTypes.all { it in TRANSFER_TYPES } -> "TRANSFER"
                 accountTypes.any { it == AccountType.EXPENSE } -> "EXPENSE"
                 accountTypes.any { it == AccountType.INCOME } -> "INCOME"
                 else -> "TRANSFER"
             }
+        }
+
+        fun isOpeningBalanceEntry(
+            splits: List<LedgerSplit>,
+            accountTypes: Set<AccountType> = splits.mapNotNull { it.account?.type }.toSet(),
+        ): Boolean =
+            splits.size == 2 &&
+                accountTypes == setOf(AccountType.ASSET, AccountType.EQUITY)
+
+        fun isOpeningDebtEntry(
+            splits: List<LedgerSplit>,
+            accountTypes: Set<AccountType> = splits.mapNotNull { it.account?.type }.toSet(),
+        ): Boolean =
+            splits.size == 2 &&
+                accountTypes == setOf(AccountType.LIABILITY, AccountType.EQUITY)
+
+        fun isDebtPayment(splits: List<LedgerSplit>): Boolean {
+            val accountTypes = splits.mapNotNull { it.account?.type }.toSet()
+            val hasLiabilityDebit =
+                splits.any {
+                    it.account?.type == AccountType.LIABILITY && it.side == SplitSide.DEBIT
+                }
+            val hasAssetCredit =
+                splits.any {
+                    it.account?.type == AccountType.ASSET && it.side == SplitSide.CREDIT
+                }
+            return accountTypes.all { it == AccountType.ASSET || it == AccountType.LIABILITY } &&
+                hasLiabilityDebit &&
+                hasAssetCredit
         }
 
         fun LedgerSplit.toDto(): SplitDto {

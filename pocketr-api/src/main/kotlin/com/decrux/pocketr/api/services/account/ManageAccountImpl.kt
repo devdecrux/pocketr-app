@@ -17,7 +17,7 @@ import com.decrux.pocketr.api.services.household.ManageHousehold
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.LocalDate
-import java.util.UUID
+import java.util.*
 
 @Service
 class ManageAccountImpl(
@@ -51,15 +51,18 @@ class ManageAccountImpl(
                 .orElseThrow { BadRequestException("Invalid currency: ${dto.currency}") }
 
         val openingBalanceMinor = dto.openingBalanceMinor ?: 0L
-        if (openingBalanceMinor != 0L && accountType != AccountType.ASSET) {
+        if (openingBalanceMinor != 0L && accountType !in OPENING_BALANCE_TYPES) {
             throw BadRequestException(
-                "openingBalanceMinor is supported only for ASSET accounts",
+                "openingBalanceMinor is supported only for ASSET and LIABILITY accounts",
             )
         }
         if (openingBalanceMinor == 0L && dto.openingBalanceDate != null) {
             throw BadRequestException(
                 "openingBalanceDate requires non-zero openingBalanceMinor",
             )
+        }
+        if (accountType == AccountType.LIABILITY && openingBalanceMinor < 0L) {
+            throw BadRequestException("Opening debt must be positive for LIABILITY accounts")
         }
 
         val account =
@@ -73,9 +76,9 @@ class ManageAccountImpl(
         val savedAccount = accountRepository.save(account)
 
         if (openingBalanceMinor != 0L) {
-            openingBalanceService.createForNewAssetAccount(
+            openingBalanceService.createForNewAccount(
                 owner = owner,
-                assetAccount = savedAccount,
+                account = savedAccount,
                 openingBalanceMinor = openingBalanceMinor,
                 txnDate = dto.openingBalanceDate ?: LocalDate.now(),
             )
@@ -154,6 +157,8 @@ class ManageAccountImpl(
     }
 
     private companion object {
+        val OPENING_BALANCE_TYPES = setOf(AccountType.ASSET, AccountType.LIABILITY)
+
         fun Account.toDto() =
             AccountDto(
                 id = requireNotNull(id) { "Account ID must not be null" },

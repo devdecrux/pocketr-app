@@ -5,9 +5,9 @@ import com.decrux.pocketr.api.entities.db.ledger.Account
 import java.time.LocalDate
 
 interface OpeningBalanceService {
-    fun createForNewAssetAccount(
+    fun createForNewAccount(
         owner: User,
-        assetAccount: Account,
+        account: Account,
         openingBalanceMinor: Long,
         txnDate: LocalDate,
     )

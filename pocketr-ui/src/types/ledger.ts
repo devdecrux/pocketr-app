@@ -49,9 +49,13 @@ export type SplitSide = 'DEBIT' | 'CREDIT'
 export interface LedgerSplit {
   id?: string
   accountId: string
+  accountName?: string
+  accountType?: AccountType
   side: SplitSide
   amountMinor: number
+  effectMinor?: number
   categoryTagId?: string | null
+  categoryTagName?: string | null
 }
 
 export interface TxnCreator {
@@ -119,8 +123,9 @@ export interface AccountBalance {
 export interface MonthlyReportEntry {
   expenseAccountId: string
   expenseAccountName: string
-  categoryId: string | null
-  categoryName: string | null
+  categoryTagId: string | null
+  categoryTagName: string | null
+  currency: string
   netMinor: number
 }
 
