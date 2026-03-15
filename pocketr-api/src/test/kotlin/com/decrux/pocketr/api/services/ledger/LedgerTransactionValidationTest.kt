@@ -466,6 +466,68 @@ class LedgerTransactionValidationTest {
     }
 
     @Nested
+    @DisplayName("Ownership permissions (household mode)")
+    inner class HouseholdOwnershipPermissions {
+        private val householdId = UUID.randomUUID()
+
+        @Test
+        @DisplayName("should allow repaying a shared liability from the member's own asset account")
+        fun allowSharedLiabilityRepaymentFromOwnAsset() {
+            stubAccounts(userBSavings, liabilityAcct)
+            `when`(manageHousehold.isActiveMember(householdId, userB.userId!!)).thenReturn(true)
+            `when`(manageHousehold.isAccountShared(householdId, liabilityId)).thenReturn(true)
+
+            val dto =
+                CreateTransactionDto(
+                    mode = "HOUSEHOLD",
+                    householdId = householdId,
+                    txnDate = LocalDate.now(),
+                    currency = "EUR",
+                    description = "Bob pays Alice mortgage",
+                    splits =
+                        listOf(
+                            CreateSplitDto(accountId = userBSavingsId, side = "CREDIT", amountMinor = 50000),
+                            CreateSplitDto(accountId = liabilityId, side = "DEBIT", amountMinor = 50000),
+                        ),
+                )
+
+            val result = service.createTransaction(dto, userB)
+
+            assertNotNull(result.id)
+            assertEquals("DEBT_PAYMENT", result.txnKind)
+        }
+
+        @Test
+        @DisplayName("should still reject using another member's asset account for debt repayment")
+        fun rejectDebtRepaymentUsingOtherMembersAsset() {
+            stubAccounts(checking, liabilityAcct)
+            `when`(manageHousehold.isActiveMember(householdId, userB.userId!!)).thenReturn(true)
+            `when`(manageHousehold.isAccountShared(householdId, checkingId)).thenReturn(true)
+            `when`(manageHousehold.isAccountShared(householdId, liabilityId)).thenReturn(true)
+
+            val dto =
+                CreateTransactionDto(
+                    mode = "HOUSEHOLD",
+                    householdId = householdId,
+                    txnDate = LocalDate.now(),
+                    currency = "EUR",
+                    description = "Use Alice checking to pay Alice mortgage",
+                    splits =
+                        listOf(
+                            CreateSplitDto(accountId = checkingId, side = "CREDIT", amountMinor = 50000),
+                            CreateSplitDto(accountId = liabilityId, side = "DEBIT", amountMinor = 50000),
+                        ),
+                )
+
+            val ex =
+                assertThrows(BadRequestException::class.java) {
+                    service.createTransaction(dto, userB)
+                }
+            assertTrue(ex.message!!.contains("shared LIABILITY"))
+        }
+    }
+
+    @Nested
     @DisplayName("Valid transaction scenarios")
     inner class ValidTransactionScenarios {
         @Test
@@ -554,6 +616,7 @@ class LedgerTransactionValidationTest {
 
             val result = service.createTransaction(dto, userA)
             assertNotNull(result.id)
+            assertEquals("DEBT_PAYMENT", result.txnKind)
         }
 
         @Test
@@ -574,6 +637,28 @@ class LedgerTransactionValidationTest {
 
             val result = service.createTransaction(dto, userA)
             assertNotNull(result.id)
+            assertEquals("OPENING_BALANCE", result.txnKind)
+        }
+
+        @Test
+        @DisplayName("should classify liability opening debt separately from transfer")
+        fun validOpeningDebt() {
+            stubAccounts(liabilityAcct, equityAcct)
+            val dto =
+                CreateTransactionDto(
+                    txnDate = LocalDate.now(),
+                    currency = "EUR",
+                    description = "Opening debt",
+                    splits =
+                        listOf(
+                            CreateSplitDto(accountId = liabilityId, side = "CREDIT", amountMinor = 100000),
+                            CreateSplitDto(accountId = equityId, side = "DEBIT", amountMinor = 100000),
+                        ),
+                )
+
+            val result = service.createTransaction(dto, userA)
+            assertNotNull(result.id)
+            assertEquals("OPENING_DEBT", result.txnKind)
         }
 
         @Test

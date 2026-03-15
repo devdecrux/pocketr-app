@@ -12,12 +12,14 @@ import com.decrux.pocketr.api.exceptions.ForbiddenException
 import com.decrux.pocketr.api.exceptions.NotFoundException
 import com.decrux.pocketr.api.repositories.AccountRepository
 import com.decrux.pocketr.api.repositories.LedgerSplitRepository
+import com.decrux.pocketr.api.repositories.projections.LiabilityPaymentProjection
+import com.decrux.pocketr.api.repositories.projections.MonthlyExpenseProjection
 import com.decrux.pocketr.api.services.household.ManageHousehold
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.LocalDate
 import java.time.YearMonth
-import java.util.UUID
+import java.util.*
 
 @Service
 class GenerateReportImpl(
@@ -35,11 +37,28 @@ class GenerateReportImpl(
         val monthStart = period.atDay(1)
         val monthEnd = period.plusMonths(1).atDay(1)
 
-        val rows =
-            when (mode.uppercase()) {
+        val expenseRows: List<MonthlyExpenseProjection>
+        val liabilityPaymentRows: List<LiabilityPaymentProjection>
+
+        when (mode.uppercase()) {
                 MODE_INDIVIDUAL -> {
                     val userId = requireNotNull(user.userId) { "User ID must not be null" }
-                    ledgerSplitRepository.monthlyExpensesByUser(userId, monthStart, monthEnd, SplitSide.DEBIT, SplitSide.CREDIT)
+                    expenseRows =
+                        ledgerSplitRepository.monthlyExpensesByUser(
+                            userId,
+                            monthStart,
+                            monthEnd,
+                            SplitSide.DEBIT,
+                            SplitSide.CREDIT,
+                        )
+                    liabilityPaymentRows =
+                        ledgerSplitRepository.monthlyLiabilityPaymentsByUser(
+                            userId,
+                            monthStart,
+                            monthEnd,
+                            SplitSide.DEBIT,
+                            SplitSide.CREDIT,
+                        )
                 }
 
                 MODE_HOUSEHOLD -> {
@@ -50,7 +69,22 @@ class GenerateReportImpl(
                     if (!manageHousehold.isActiveMember(hId, userId)) {
                         throw ForbiddenException("Not an active member of this household")
                     }
-                    ledgerSplitRepository.monthlyExpensesByHousehold(hId, monthStart, monthEnd, SplitSide.DEBIT, SplitSide.CREDIT)
+                    expenseRows =
+                        ledgerSplitRepository.monthlyExpensesByHousehold(
+                            hId,
+                            monthStart,
+                            monthEnd,
+                            SplitSide.DEBIT,
+                            SplitSide.CREDIT,
+                        )
+                    liabilityPaymentRows =
+                        ledgerSplitRepository.monthlyLiabilityPaymentsByHousehold(
+                            hId,
+                            monthStart,
+                            monthEnd,
+                            SplitSide.DEBIT,
+                            SplitSide.CREDIT,
+                        )
                 }
 
                 else -> {
@@ -58,15 +92,9 @@ class GenerateReportImpl(
                 }
             }
 
-        return rows.map { row ->
-            MonthlyExpenseDto(
-                expenseAccountId = row.expenseAccountId,
-                expenseAccountName = row.expenseAccountName,
-                categoryTagId = row.categoryTagId,
-                categoryTagName = row.categoryTagName,
-                currency = row.currency,
-                netMinor = row.netMinor,
-            )
+        return buildList {
+            addAll(expenseRows.map { it.toDto() })
+            addAll(liabilityPaymentRows.map { it.toDebtPaymentDto() })
         }
     }
 
@@ -164,8 +192,29 @@ class GenerateReportImpl(
     }
 
     private companion object {
+        const val DEBT_PAYMENT_CATEGORY_NAME = "Debt Payment"
         const val MODE_INDIVIDUAL = "INDIVIDUAL"
         const val MODE_HOUSEHOLD = "HOUSEHOLD"
         val DEBIT_NORMAL_TYPES = setOf(AccountType.ASSET, AccountType.EXPENSE)
+
+        fun MonthlyExpenseProjection.toDto() =
+            MonthlyExpenseDto(
+                expenseAccountId = expenseAccountId,
+                expenseAccountName = expenseAccountName,
+                categoryTagId = categoryTagId,
+                categoryTagName = categoryTagName,
+                currency = currency,
+                netMinor = netMinor,
+            )
+
+        fun LiabilityPaymentProjection.toDebtPaymentDto() =
+            MonthlyExpenseDto(
+                expenseAccountId = liabilityAccountId,
+                expenseAccountName = liabilityAccountName,
+                categoryTagId = null,
+                categoryTagName = DEBT_PAYMENT_CATEGORY_NAME,
+                currency = currency,
+                netMinor = netMinor,
+            )
     }
 }

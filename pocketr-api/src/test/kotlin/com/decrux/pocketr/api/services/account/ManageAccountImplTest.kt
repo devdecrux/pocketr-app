@@ -30,8 +30,7 @@ import org.mockito.Mockito.verify
 import org.mockito.Mockito.verifyNoInteractions
 import org.mockito.Mockito.`when`
 import java.time.LocalDate
-import java.util.Optional
-import java.util.UUID
+import java.util.*
 
 @DisplayName("ManageAccountImpl")
 class ManageAccountImplTest {
@@ -194,7 +193,7 @@ class ManageAccountImplTest {
         }
 
         @Test
-        @DisplayName("should create opening balance transaction when openingBalanceMinor is non-zero")
+        @DisplayName("should create asset opening balance transaction when openingBalanceMinor is non-zero")
         fun createOpeningBalanceWhenRequested() {
             val accountId = UUID.randomUUID()
             val date = LocalDate.parse("2026-02-15")
@@ -225,8 +224,39 @@ class ManageAccountImplTest {
         }
 
         @Test
-        @DisplayName("should reject opening balance for non-ASSET account type")
-        fun rejectOpeningBalanceForNonAssetType() {
+        @DisplayName("should create liability opening debt transaction when requested")
+        fun createLiabilityOpeningDebtWhenRequested() {
+            val accountId = UUID.randomUUID()
+            val date = LocalDate.parse("2026-02-15")
+            val dto =
+                CreateAccountDto(
+                    name = "Mortgage",
+                    type = "LIABILITY",
+                    currency = "EUR",
+                    openingBalanceMinor = 500_000,
+                    openingBalanceDate = date,
+                )
+
+            `when`(accountRepository.save(any(Account::class.java))).thenAnswer { invocation ->
+                val account = invocation.getArgument<Account>(0)
+                account.id = accountId
+                account
+            }
+
+            val result = service.createAccount(dto, ownerUser)
+
+            assertEquals(accountId, result.id)
+            assertEquals(1, openingBalanceService.calls.size)
+            val call = openingBalanceService.calls.single()
+            assertEquals(accountId, call.account.id)
+            assertEquals(AccountType.LIABILITY, call.account.type)
+            assertEquals(500_000L, call.amountMinor)
+            assertEquals(date, call.txnDate)
+        }
+
+        @Test
+        @DisplayName("should reject opening balance for unsupported account type")
+        fun rejectOpeningBalanceForUnsupportedType() {
             val dto =
                 CreateAccountDto(
                     name = "Salary",
@@ -240,6 +270,26 @@ class ManageAccountImplTest {
                     service.createAccount(dto, ownerUser)
                 }
             assertTrue(ex.message!!.contains("ASSET"))
+            verify(accountRepository, never()).save(any(Account::class.java))
+            assertTrue(openingBalanceService.calls.isEmpty())
+        }
+
+        @Test
+        @DisplayName("should reject negative liability opening debt")
+        fun rejectNegativeLiabilityOpeningDebt() {
+            val dto =
+                CreateAccountDto(
+                    name = "Mortgage",
+                    type = "LIABILITY",
+                    currency = "EUR",
+                    openingBalanceMinor = -50_000,
+                )
+
+            val ex =
+                assertThrows(BadRequestException::class.java) {
+                    service.createAccount(dto, ownerUser)
+                }
+            assertTrue(ex.message!!.contains("Opening debt must be positive"))
             verify(accountRepository, never()).save(any(Account::class.java))
             assertTrue(openingBalanceService.calls.isEmpty())
         }
@@ -489,16 +539,16 @@ class ManageAccountImplTest {
     private class CapturingOpeningBalanceService : OpeningBalanceService {
         val calls = mutableListOf<OpeningBalanceCall>()
 
-        override fun createForNewAssetAccount(
+        override fun createForNewAccount(
             owner: User,
-            assetAccount: Account,
+            account: Account,
             openingBalanceMinor: Long,
             txnDate: LocalDate,
         ) {
             calls.add(
                 OpeningBalanceCall(
                     owner = owner,
-                    account = assetAccount,
+                    account = account,
                     amountMinor = openingBalanceMinor,
                     txnDate = txnDate,
                 ),
