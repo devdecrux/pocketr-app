@@ -324,7 +324,7 @@ class ManageLedgerImpl(
             throw ex
         }
 
-        logger.info(
+        logger.debug(
             "Applied current balance snapshot updates for {} account(s) from {} split(s).",
             orderedDeltasByAccountId.size,
             splits.size,
@@ -399,7 +399,7 @@ class ManageLedgerImpl(
 
             if (notSnapshotEligibleAccountId.isNotEmpty()) {
                 balancesByAccountId.putAll(computeRawBalancesFromLedger(notSnapshotEligibleAccountId, asOf))
-                logger.info(
+                logger.debug(
                     "Resolved balances for {} account(s) as of {} using {} snapshot balance(s) and {} computed ledger balance(s). Took {} ms.",
                     accountIds.size,
                     asOf,
@@ -408,7 +408,7 @@ class ManageLedgerImpl(
                     elapsedMillis(startedAt),
                 )
             } else {
-                logger.info(
+                logger.debug(
                     "Resolved balances for {} account(s) as of {} using current balance snapshots. Took {} ms.",
                     accountIds.size,
                     asOf,
@@ -443,7 +443,7 @@ class ManageLedgerImpl(
         }
 
         return try {
-            logger.info(
+            logger.debug(
                 "Resolved balance for account {} as of {} using the current balance snapshot. Took {} ms.",
                 accountId,
                 asOf,
@@ -482,7 +482,7 @@ class ManageLedgerImpl(
                 .associate { it.accountId to it.rawBalance }
 
         if (reason != null) {
-            logger.info(
+            logger.debug(
                 "Resolved balances for {} account(s) as of {} using computed ledger totals because {}. Took {} ms.",
                 accountIds.size,
                 asOf,
@@ -503,7 +503,7 @@ class ManageLedgerImpl(
         val rawBalance = ledgerSplitRepository.computeBalance(accountId, asOf, SplitSide.DEBIT, SplitSide.CREDIT)
 
         if (reason != null) {
-            logger.info(
+            logger.debug(
                 "Resolved balance for account {} as of {} using computed ledger totals because {}. Took {} ms.",
                 accountId,
                 asOf,
