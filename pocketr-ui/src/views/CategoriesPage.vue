@@ -211,8 +211,8 @@ const table = useVueTable({
 </script>
 
 <template>
-  <section class="flex h-full flex-col gap-4">
-    <Card class="flex-1 min-h-0">
+  <section class="flex flex-col gap-4">
+    <Card>
       <CardHeader class="flex flex-row items-center justify-between">
         <CardTitle class="text-2xl">Categories</CardTitle>
 
@@ -275,7 +275,7 @@ const table = useVueTable({
         </Dialog>
       </CardHeader>
 
-      <CardContent class="flex flex-1 flex-col min-h-0 pb-6">
+      <CardContent class="flex flex-col pb-6">
         <div
           v-if="categoryStore.isLoading"
           class="flex flex-1 items-center justify-center text-sm text-muted-foreground"
@@ -294,7 +294,6 @@ const table = useVueTable({
           v-else
           :table="table"
           sticky-header
-          class="flex-1 min-h-0"
           empty-text="No categories yet. Create your first category to get started."
         />
 

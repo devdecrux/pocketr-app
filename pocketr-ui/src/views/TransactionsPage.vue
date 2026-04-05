@@ -498,8 +498,8 @@ async function submitTransaction(): Promise<void> {
 </script>
 
 <template>
-  <section class="flex h-full flex-col gap-4">
-    <Card class="flex-1 min-h-0">
+  <section class="flex flex-col gap-4">
+    <Card>
       <CardHeader class="flex flex-row items-center justify-between">
         <CardTitle class="text-2xl">Transactions</CardTitle>
         <Dialog v-model:open="dialogOpen">
@@ -746,7 +746,7 @@ async function submitTransaction(): Promise<void> {
         </Dialog>
       </CardHeader>
 
-      <CardContent class="flex flex-1 flex-col min-h-0 pb-6">
+      <CardContent class="flex flex-col pb-6">
         <!-- Filters -->
         <div class="mb-4 flex flex-wrap items-end gap-3">
           <div class="grid gap-1">
@@ -811,7 +811,6 @@ async function submitTransaction(): Promise<void> {
           :table="table"
           sticky-header
           clickable
-          class="flex-1 min-h-0"
           empty-text="No transactions found. Create your first transaction to get started."
           :pagination="{
             page: ledgerStore.currentPage,

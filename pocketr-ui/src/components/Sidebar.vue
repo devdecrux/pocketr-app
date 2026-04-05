@@ -10,20 +10,20 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   type SidebarProps,
+  SidebarSeparator,
 } from '@/components/ui/sidebar'
 import {
   ArrowUpDown,
-  BookMarked,
   ChevronsUpDown,
-  Home,
+  LayoutDashboard,
   LogOut,
   Palette,
   RotateCw,
+  Shapes,
   User,
   Users,
   WalletMinimal,
 } from 'lucide-vue-next'
-import { Separator } from '@/components/ui/separator'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -47,10 +47,10 @@ import { useModeStore } from '@/stores/mode'
 import { api } from '@/api/http'
 
 const routes = [
-  { name: 'Dashboard', path: '/dashboard', icon: Home, enabled: true },
+  { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard, enabled: true },
   { name: 'Transactions', path: '/transactions', icon: ArrowUpDown, enabled: true },
   { name: 'Accounts', path: '/accounts', icon: WalletMinimal, enabled: true },
-  { name: 'Categories', path: '/categories', icon: BookMarked, enabled: true },
+  { name: 'Categories', path: '/categories', icon: Shapes, enabled: true },
   { name: 'Subscriptions', path: '/subscriptions', icon: RotateCw, enabled: false },
 ]
 
@@ -88,11 +88,13 @@ async function logout(): Promise<void> {
     <SidebarHeader>
       <SidebarMenu>
         <SidebarMenuItem>
-          <SidebarMenuButton>
-            <RouterLink to="/dashboard">
+          <SidebarMenuButton as-child class="app-sidebar-brand-button h-auto">
+            <RouterLink class="flex w-full items-start" to="/dashboard">
               <div class="grid flex-1 text-left text-sm leading-tight">
                 <span class="truncate font-semibold">Pocketr</span>
-                <span class="truncate text-xs">Your path to financial zen</span>
+                <span class="app-sidebar-subtitle truncate text-xs"
+                  >Your path to financial zen</span
+                >
               </div>
             </RouterLink>
           </SidebarMenuButton>
@@ -100,7 +102,7 @@ async function logout(): Promise<void> {
       </SidebarMenu>
     </SidebarHeader>
 
-    <Separator class="bg-[#8fc79c] dark:bg-border" />
+    <SidebarSeparator class="app-sidebar-divider" />
 
     <SidebarGroup>
       <SidebarGroupContent class="px-2">
@@ -113,17 +115,21 @@ async function logout(): Promise<void> {
         <SidebarGroupContent>
           <SidebarMenu>
             <SidebarMenuItem v-for="route in routes" :key="route.path">
-              <SidebarMenuButton v-if="route.enabled" as-child>
+              <SidebarMenuButton v-if="route.enabled" as-child class="app-sidebar-nav-button">
                 <RouterLink :to="route.path">
-                  <component :is="route.icon" />
+                  <span class="app-sidebar-nav-icon">
+                    <component :is="route.icon" class="size-4" />
+                  </span>
                   <span>{{ route.name }}</span>
                 </RouterLink>
               </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem v-if="householdSettingsPath">
-              <SidebarMenuButton as-child>
+              <SidebarMenuButton as-child class="app-sidebar-nav-button">
                 <RouterLink :to="householdSettingsPath">
-                  <Users />
+                  <span class="app-sidebar-nav-icon">
+                    <Users class="size-4" />
+                  </span>
                   <span>Household</span>
                 </RouterLink>
               </SidebarMenuButton>
@@ -138,10 +144,10 @@ async function logout(): Promise<void> {
         <SidebarMenuItem>
           <DropdownMenu>
             <DropdownMenuTrigger as-child>
-              <SidebarMenuButton size="lg">
-                <Avatar class="h-10 w-10 rounded-lg border border-border">
+              <SidebarMenuButton class="app-sidebar-user-button" size="lg">
+                <Avatar class="app-sidebar-avatar h-10 w-10 rounded-lg border">
                   <AvatarImage v-if="authStore.user?.avatar" :src="authStore.user.avatar" />
-                  <AvatarFallback class="rounded-lg border">
+                  <AvatarFallback class="app-sidebar-avatar rounded-lg border">
                     {{ initialsFromName(authStore.user?.firstName, authStore.user?.lastName) }}
                   </AvatarFallback>
                 </Avatar>
@@ -149,7 +155,7 @@ async function logout(): Promise<void> {
                   <span class="truncate font-semibold">
                     {{ authStore.displayName }}
                   </span>
-                  <span class="truncate text-xs">{{ authStore.user?.email }}</span>
+                  <span class="app-sidebar-meta truncate text-xs">{{ authStore.user?.email }}</span>
                 </div>
                 <ChevronsUpDown class="ml-auto size-4" />
               </SidebarMenuButton>

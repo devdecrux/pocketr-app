@@ -17,11 +17,11 @@ useSessionManager()
 <template>
   <div class="h-dvh overflow-hidden">
     <RouterView v-if="isAuthLayout" />
-    <SidebarProvider v-else class="h-full">
+    <SidebarProvider v-else class="app-shell h-full">
       <Sidebar />
-      <div class="flex min-h-0 flex-1 flex-col">
-        <SidebarTrigger class="lg:hidden" />
-        <main class="min-h-0 flex-1 overflow-y-auto p-2">
+      <div class="app-shell-content flex min-h-0 flex-1 flex-col">
+        <SidebarTrigger class="app-shell-trigger lg:hidden" />
+        <main class="app-shell-main min-h-0 flex-1 overflow-y-auto p-2">
           <RouterView />
         </main>
       </div>

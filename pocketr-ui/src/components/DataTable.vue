@@ -10,7 +10,13 @@ import type {} from '@/types/tanstack-table'
 import type { AcceptableValue } from 'reka-ui'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { ChevronLeft, ChevronRight } from 'lucide-vue-next'
 
 interface Pagination {
@@ -50,8 +56,8 @@ defineSlots<{
 
 const theadClass = computed(() =>
   props.stickyHeader
-    ? 'sticky top-0 z-10 bg-muted border-b'
-    : 'bg-muted/50 border-b',
+    ? 'app-table-header sticky top-0 z-10 border-b dark:bg-muted'
+    : 'app-table-header border-b dark:bg-muted/50',
 )
 
 function handlePageSizeChange(val: AcceptableValue): void {
@@ -61,14 +67,11 @@ function handlePageSizeChange(val: AcceptableValue): void {
 </script>
 
 <template>
-  <div v-bind="$attrs" class="overflow-auto flex flex-col">
-    <div class="rounded-md border overflow-hidden shrink-0">
+  <div v-bind="$attrs" class="flex flex-col">
+    <div class="min-w-0 shrink-0 overflow-x-auto rounded-xl border">
       <table class="w-full text-sm">
         <thead :class="theadClass">
-          <tr
-            v-for="headerGroup in table.getHeaderGroups()"
-            :key="headerGroup.id"
-          >
+          <tr v-for="headerGroup in table.getHeaderGroups()" :key="headerGroup.id">
             <th
               v-for="header in headerGroup.headers"
               :key="header.id"
@@ -98,10 +101,7 @@ function handlePageSizeChange(val: AcceptableValue): void {
               </td>
             </tr>
             <tr v-if="row.getIsExpanded() && slots.expanded">
-              <td
-                :colspan="row.getVisibleCells().length"
-                class="bg-muted/30 px-4 py-3"
-              >
+              <td :colspan="row.getVisibleCells().length" class="bg-muted/30 px-4 py-3">
                 <slot name="expanded" :row="row" />
               </td>
             </tr>

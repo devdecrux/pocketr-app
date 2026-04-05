@@ -273,8 +273,8 @@ function todayString(): string {
 </script>
 
 <template>
-  <section class="flex h-full flex-col gap-4">
-    <Card class="flex-1 min-h-0">
+  <section class="flex flex-col gap-4">
+    <Card>
       <CardHeader class="flex flex-row items-center justify-between">
         <CardTitle class="text-2xl">Accounts</CardTitle>
         <Dialog v-model:open="createDialogOpen">
@@ -501,7 +501,7 @@ function todayString(): string {
           </DialogContent>
         </Dialog>
       </CardHeader>
-      <CardContent class="flex flex-1 flex-col min-h-0 pb-6">
+      <CardContent class="flex flex-col pb-6">
         <div class="mb-4 flex flex-wrap items-center gap-3">
           <Select v-model="typeFilter">
             <SelectTrigger class="w-36">
@@ -548,13 +548,7 @@ function todayString(): string {
           No accounts found.
         </div>
 
-        <DataTable
-          v-else
-          :table="table"
-          sticky-header
-          class="flex-1 min-h-0"
-          empty-text="No accounts found."
-        />
+        <DataTable v-else :table="table" sticky-header empty-text="No accounts found." />
       </CardContent>
     </Card>
 
