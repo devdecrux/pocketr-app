@@ -51,7 +51,7 @@ export interface TxnTabStrategy<F> {
 
 export const expenseStrategy: TxnTabStrategy<ExpenseFields> = {
   validate(f) {
-    if (!f.payFrom || !f.account || f.amount <= 0 || !f.description.trim()) {
+    if (!f.payFrom || !f.account || f.amount <= 0) {
       return VALIDATION_MSG
     }
     return null
@@ -82,7 +82,7 @@ export const expenseStrategy: TxnTabStrategy<ExpenseFields> = {
 
 export const incomeStrategy: TxnTabStrategy<IncomeFields> = {
   validate(f) {
-    if (!f.deposit || !f.account || f.amount <= 0 || !f.description.trim()) {
+    if (!f.deposit || !f.account || f.amount <= 0) {
       return VALIDATION_MSG
     }
     return null
@@ -112,7 +112,7 @@ export const incomeStrategy: TxnTabStrategy<IncomeFields> = {
 
 export const transferStrategy: TxnTabStrategy<TransferFields> = {
   validate(f) {
-    if (!f.from || !f.to || f.amount <= 0 || !f.description.trim()) {
+    if (!f.from || !f.to || f.amount <= 0) {
       return VALIDATION_MSG
     }
     return null
@@ -142,7 +142,7 @@ export const transferStrategy: TxnTabStrategy<TransferFields> = {
 
 export const debtPaymentStrategy: TxnTabStrategy<DebtPaymentFields> = {
   validate(f) {
-    if (!f.payFrom || !f.liabilityAccount || f.amount <= 0 || !f.description.trim()) {
+    if (!f.payFrom || !f.liabilityAccount || f.amount <= 0) {
       return VALIDATION_MSG
     }
     return null

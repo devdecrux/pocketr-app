@@ -10,7 +10,6 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Separator } from '@/components/ui/separator'
 import type { HouseholdRole } from '@/types/household'
 import type { AccountType } from '@/types/ledger'
 
@@ -133,8 +132,9 @@ async function handleInvite(): Promise<void> {
 </script>
 
 <template>
-  <section class="grid w-full gap-4 lg:max-w-2xl">
-    <Card v-if="householdStore.currentHousehold" class="w-full">
+  <section class="flex w-full flex-col gap-4">
+    <!-- Household header -->
+    <Card v-if="householdStore.currentHousehold">
       <CardHeader>
         <CardTitle class="text-2xl">{{ householdStore.currentHousehold.name }}</CardTitle>
         <CardDescription>
@@ -143,154 +143,172 @@ async function handleInvite(): Promise<void> {
       </CardHeader>
     </Card>
 
-    <!-- Members list -->
-    <!-- Note: Using a simple v-for list for v1. Consider tanstack/vue-table if the member list grows. -->
-    <Card class="w-full">
-      <CardHeader>
-        <CardTitle>Members</CardTitle>
-        <CardDescription>Manage household members and their roles.</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <div v-if="householdStore.isLoading" class="text-sm text-muted-foreground">
-          Loading members...
-        </div>
-        <div v-else-if="householdStore.currentHousehold?.members.length" class="space-y-3">
-          <div
-            v-for="member in householdStore.currentHousehold.members"
-            :key="member.userId"
-            class="flex items-center justify-between rounded-md border border-border px-3 py-2"
-          >
-            <div class="flex flex-col gap-0.5">
-              <span class="text-sm font-medium">
-                {{ displayPerson(member.firstName, member.lastName, member.email) }}
-              </span>
-              <span class="text-xs text-muted-foreground">{{ member.email }}</span>
-              <span v-if="member.joinedAt" class="text-xs text-muted-foreground">
-                Joined {{ new Date(member.joinedAt).toLocaleDateString() }}
-              </span>
+    <!-- Three-column grid -->
+    <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
+      <!-- Column 1: Members + Invite -->
+      <div class="flex flex-col gap-4">
+        <!-- Members list -->
+        <!-- Note: Using a simple v-for list for v1. Consider tanstack/vue-table if the member list grows. -->
+        <Card :class="!householdStore.isOwnerOrAdmin ? 'flex-1' : ''">
+          <CardHeader>
+            <CardTitle>Members</CardTitle>
+            <CardDescription>Manage household members and their roles.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div v-if="householdStore.isLoading" class="text-sm text-muted-foreground">
+              Loading members...
             </div>
-            <div class="flex items-center gap-2">
-              <Badge :variant="roleBadgeVariant(member.role)">
-                {{ member.role }}
-              </Badge>
-              <Badge :variant="statusBadgeVariant(member.status)">
-                {{ member.status }}
-              </Badge>
-            </div>
-          </div>
-        </div>
-        <p v-else class="text-sm text-muted-foreground">No members found.</p>
-      </CardContent>
-    </Card>
-
-    <Card v-if="householdStore.isOwnerOrAdmin" class="w-full">
-      <CardHeader>
-        <CardTitle>Invite Member</CardTitle>
-        <CardDescription> Send an invitation to join this household by email. </CardDescription>
-      </CardHeader>
-      <CardContent class="space-y-4">
-        <div class="grid gap-2">
-          <Label for="invite-email">Email</Label>
-          <Input
-            id="invite-email"
-            v-model="inviteEmail"
-            type="email"
-            placeholder="name@example.com"
-          />
-        </div>
-        <Button size="sm" :disabled="isInviting" @click="handleInvite">
-          {{ isInviting ? 'Sending...' : 'Send Invitation' }}
-        </Button>
-        <p v-if="inviteSuccess" class="text-sm text-emerald-600">{{ inviteSuccess }}</p>
-        <p v-if="inviteError" class="text-sm text-red-600">{{ inviteError }}</p>
-      </CardContent>
-    </Card>
-
-    <Separator />
-
-    <!-- Shared accounts (read-only list of all shared accounts) -->
-    <Card class="w-full">
-      <CardHeader>
-        <CardTitle>Shared Accounts</CardTitle>
-        <CardDescription>Accounts currently shared in this household.</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <div v-if="householdStore.sharedAccounts.length" class="space-y-3">
-          <div
-            v-for="share in householdStore.sharedAccounts"
-            :key="share.accountId"
-            class="flex items-center justify-between rounded-md border border-border px-3 py-2"
-          >
-            <div class="flex flex-col gap-0.5">
-              <span class="text-sm font-medium">{{ share.accountName }}</span>
-              <span class="text-xs text-muted-foreground">
-                Shared by
-                {{ displayPerson(share.ownerFirstName, share.ownerLastName, share.ownerEmail) }}
-              </span>
-            </div>
-            <span class="text-xs text-muted-foreground">
-              {{ new Date(share.sharedAt).toLocaleDateString() }}
-            </span>
-          </div>
-        </div>
-        <p v-else class="text-sm text-muted-foreground">No accounts are shared yet.</p>
-      </CardContent>
-    </Card>
-
-    <!-- Share/unshare your own accounts -->
-    <Card class="w-full">
-      <CardHeader>
-        <CardTitle>Your Accounts</CardTitle>
-        <CardDescription> Toggle sharing for your own accounts in this household. </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <div v-if="myAccounts.length === 0" class="text-sm text-muted-foreground">
-          You have no accounts to share. Create accounts first.
-        </div>
-        <div v-else class="space-y-4">
-          <div v-for="[type, accounts] in myAccountsByType" :key="type">
-            <p class="mb-2 text-xs font-medium text-muted-foreground uppercase">{{ type }}</p>
-            <div class="space-y-2">
+            <div v-else-if="householdStore.currentHousehold?.members.length" class="space-y-3">
               <div
-                v-for="account in accounts"
-                :key="account.id"
+                v-for="member in householdStore.currentHousehold.members"
+                :key="member.userId"
                 class="flex items-center justify-between rounded-md border border-border px-3 py-2"
               >
                 <div class="flex flex-col gap-0.5">
-                  <div class="flex items-center gap-2">
-                    <span class="text-sm font-medium">{{ account.name }}</span>
-                    <span class="text-xs text-muted-foreground">({{ account.currency }})</span>
-                    <Badge v-if="isAccountShared(account.id)" variant="default" class="text-[10px]">
-                      Shared
-                    </Badge>
-                  </div>
-                  <span v-if="sharedAtForAccount(account.id)" class="text-xs text-muted-foreground">
-                    Shared {{ sharedAtForAccount(account.id) }}
+                  <span class="text-sm font-medium">
+                    {{ displayPerson(member.firstName, member.lastName, member.email) }}
+                  </span>
+                  <span class="text-xs text-muted-foreground">{{ member.email }}</span>
+                  <span v-if="member.joinedAt" class="text-xs text-muted-foreground">
+                    Joined {{ new Date(member.joinedAt).toLocaleDateString() }}
                   </span>
                 </div>
-                <Button
-                  size="sm"
-                  :variant="isAccountShared(account.id) ? 'destructive' : 'secondary'"
-                  class="h-8 px-3 text-xs"
-                  :disabled="sharingAccountId === account.id"
-                  @click="toggleShareAccount(account.id)"
-                >
-                  {{
-                    sharingAccountId === account.id
-                      ? '...'
-                      : isAccountShared(account.id)
-                        ? 'Unshare'
-                        : 'Share'
-                  }}
-                </Button>
+                <div class="flex items-center gap-2">
+                  <Badge :variant="roleBadgeVariant(member.role)">
+                    {{ member.role }}
+                  </Badge>
+                  <Badge :variant="statusBadgeVariant(member.status)">
+                    {{ member.status }}
+                  </Badge>
+                </div>
               </div>
             </div>
-          </div>
-        </div>
-        <p v-if="householdStore.error" class="mt-2 text-sm text-red-600">
-          {{ householdStore.error }}
-        </p>
-      </CardContent>
-    </Card>
+            <p v-else class="text-sm text-muted-foreground">No members found.</p>
+          </CardContent>
+        </Card>
+
+        <!-- Invite Member -->
+        <Card v-if="householdStore.isOwnerOrAdmin" class="flex-1">
+          <CardHeader>
+            <CardTitle>Invite Member</CardTitle>
+            <CardDescription>Send an invitation to join this household by email.</CardDescription>
+          </CardHeader>
+          <CardContent class="space-y-4">
+            <div class="grid gap-2">
+              <Label for="invite-email">Email</Label>
+              <Input
+                id="invite-email"
+                v-model="inviteEmail"
+                type="email"
+                placeholder="name@example.com"
+              />
+            </div>
+            <Button size="sm" :disabled="isInviting || !inviteEmail.trim()" @click="handleInvite">
+              {{ isInviting ? 'Sending...' : 'Send Invitation' }}
+            </Button>
+            <p v-if="inviteSuccess" class="text-sm text-emerald-600">{{ inviteSuccess }}</p>
+            <p v-if="inviteError" class="text-sm text-red-600">{{ inviteError }}</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      <!-- Column 2: Shared Accounts -->
+      <div class="flex flex-col gap-4">
+        <Card class="flex-1">
+          <CardHeader>
+            <CardTitle>Shared Accounts</CardTitle>
+            <CardDescription>Accounts currently shared in this household.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div v-if="householdStore.sharedAccounts.length" class="space-y-3">
+              <div
+                v-for="share in householdStore.sharedAccounts"
+                :key="share.accountId"
+                class="flex items-center justify-between rounded-md border border-border px-3 py-2"
+              >
+                <div class="flex flex-col gap-0.5">
+                  <span class="text-sm font-medium">{{ share.accountName }}</span>
+                  <span class="text-xs text-muted-foreground">
+                    Shared by
+                    {{ displayPerson(share.ownerFirstName, share.ownerLastName, share.ownerEmail) }}
+                  </span>
+                </div>
+                <span class="text-xs text-muted-foreground">
+                  {{ new Date(share.sharedAt).toLocaleDateString() }}
+                </span>
+              </div>
+            </div>
+            <p v-else class="text-sm text-muted-foreground">No accounts are shared yet.</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      <!-- Column 3: Your Accounts -->
+      <div class="flex flex-col gap-4">
+        <Card class="flex-1">
+          <CardHeader>
+            <CardTitle>Your Accounts</CardTitle>
+            <CardDescription
+              >Toggle sharing for your own accounts in this household.</CardDescription
+            >
+          </CardHeader>
+          <CardContent>
+            <div v-if="myAccounts.length === 0" class="text-sm text-muted-foreground">
+              You have no accounts to share. Create accounts first.
+            </div>
+            <div v-else class="space-y-4">
+              <div v-for="[type, accounts] in myAccountsByType" :key="type">
+                <p class="mb-2 text-xs font-medium uppercase text-muted-foreground">{{ type }}</p>
+                <div class="space-y-2">
+                  <div
+                    v-for="account in accounts"
+                    :key="account.id"
+                    class="flex items-center justify-between rounded-md border border-border px-3 py-2"
+                  >
+                    <div class="flex flex-col gap-0.5">
+                      <div class="flex items-center gap-2">
+                        <span class="text-sm font-medium">{{ account.name }}</span>
+                        <span class="text-xs text-muted-foreground">({{ account.currency }})</span>
+                        <Badge
+                          v-if="isAccountShared(account.id)"
+                          variant="default"
+                          class="text-[10px]"
+                        >
+                          Shared
+                        </Badge>
+                      </div>
+                      <span
+                        v-if="sharedAtForAccount(account.id)"
+                        class="text-xs text-muted-foreground"
+                      >
+                        Shared {{ sharedAtForAccount(account.id) }}
+                      </span>
+                    </div>
+                    <Button
+                      size="sm"
+                      :variant="isAccountShared(account.id) ? 'destructive' : 'secondary'"
+                      class="h-8 px-3 text-xs"
+                      :disabled="sharingAccountId === account.id"
+                      @click="toggleShareAccount(account.id)"
+                    >
+                      {{
+                        sharingAccountId === account.id
+                          ? '...'
+                          : isAccountShared(account.id)
+                            ? 'Unshare'
+                            : 'Share'
+                      }}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <p v-if="householdStore.error" class="mt-2 text-sm text-red-600">
+              {{ householdStore.error }}
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
   </section>
 </template>

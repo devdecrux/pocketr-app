@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, h, onMounted, ref, watch } from 'vue'
 import { type ColumnDef, getCoreRowModel, useVueTable } from '@tanstack/vue-table'
-import { Pencil, Plus } from 'lucide-vue-next'
+import { CreditCard, Pencil, Plus, ShoppingCart, TrendingUp, Wallet } from 'lucide-vue-next'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -23,6 +23,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useAccountStore } from '@/stores/account'
 import { useCurrencyStore } from '@/stores/currency'
 import { useModeStore } from '@/stores/mode'
@@ -78,14 +79,6 @@ const openingBalanceMinorUnit = computed(() =>
 )
 const supportsOpeningAmount = computed(
   () => newAccount.value.type === 'ASSET' || newAccount.value.type === 'LIABILITY',
-)
-const openingBalanceLabel = computed(() =>
-  newAccount.value.type === 'LIABILITY' ? 'Opening debt' : 'Initial balance',
-)
-const openingBalanceHint = computed(() =>
-  newAccount.value.type === 'LIABILITY'
-    ? 'Posted as opening debt against Opening Equity. Liability opening amounts must be positive.'
-    : 'Posted as an opening balance journal entry against Opening Equity. Opening balance date is used only when initial balance is non-zero.',
 )
 
 const sharedAccountIds = computed(() => {
@@ -291,61 +284,56 @@ function todayString(): string {
               New Account
             </Button>
           </DialogTrigger>
-          <DialogContent class="sm:max-w-2xl">
+          <DialogContent class="max-w-lg">
             <DialogHeader>
               <DialogTitle>Create Account</DialogTitle>
-              <DialogDescription> Add a new account to your ledger. </DialogDescription>
+              <DialogDescription>Add a new account to your ledger.</DialogDescription>
             </DialogHeader>
-            <div class="grid gap-4 py-4">
-              <div class="grid grid-cols-1 gap-4 sm:grid-cols-3 sm:items-end">
-                <div class="grid gap-2 sm:col-span-2">
-                  <Label for="account-name">Name</Label>
+
+            <Tabs v-model="newAccount.type" class="w-full">
+              <TabsList
+                class="grid h-auto w-full grid-cols-4 gap-1.5 rounded-xl bg-primary/20 p-1.5 dark:bg-primary/10"
+              >
+                <TabsTrigger
+                  value="ASSET"
+                  class="h-auto flex flex-col items-center justify-center gap-1 rounded-lg px-2 py-2.5 text-[11px] font-medium text-foreground/70 transition-colors hover:bg-primary/40 hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm dark:hover:bg-primary/20 dark:data-[state=active]:bg-primary dark:data-[state=active]:text-primary-foreground"
+                >
+                  <Wallet class="size-4 shrink-0" />
+                  <span class="text-center leading-tight">Asset</span>
+                </TabsTrigger>
+                <TabsTrigger
+                  value="EXPENSE"
+                  class="h-auto flex flex-col items-center justify-center gap-1 rounded-lg px-2 py-2.5 text-[11px] font-medium text-foreground/70 transition-colors hover:bg-primary/40 hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm dark:hover:bg-primary/20 dark:data-[state=active]:bg-primary dark:data-[state=active]:text-primary-foreground"
+                >
+                  <ShoppingCart class="size-4 shrink-0" />
+                  <span class="text-center leading-tight">Expense</span>
+                </TabsTrigger>
+                <TabsTrigger
+                  value="INCOME"
+                  class="h-auto flex flex-col items-center justify-center gap-1 rounded-lg px-2 py-2.5 text-[11px] font-medium text-foreground/70 transition-colors hover:bg-primary/40 hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm dark:hover:bg-primary/20 dark:data-[state=active]:bg-primary dark:data-[state=active]:text-primary-foreground"
+                >
+                  <TrendingUp class="size-4 shrink-0" />
+                  <span class="text-center leading-tight">Income</span>
+                </TabsTrigger>
+                <TabsTrigger
+                  value="LIABILITY"
+                  class="h-auto flex flex-col items-center justify-center gap-1 rounded-lg px-2 py-2.5 text-[11px] font-medium text-foreground/70 transition-colors hover:bg-primary/40 hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm dark:hover:bg-primary/20 dark:data-[state=active]:bg-primary dark:data-[state=active]:text-primary-foreground"
+                >
+                  <CreditCard class="size-4 shrink-0" />
+                  <span class="text-center leading-tight">Liability</span>
+                </TabsTrigger>
+              </TabsList>
+
+              <!-- Asset tab -->
+              <TabsContent value="ASSET" class="space-y-4 pt-4">
+                <div class="grid gap-2">
+                  <Label for="asset-name">Name</Label>
                   <Input
-                    id="account-name"
+                    id="asset-name"
                     v-model="newAccount.name"
                     placeholder="e.g. Checking, Savings"
                   />
                 </div>
-                <div class="grid gap-2">
-                  <Label>Type</Label>
-                  <Select v-model="newAccount.type">
-                    <SelectTrigger class="w-full">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem v-for="t in accountTypes" :key="t" :value="t">
-                        {{ t }}
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              <div class="grid grid-cols-1 gap-4 sm:grid-cols-3 sm:items-end">
-                <div v-if="supportsOpeningAmount" class="grid gap-2">
-                  <Label for="opening-balance-date">Opening date</Label>
-                  <Input
-                    id="opening-balance-date"
-                    v-model="openingBalanceDate"
-                    type="date"
-                    :disabled="openingBalanceMinor === 0"
-                  />
-                </div>
-                <div v-else class="hidden sm:block" aria-hidden="true" />
-
-                <div v-if="supportsOpeningAmount" class="grid gap-2">
-                  <Label for="opening-balance">{{ openingBalanceLabel }}</Label>
-                  <CurrencyAmountInput
-                    id="opening-balance"
-                    v-model="openingBalanceMinor"
-                    :minor-unit="openingBalanceMinorUnit"
-                    :currency-code="newAccount.currency"
-                    :allow-negative="newAccount.type === 'ASSET'"
-                    placeholder="0.00"
-                  />
-                </div>
-                <div v-else class="hidden sm:block" aria-hidden="true" />
-
                 <div class="grid gap-2">
                   <Label>Currency</Label>
                   <Select v-model="newAccount.currency">
@@ -358,18 +346,153 @@ function todayString(): string {
                         :key="c.code"
                         :value="c.code"
                       >
-                        {{ c.code }} - {{ c.name }}
+                        {{ c.code }} – {{ c.name }}
                       </SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
-              </div>
+                <div class="grid grid-cols-2 gap-4">
+                  <div class="grid gap-2">
+                    <Label for="asset-opening-date">Opening date</Label>
+                    <Input
+                      id="asset-opening-date"
+                      v-model="openingBalanceDate"
+                      type="date"
+                      :disabled="openingBalanceMinor === 0"
+                    />
+                  </div>
+                  <div class="grid gap-2">
+                    <Label>Initial balance</Label>
+                    <CurrencyAmountInput
+                      v-model="openingBalanceMinor"
+                      :minor-unit="openingBalanceMinorUnit"
+                      :currency-code="newAccount.currency"
+                      :allow-negative="true"
+                      placeholder="0.00"
+                    />
+                  </div>
+                </div>
+                <p class="text-xs text-muted-foreground">
+                  Posted as an opening balance journal entry against Opening Equity. Opening balance
+                  date is used only when initial balance is non-zero.
+                </p>
+              </TabsContent>
 
-              <p v-if="supportsOpeningAmount" class="text-xs text-muted-foreground">
-                {{ openingBalanceHint }}
-              </p>
-              <p v-if="createError" class="text-sm text-red-600">{{ createError }}</p>
-            </div>
+              <!-- Expense tab -->
+              <TabsContent value="EXPENSE" class="space-y-4 pt-4">
+                <div class="grid gap-2">
+                  <Label for="expense-name">Name</Label>
+                  <Input
+                    id="expense-name"
+                    v-model="newAccount.name"
+                    placeholder="e.g. Groceries, Utilities"
+                  />
+                </div>
+                <div class="grid gap-2">
+                  <Label>Currency</Label>
+                  <Select v-model="newAccount.currency">
+                    <SelectTrigger class="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem
+                        v-for="c in currencyStore.currencies"
+                        :key="c.code"
+                        :value="c.code"
+                      >
+                        {{ c.code }} – {{ c.name }}
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </TabsContent>
+
+              <!-- Income tab -->
+              <TabsContent value="INCOME" class="space-y-4 pt-4">
+                <div class="grid gap-2">
+                  <Label for="income-name">Name</Label>
+                  <Input
+                    id="income-name"
+                    v-model="newAccount.name"
+                    placeholder="e.g. Salary, Freelance"
+                  />
+                </div>
+                <div class="grid gap-2">
+                  <Label>Currency</Label>
+                  <Select v-model="newAccount.currency">
+                    <SelectTrigger class="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem
+                        v-for="c in currencyStore.currencies"
+                        :key="c.code"
+                        :value="c.code"
+                      >
+                        {{ c.code }} – {{ c.name }}
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </TabsContent>
+
+              <!-- Liability tab -->
+              <TabsContent value="LIABILITY" class="space-y-4 pt-4">
+                <div class="grid gap-2">
+                  <Label for="liability-name">Name</Label>
+                  <Input
+                    id="liability-name"
+                    v-model="newAccount.name"
+                    placeholder="e.g. Mortgage, Car Loan"
+                  />
+                </div>
+                <div class="grid gap-2">
+                  <Label>Currency</Label>
+                  <Select v-model="newAccount.currency">
+                    <SelectTrigger class="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem
+                        v-for="c in currencyStore.currencies"
+                        :key="c.code"
+                        :value="c.code"
+                      >
+                        {{ c.code }} – {{ c.name }}
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                  <div class="grid gap-2">
+                    <Label for="liability-opening-date">Opening date</Label>
+                    <Input
+                      id="liability-opening-date"
+                      v-model="openingBalanceDate"
+                      type="date"
+                      :disabled="openingBalanceMinor === 0"
+                    />
+                  </div>
+                  <div class="grid gap-2">
+                    <Label>Initial balance</Label>
+                    <CurrencyAmountInput
+                      v-model="openingBalanceMinor"
+                      :minor-unit="openingBalanceMinorUnit"
+                      :currency-code="newAccount.currency"
+                      :allow-negative="false"
+                      placeholder="0.00"
+                    />
+                  </div>
+                </div>
+                <p class="text-xs text-muted-foreground">
+                  Posted as opening debt against Opening Equity. Liability opening amounts must be
+                  positive.
+                </p>
+              </TabsContent>
+            </Tabs>
+
+            <p v-if="createError" class="text-sm text-red-600">{{ createError }}</p>
+
             <DialogFooter>
               <Button :disabled="isCreating || !newAccount.name.trim()" @click="submitCreate">
                 {{ isCreating ? 'Creating...' : 'Create' }}

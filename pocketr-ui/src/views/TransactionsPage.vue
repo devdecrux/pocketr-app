@@ -1,7 +1,12 @@
 <script setup lang="ts">
 import { HTTPError } from 'ky'
 import { computed, h, onMounted, ref, watch } from 'vue'
-import { createColumnHelper, getCoreRowModel, getExpandedRowModel, useVueTable } from '@tanstack/vue-table'
+import {
+  createColumnHelper,
+  getCoreRowModel,
+  getExpandedRowModel,
+  useVueTable,
+} from '@tanstack/vue-table'
 import { createTxn } from '@/api/ledger'
 import { useAccountStore } from '@/stores/account'
 import { useCategoryStore } from '@/stores/category'
@@ -10,7 +15,12 @@ import { useHouseholdStore } from '@/stores/household'
 import { useLedgerStore } from '@/stores/ledger'
 import { useModeStore } from '@/stores/mode'
 import type { LedgerSplit, LedgerTxn } from '@/types/ledger'
-import { debtPaymentStrategy, expenseStrategy, incomeStrategy, transferStrategy } from '@/utils/txnStrategies'
+import {
+  debtPaymentStrategy,
+  expenseStrategy,
+  incomeStrategy,
+  transferStrategy,
+} from '@/utils/txnStrategies'
 import { getTxnPresentation } from '@/utils/txnPresentation'
 import { formatMinor } from '@/utils/money'
 import AccountSelector from '@/components/AccountSelector.vue'
@@ -20,11 +30,26 @@ import CurrencyAmountInput from '@/components/CurrencyAmountInput.vue'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { ArrowLeftRight, ChevronDown, ChevronRight, Plus } from 'lucide-vue-next'
+import {
+  ArrowLeftRight,
+  ChevronDown,
+  ChevronRight,
+  Minus,
+  Plus,
+  TrendingDown,
+} from 'lucide-vue-next'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { initialsFromName } from '@/utils/initials'
 import DataTable from '@/components/DataTable.vue'
@@ -187,6 +212,8 @@ function getStrategyResult(): {
 
   return { error: 'Unknown tab.' }
 }
+
+const isFormValid = computed(() => getStrategyResult().error === null)
 
 // Unique categories across all splits of a transaction
 function txnCategories(txn: LedgerTxn): { name: string; color?: string | null }[] {
@@ -491,20 +518,54 @@ async function submitTransaction(): Promise<void> {
             </DialogHeader>
 
             <Tabs v-model="activeTab" class="w-full">
-              <TabsList class="grid h-auto w-full grid-cols-2 gap-1 sm:grid-cols-4">
-                <TabsTrigger value="expense" class="text-xs sm:text-sm">Expense</TabsTrigger>
-                <TabsTrigger value="income" class="text-xs sm:text-sm">Income</TabsTrigger>
-                <TabsTrigger value="transfer" class="text-xs sm:text-sm">Transfer</TabsTrigger>
-                <TabsTrigger value="debt-payment" class="text-xs sm:text-sm">
-                  Debt Payment
+              <TabsList
+                class="grid h-auto w-full grid-cols-4 gap-1.5 rounded-xl bg-primary/20 p-1.5 dark:bg-primary/10"
+              >
+                <TabsTrigger
+                  value="expense"
+                  class="h-auto flex flex-col items-center justify-center gap-1 rounded-lg px-2 py-2.5 text-[11px] font-medium text-foreground/70 transition-colors hover:bg-primary/40 hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm dark:hover:bg-primary/20 dark:data-[state=active]:bg-primary dark:data-[state=active]:text-primary-foreground"
+                >
+                  <Minus class="size-4 shrink-0" />
+                  <span class="text-center leading-tight">Expense</span>
+                </TabsTrigger>
+                <TabsTrigger
+                  value="income"
+                  class="h-auto flex flex-col items-center justify-center gap-1 rounded-lg px-2 py-2.5 text-[11px] font-medium text-foreground/70 transition-colors hover:bg-primary/40 hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm dark:hover:bg-primary/20 dark:data-[state=active]:bg-primary dark:data-[state=active]:text-primary-foreground"
+                >
+                  <Plus class="size-4 shrink-0" />
+                  <span class="text-center leading-tight">Income</span>
+                </TabsTrigger>
+                <TabsTrigger
+                  value="transfer"
+                  class="h-auto flex flex-col items-center justify-center gap-1 rounded-lg px-2 py-2.5 text-[11px] font-medium text-foreground/70 transition-colors hover:bg-primary/40 hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm dark:hover:bg-primary/20 dark:data-[state=active]:bg-primary dark:data-[state=active]:text-primary-foreground"
+                >
+                  <ArrowLeftRight class="size-4 shrink-0" />
+                  <span class="text-center leading-tight">Transfer</span>
+                </TabsTrigger>
+                <TabsTrigger
+                  value="debt-payment"
+                  class="h-auto flex flex-col items-center justify-center gap-1 rounded-lg px-2 py-2.5 text-[11px] font-medium text-foreground/70 transition-colors hover:bg-primary/40 hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm dark:hover:bg-primary/20 dark:data-[state=active]:bg-primary dark:data-[state=active]:text-primary-foreground"
+                >
+                  <TrendingDown class="size-4 shrink-0" />
+                  <span class="text-center leading-tight">Debt Payment</span>
                 </TabsTrigger>
               </TabsList>
 
               <!-- Expense Tab -->
               <TabsContent value="expense" class="space-y-4 pt-4">
-                <div class="grid gap-2">
-                  <Label for="expense-date">Date</Label>
-                  <Input id="expense-date" v-model="expenseDate" type="date" />
+                <div class="grid grid-cols-2 gap-4">
+                  <div class="grid gap-2">
+                    <Label for="expense-date">Date</Label>
+                    <Input id="expense-date" v-model="expenseDate" type="date" />
+                  </div>
+                  <div class="grid gap-2">
+                    <Label>Amount</Label>
+                    <CurrencyAmountInput
+                      v-model="expenseAmount"
+                      :minor-unit="expenseMinorUnit"
+                      :currency-code="expenseCurrency"
+                    />
+                  </div>
                 </div>
                 <div class="grid gap-2">
                   <Label>Pay from (Asset/Liability)</Label>
@@ -523,14 +584,6 @@ async function submitTransaction(): Promise<void> {
                   />
                 </div>
                 <div class="grid gap-2">
-                  <Label>Amount</Label>
-                  <CurrencyAmountInput
-                    v-model="expenseAmount"
-                    :minor-unit="expenseMinorUnit"
-                    :currency-code="expenseCurrency"
-                  />
-                </div>
-                <div class="grid gap-2">
                   <Label>Category</Label>
                   <CategoryTagSelector v-model="expenseCategory" />
                 </div>
@@ -546,9 +599,19 @@ async function submitTransaction(): Promise<void> {
 
               <!-- Income Tab -->
               <TabsContent value="income" class="space-y-4 pt-4">
-                <div class="grid gap-2">
-                  <Label for="income-date">Date</Label>
-                  <Input id="income-date" v-model="incomeDate" type="date" />
+                <div class="grid grid-cols-2 gap-4">
+                  <div class="grid gap-2">
+                    <Label for="income-date">Date</Label>
+                    <Input id="income-date" v-model="incomeDate" type="date" />
+                  </div>
+                  <div class="grid gap-2">
+                    <Label>Amount</Label>
+                    <CurrencyAmountInput
+                      v-model="incomeAmount"
+                      :minor-unit="incomeMinorUnit"
+                      :currency-code="incomeCurrency"
+                    />
+                  </div>
                 </div>
                 <div class="grid gap-2">
                   <Label>Deposit to (Asset)</Label>
@@ -567,14 +630,6 @@ async function submitTransaction(): Promise<void> {
                   />
                 </div>
                 <div class="grid gap-2">
-                  <Label>Amount</Label>
-                  <CurrencyAmountInput
-                    v-model="incomeAmount"
-                    :minor-unit="incomeMinorUnit"
-                    :currency-code="incomeCurrency"
-                  />
-                </div>
-                <div class="grid gap-2">
                   <Label for="income-desc">Description</Label>
                   <Input id="income-desc" v-model="incomeDescription" placeholder="Income source" />
                 </div>
@@ -589,9 +644,19 @@ async function submitTransaction(): Promise<void> {
                   Transfers between household accounts are allowed. You cannot post expenses to
                   other users' accounts.
                 </div>
-                <div class="grid gap-2">
-                  <Label for="transfer-date">Date</Label>
-                  <Input id="transfer-date" v-model="transferDate" type="date" />
+                <div class="grid grid-cols-2 gap-4">
+                  <div class="grid gap-2">
+                    <Label for="transfer-date">Date</Label>
+                    <Input id="transfer-date" v-model="transferDate" type="date" />
+                  </div>
+                  <div class="grid gap-2">
+                    <Label>Amount</Label>
+                    <CurrencyAmountInput
+                      v-model="transferAmount"
+                      :minor-unit="transferMinorUnit"
+                      :currency-code="transferCurrency"
+                    />
+                  </div>
                 </div>
                 <div class="grid gap-2">
                   <Label>From account (Asset)</Label>
@@ -608,14 +673,6 @@ async function submitTransaction(): Promise<void> {
                     :allowed-types="['ASSET']"
                     :currency="transferCurrency || undefined"
                     placeholder="Select destination account"
-                  />
-                </div>
-                <div class="grid gap-2">
-                  <Label>Amount</Label>
-                  <CurrencyAmountInput
-                    v-model="transferAmount"
-                    :minor-unit="transferMinorUnit"
-                    :currency-code="transferCurrency"
                   />
                 </div>
                 <div class="grid gap-2">
@@ -636,9 +693,19 @@ async function submitTransaction(): Promise<void> {
 
               <!-- Debt Payment Tab -->
               <TabsContent value="debt-payment" class="space-y-4 pt-4">
-                <div class="grid gap-2">
-                  <Label for="debt-payment-date">Date</Label>
-                  <Input id="debt-payment-date" v-model="debtPaymentDate" type="date" />
+                <div class="grid grid-cols-2 gap-4">
+                  <div class="grid gap-2">
+                    <Label for="debt-payment-date">Date</Label>
+                    <Input id="debt-payment-date" v-model="debtPaymentDate" type="date" />
+                  </div>
+                  <div class="grid gap-2">
+                    <Label>Amount</Label>
+                    <CurrencyAmountInput
+                      v-model="debtPaymentAmount"
+                      :minor-unit="debtPaymentMinorUnit"
+                      :currency-code="debtPaymentCurrency"
+                    />
+                  </div>
                 </div>
                 <div class="grid gap-2">
                   <Label>Pay from (Asset)</Label>
@@ -658,14 +725,6 @@ async function submitTransaction(): Promise<void> {
                   />
                 </div>
                 <div class="grid gap-2">
-                  <Label>Amount</Label>
-                  <CurrencyAmountInput
-                    v-model="debtPaymentAmount"
-                    :minor-unit="debtPaymentMinorUnit"
-                    :currency-code="debtPaymentCurrency"
-                  />
-                </div>
-                <div class="grid gap-2">
                   <Label for="debt-payment-desc">Description</Label>
                   <Input
                     id="debt-payment-desc"
@@ -679,7 +738,7 @@ async function submitTransaction(): Promise<void> {
             <p v-if="submitError" class="text-sm text-red-600">{{ submitError }}</p>
 
             <DialogFooter>
-              <Button :disabled="isSubmitting" @click="submitTransaction">
+              <Button :disabled="isSubmitting || !isFormValid" @click="submitTransaction">
                 {{ isSubmitting ? 'Creating...' : 'Create Transaction' }}
               </Button>
             </DialogFooter>

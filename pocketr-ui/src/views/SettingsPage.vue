@@ -14,7 +14,6 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Separator } from '@/components/ui/separator'
 
 const authStore = useAuthStore()
 const householdStore = useHouseholdStore()
@@ -173,8 +172,8 @@ async function handleLeaveHousehold(householdId: string): Promise<void> {
 </script>
 
 <template>
-  <section class="grid w-full gap-4 lg:max-w-2xl">
-    <Card class="w-full">
+  <section class="grid w-full grid-cols-1 gap-4 md:grid-cols-4">
+    <Card>
       <CardHeader>
         <CardTitle class="text-2xl">Profile Settings</CardTitle>
         <CardDescription>Upload your avatar and personalize your profile.</CardDescription>
@@ -216,7 +215,7 @@ async function handleLeaveHousehold(householdId: string): Promise<void> {
               <Button
                 size="sm"
                 class="h-8 px-3 text-xs"
-                :disabled="isUploading"
+                :disabled="isUploading || !selectedFile"
                 @click="uploadAvatar"
               >
                 {{ isUploading ? 'Uploading...' : 'Upload' }}
@@ -234,9 +233,7 @@ async function handleLeaveHousehold(householdId: string): Promise<void> {
       </CardContent>
     </Card>
 
-    <Separator />
-
-    <Card class="w-full">
+    <Card>
       <CardHeader>
         <CardTitle class="text-2xl">Household Budgeting</CardTitle>
         <CardDescription>
@@ -319,7 +316,7 @@ async function handleLeaveHousehold(householdId: string): Promise<void> {
                 id="household-name"
                 v-model="householdName"
                 type="text"
-                placeholder="My Household"
+                placeholder="My Household name (min. 3 characters)"
                 :class="{ 'border-red-500': householdNameError }"
               />
               <p v-if="householdNameError" class="text-xs text-red-600">
@@ -329,7 +326,7 @@ async function handleLeaveHousehold(householdId: string): Promise<void> {
             <Button
               size="sm"
               class="w-fit"
-              :disabled="isCreatingHousehold"
+              :disabled="isCreatingHousehold || householdName.trim().length < 3"
               @click="createHousehold"
             >
               {{ isCreatingHousehold ? 'Creating...' : 'Create Household' }}

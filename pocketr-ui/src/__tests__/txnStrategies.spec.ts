@@ -38,10 +38,12 @@ describe('expenseStrategy.validate', () => {
     ['account', { account: '' }],
     ['amount zero', { amount: 0 }],
     ['amount negative', { amount: -1 }],
-    ['description empty', { description: '' }],
-    ['description whitespace', { description: '   ' }],
   ])('rejects when %s is invalid', (_label, override) => {
     expect(expenseStrategy.validate({ ...validExpense(), ...override })).toBe(MSG)
+  })
+
+  it('accepts empty description', () => {
+    expect(expenseStrategy.validate({ ...validExpense(), description: '' })).toBeNull()
   })
 })
 
@@ -92,9 +94,12 @@ describe('incomeStrategy.validate', () => {
     ['deposit', { deposit: '' }],
     ['account', { account: '' }],
     ['amount zero', { amount: 0 }],
-    ['description empty', { description: '' }],
   ])('rejects when %s is invalid', (_label, override) => {
     expect(incomeStrategy.validate({ ...validIncome(), ...override })).toBe(MSG)
+  })
+
+  it('accepts empty description', () => {
+    expect(incomeStrategy.validate({ ...validIncome(), description: '' })).toBeNull()
   })
 })
 
@@ -128,9 +133,12 @@ describe('transferStrategy.validate', () => {
     ['from', { from: '' }],
     ['to', { to: '' }],
     ['amount zero', { amount: 0 }],
-    ['description empty', { description: '' }],
   ])('rejects when %s is invalid', (_label, override) => {
     expect(transferStrategy.validate({ ...validTransfer(), ...override })).toBe(MSG)
+  })
+
+  it('accepts empty description', () => {
+    expect(transferStrategy.validate({ ...validTransfer(), description: '' })).toBeNull()
   })
 })
 
@@ -171,9 +179,12 @@ describe('debtPaymentStrategy.validate', () => {
     ['payFrom', { payFrom: '' }],
     ['liabilityAccount', { liabilityAccount: '' }],
     ['amount zero', { amount: 0 }],
-    ['description whitespace', { description: '   ' }],
   ])('rejects when %s is invalid', (_label, override) => {
     expect(debtPaymentStrategy.validate({ ...validDebtPayment(), ...override })).toBe(MSG)
+  })
+
+  it('accepts empty description', () => {
+    expect(debtPaymentStrategy.validate({ ...validDebtPayment(), description: '' })).toBeNull()
   })
 })
 

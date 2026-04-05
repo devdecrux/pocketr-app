@@ -290,19 +290,12 @@ const table = useVueTable({
           {{ categoryStore.error }}
         </div>
 
-        <div
-          v-else-if="sortedCategories.length === 0"
-          class="flex flex-1 items-center justify-center text-sm text-muted-foreground"
-        >
-          No categories found.
-        </div>
-
         <DataTable
           v-else
           :table="table"
           sticky-header
           class="flex-1 min-h-0"
-          empty-text="No categories found."
+          empty-text="No categories yet. Create your first category to get started."
         />
 
         <p v-if="deleteError" class="mt-3 text-sm text-red-600">{{ deleteError }}</p>
