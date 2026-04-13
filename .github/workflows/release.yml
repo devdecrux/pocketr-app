@@ -54,6 +54,11 @@ jobs:
             exit 1
           fi
 
+          if [[ ! "${target_tag}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Target tag ${target_tag} is not a supported SemVer tag."
+            exit 1
+          fi
+
           if ! git rev-parse -q --verify "refs/tags/${target_tag}" >/dev/null; then
             echo "::error::Tag ${target_tag} does not exist."
             exit 1
@@ -72,6 +77,10 @@ jobs:
           previous_tag="${REQUESTED_PREVIOUS_TAG}"
           if [[ -n "${previous_tag}" ]] && ! git rev-parse -q --verify "refs/tags/${previous_tag}" >/dev/null; then
             echo "::error::Previous tag ${previous_tag} does not exist."
+            exit 1
+          fi
+          if [[ -n "${previous_tag}" && ! "${previous_tag}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Previous tag ${previous_tag} is not a supported SemVer tag."
             exit 1
           fi
 
@@ -177,7 +186,8 @@ jobs:
         working-directory: pocketr-ui
         run: |
           npm ci
-          npm run build -- --mode production
+          npm run type-check
+          npm run build-only -- --mode production
 
       - name: Package frontend with backend
         run: |
