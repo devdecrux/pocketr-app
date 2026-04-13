@@ -1,0 +1,207 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_tag:
+        description: "Tag to release, for example v0.1.0. Use latest for the newest tag."
+        required: true
+        default: latest
+      previous_tag:
+        description: "Optional release-notes start tag. Leave empty to use the latest existing GitHub release."
+        required: false
+        default: ""
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ inputs.target_tag }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Build and publish release
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Fetch master and tags
+        run: |
+          if [[ "$(git rev-parse --is-shallow-repository)" == "true" ]]; then
+            git fetch --force --prune --unshallow --tags origin
+          else
+            git fetch --force --prune --tags origin
+          fi
+          git fetch --force origin master:refs/remotes/origin/master
+
+      - name: Resolve release range
+        id: range
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REQUESTED_TARGET_TAG: ${{ inputs.target_tag }}
+          REQUESTED_PREVIOUS_TAG: ${{ inputs.previous_tag }}
+        run: |
+          target_tag="${REQUESTED_TARGET_TAG}"
+          if [[ "${target_tag}" == "latest" ]]; then
+            target_tag="$(git tag --list 'v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname | head -n1)"
+          fi
+
+          if [[ -z "${target_tag}" ]]; then
+            echo "::error::No SemVer tags exist yet."
+            exit 1
+          fi
+
+          if ! git rev-parse -q --verify "refs/tags/${target_tag}" >/dev/null; then
+            echo "::error::Tag ${target_tag} does not exist."
+            exit 1
+          fi
+
+          if ! git merge-base --is-ancestor "${target_tag}" origin/master; then
+            echo "::error::Tag ${target_tag} is not on master."
+            exit 1
+          fi
+
+          if gh release view "${target_tag}" >/dev/null 2>&1; then
+            echo "::error::Release ${target_tag} already exists."
+            exit 1
+          fi
+
+          previous_tag="${REQUESTED_PREVIOUS_TAG}"
+          if [[ -n "${previous_tag}" ]] && ! git rev-parse -q --verify "refs/tags/${previous_tag}" >/dev/null; then
+            echo "::error::Previous tag ${previous_tag} does not exist."
+            exit 1
+          fi
+
+          if [[ -z "${previous_tag}" ]]; then
+            page=1
+            while [[ -z "${previous_tag}" ]]; do
+              release_tags="$(gh api "/repos/${GITHUB_REPOSITORY}/releases?per_page=100&page=${page}" --jq '.[] | select(.draft == false and .prerelease == false) | .tag_name')"
+              if [[ -z "${release_tags}" ]]; then
+                break
+              fi
+
+              while IFS= read -r release_tag; do
+                if git merge-base --is-ancestor "${release_tag}" "${target_tag}"; then
+                  previous_tag="${release_tag}"
+                  break
+                fi
+              done <<<"${release_tags}"
+
+              page=$((page + 1))
+            done
+          fi
+
+          if [[ "${previous_tag}" == "${target_tag}" ]]; then
+            echo "::error::Previous tag and target tag are both ${target_tag}."
+            exit 1
+          fi
+
+          version="${target_tag#v}"
+          latest_tag="$(git tag --list 'v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname | head -n1)"
+          make_latest=false
+          if [[ "${target_tag}" == "${latest_tag}" ]]; then
+            make_latest=true
+          fi
+
+          echo "target_tag=${target_tag}" >>"${GITHUB_OUTPUT}"
+          echo "previous_tag=${previous_tag}" >>"${GITHUB_OUTPUT}"
+          echo "version=${version}" >>"${GITHUB_OUTPUT}"
+          echo "make_latest=${make_latest}" >>"${GITHUB_OUTPUT}"
+
+      - name: Check out target tag
+        env:
+          TARGET_TAG: ${{ steps.range.outputs.target_tag }}
+        run: git checkout --detach "${TARGET_TAG}"
+
+      - name: Generate release notes
+        if: steps.range.outputs.previous_tag != ''
+        id: changelog
+        uses: requarks/changelog-action@v1
+        with:
+          token: ${{ github.token }}
+          fromTag: ${{ steps.range.outputs.target_tag }}
+          toTag: ${{ steps.range.outputs.previous_tag }}
+          writeToFile: false
+          includeInvalidCommits: false
+          useGitmojis: false
+          restrictToTypes: feat,fix,perf,refactor,chore,docs,build,ci,test,style,revert
+
+      - name: Write release notes
+        env:
+          TARGET_TAG: ${{ steps.range.outputs.target_tag }}
+          PREVIOUS_TAG: ${{ steps.range.outputs.previous_tag }}
+          CHANGES: ${{ steps.changelog.outputs.changes }}
+        run: |
+          if [[ -n "${PREVIOUS_TAG}" ]]; then
+            if [[ -n "${CHANGES}" ]]; then
+              printf '%s\n' "${CHANGES}" >release-notes.md
+            else
+              cat >release-notes.md <<EOF
+          Changes from ${PREVIOUS_TAG} to ${TARGET_TAG}.
+
+          No conventional release-note entries were generated.
+          EOF
+            fi
+          else
+            cat >release-notes.md <<EOF
+          Initial Pocketr release.
+
+          This is the first public release built from ${TARGET_TAG}.
+          EOF
+          fi
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: pocketr-ui/package-lock.json
+
+      - name: Set up Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 25
+          cache: gradle
+
+      - name: Apply release version
+        env:
+          VERSION: ${{ steps.range.outputs.version }}
+        run: |
+          perl -0pi -e 's/version = "[^"]+"/version = "$ENV{VERSION}"/' pocketr-api/build.gradle.kts
+
+      - name: Build frontend
+        working-directory: pocketr-ui
+        run: |
+          npm ci
+          npm run build -- --mode production
+
+      - name: Package frontend with backend
+        run: |
+          rm -rf pocketr-api/src/main/resources/static/frontend
+          mkdir -p pocketr-api/src/main/resources/static
+          cp -R pocketr-ui/dist pocketr-api/src/main/resources/static/frontend
+
+      - name: Build backend jar
+        working-directory: pocketr-api
+        run: ./gradlew clean bootJar -x test --no-daemon
+
+      - name: Stage release artifact
+        env:
+          VERSION: ${{ steps.range.outputs.version }}
+        run: |
+          mkdir -p dist
+          cp "pocketr-api/build/libs/pocketr-api-${VERSION}.jar" "dist/pocketr-${VERSION}.jar"
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ steps.range.outputs.target_tag }}
+          name: Pocketr ${{ steps.range.outputs.target_tag }}
+          body_path: release-notes.md
+          files: dist/pocketr-${{ steps.range.outputs.version }}.jar
+          fail_on_unmatched_files: true
+          make_latest: ${{ steps.range.outputs.make_latest }}
