@@ -1,0 +1,91 @@
+name: Tag
+
+on:
+  push:
+    branches:
+      - master
+
+permissions:
+  contents: write
+  pull-requests: read
+
+concurrency:
+  group: tag-master
+  cancel-in-progress: false
+
+jobs:
+  tag:
+    name: Create semantic tag
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Fetch tags
+        run: |
+          if [[ "$(git rev-parse --is-shallow-repository)" == "true" ]]; then
+            git fetch --force --prune --unshallow --tags origin
+          else
+            git fetch --force --prune --tags origin
+          fi
+
+      - name: Configure git author
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Find latest SemVer tag
+        id: latest
+        run: |
+          tag="$(git tag --list 'v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname | head -n1)"
+          echo "tag=${tag}" >>"${GITHUB_OUTPUT}"
+
+      - name: Create initial tag
+        if: steps.latest.outputs.tag == ''
+        run: |
+          git tag -a v0.0.1 -m "Release v0.0.1"
+          git push origin v0.0.1
+
+      - name: Resolve merged PR title
+        if: steps.latest.outputs.tag != ''
+        id: bump_source
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          message="$(gh api \
+            -H "Accept: application/vnd.github+json" \
+            "/repos/${GITHUB_REPOSITORY}/commits/${GITHUB_SHA}/pulls" \
+            --jq '.[0].title // ""' 2>/dev/null || true)"
+
+          if [[ -z "${message}" ]]; then
+            message="$(git log -1 --pretty=%s)"
+          fi
+
+          {
+            echo "message<<EOF"
+            echo "${message}"
+            echo "EOF"
+          } >>"${GITHUB_OUTPUT}"
+
+      - name: Calculate next version
+        if: steps.latest.outputs.tag != ''
+        id: semver
+        uses: ietf-tools/semver-action@v1
+        with:
+          token: ${{ github.token }}
+          branch: master
+          fromTag: ${{ steps.latest.outputs.tag }}
+          minorList: feat,feature
+          patchList: fix,bugfix,perf,refactor,test,tests,chore,ci,build,docs,style,revert
+          additionalCommits: ${{ steps.bump_source.outputs.message }}
+          noNewCommitBehavior: error
+          noVersionBumpBehavior: error
+
+      - name: Create semantic tag
+        if: steps.latest.outputs.tag != ''
+        env:
+          TAG: ${{ steps.semver.outputs.next }}
+        run: |
+          git tag -a "${TAG}" -m "Release ${TAG}"
+          git push origin "${TAG}"

@@ -66,7 +66,9 @@
 - Use targeted runs for speed, e.g. `./gradlew test --tests "com.decrux.pocketr.api.services.ledger.*"`.
 
 ## Commit & Pull Request Guidelines
-- History favors concise messages; use clear, scoped subjects, preferably `type: summary` (example: `chore: split ledger validators`).
+- Use Conventional Commits for every commit: `<type>[optional scope]: <description>` (example: `chore: split ledger validators`).
+- Release automation treats `feat` as a minor release, `BREAKING CHANGE:` footers or `!` markers as major releases, and other allowed Conventional Commit types as patch releases.
+- The `master` branch is tagged automatically after merges; GitHub releases are built manually from a selected tag.
 - Keep commits focused to one concern.
 - PRs should include:
   - What changed and why
