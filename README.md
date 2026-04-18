@@ -48,6 +48,6 @@ _Planned ahead:_
 
 ## Runtime Contract (LXC/Production)
 
-- Frontend URL: `http://<HOST>:8081/frontend`
+- Frontend URL: `http://<HOST>:8081`
 - API base URL: `http://<HOST>:8081/api/v1`
 - App port: `SERVER_PORT` (defaults to `8081`)

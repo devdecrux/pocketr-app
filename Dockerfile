@@ -9,7 +9,7 @@ RUN npm run build-only
 FROM eclipse-temurin:25-jdk-alpine AS backend-builder
 WORKDIR /backend
 COPY pocketr-api/ .
-COPY --from=frontend-builder /vue-app/dist /backend/src/main/resources/static/frontend
+COPY --from=frontend-builder /vue-app/dist/. /backend/src/main/resources/static/
 RUN chmod +x ./gradlew
 RUN ./gradlew bootJar -x test
 

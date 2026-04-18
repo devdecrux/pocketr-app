@@ -16,10 +16,6 @@ server:
       cookie:
         path: /
 
-app:
-  security:
-    csrf-cookie-path: /
-
 pocketr:
   dev:
     seed:

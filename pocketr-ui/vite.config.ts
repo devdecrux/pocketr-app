@@ -8,7 +8,6 @@ const traefikUrl = process.env.VITE_TRAEFIK_URL ?? 'http://localhost'
 
 // https://vite.dev/config/
 export default defineConfig({
-  base: '/frontend/',
   plugins: [
     vue(),
     vueDevTools(),

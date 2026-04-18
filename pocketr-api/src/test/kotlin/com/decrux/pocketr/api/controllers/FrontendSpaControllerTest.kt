@@ -16,25 +16,47 @@ class FrontendSpaControllerTest {
     private lateinit var mockMvc: MockMvc
 
     @Test
+    fun `forwards root to the SPA entrypoint`() {
+        mockMvc
+            .perform(get("/"))
+            .andExpect(status().isOk)
+            .andExpect(forwardedUrl("/index.html"))
+    }
+
+    @Test
     fun `forwards top-level frontend routes to the SPA entrypoint`() {
         mockMvc
-            .perform(get("/frontend/dashboard"))
+            .perform(get("/dashboard"))
             .andExpect(status().isOk)
-            .andExpect(forwardedUrl("/frontend/index.html"))
+            .andExpect(forwardedUrl("/index.html"))
     }
 
     @Test
     fun `forwards nested frontend routes to the SPA entrypoint`() {
         mockMvc
-            .perform(get("/frontend/household/123/settings"))
+            .perform(get("/household/123/settings"))
             .andExpect(status().isOk)
-            .andExpect(forwardedUrl("/frontend/index.html"))
+            .andExpect(forwardedUrl("/index.html"))
     }
 
     @Test
-    fun `does not intercept frontend asset requests`() {
+    fun `does not intercept asset requests`() {
         mockMvc
-            .perform(get("/frontend/assets/app.js"))
+            .perform(get("/assets/app.js"))
+            .andExpect(status().isNotFound)
+    }
+
+    @Test
+    fun `does not intercept api requests`() {
+        mockMvc
+            .perform(get("/api/v1/accounts"))
+            .andExpect(status().isNotFound)
+    }
+
+    @Test
+    fun `does not intercept api root`() {
+        mockMvc
+            .perform(get("/api"))
             .andExpect(status().isNotFound)
     }
 }

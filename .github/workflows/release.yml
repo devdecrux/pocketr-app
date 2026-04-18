@@ -93,6 +93,9 @@ jobs:
               fi
 
               while IFS= read -r release_tag; do
+                if [[ "${release_tag}" == "${target_tag}" ]]; then
+                  continue
+                fi
                 if git merge-base --is-ancestor "${release_tag}" "${target_tag}"; then
                   previous_tag="${release_tag}"
                   break
@@ -191,9 +194,9 @@ jobs:
 
       - name: Package frontend with backend
         run: |
-          rm -rf pocketr-api/src/main/resources/static/frontend
+          rm -rf pocketr-api/src/main/resources/static
           mkdir -p pocketr-api/src/main/resources/static
-          cp -R pocketr-ui/dist pocketr-api/src/main/resources/static/frontend
+          cp -R pocketr-ui/dist/. pocketr-api/src/main/resources/static/
 
       - name: Build backend jar
         working-directory: pocketr-api
