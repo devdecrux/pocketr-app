@@ -9,6 +9,7 @@ import com.decrux.pocketr.api.services.ledger.ManageLedger
 import org.springframework.format.annotation.DateTimeFormat
 import org.springframework.http.HttpStatus
 import org.springframework.security.core.annotation.AuthenticationPrincipal
+import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
@@ -18,7 +19,7 @@ import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.ResponseStatus
 import org.springframework.web.bind.annotation.RestController
 import java.time.LocalDate
-import java.util.*
+import java.util.UUID
 
 @RestController
 @RequestMapping("/api/v1/ledger")
@@ -44,6 +45,15 @@ class LedgerController(
         @RequestBody dto: CreateTransactionDto,
         @AuthenticationPrincipal user: User,
     ): TransactionDto = manageLedger.createTransaction(dto, user)
+
+    @DeleteMapping("/transactions/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    fun deleteTransaction(
+        @PathVariable id: UUID,
+        @AuthenticationPrincipal user: User,
+    ) {
+        manageLedger.deleteTransaction(id, user)
+    }
 
     @GetMapping("/accounts/{id}/balance")
     fun getAccountBalance(

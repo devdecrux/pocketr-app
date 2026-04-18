@@ -61,9 +61,7 @@ async function login(): Promise<void> {
 </script>
 
 <template>
-  <div
-    class="relative flex h-screen w-full items-center justify-center bg-background text-foreground"
-  >
+  <div class="app-shell relative flex min-h-screen w-full items-center justify-center px-4 py-8">
     <div class="absolute top-6 right-6">
       <DropdownMenu>
         <DropdownMenuTrigger as-child>
@@ -79,67 +77,50 @@ async function login(): Promise<void> {
         </DropdownMenuContent>
       </DropdownMenu>
     </div>
-    <Card
-      class="min-w-sm max-w-sm border-[#9ccfad] bg-[#a8e0b7] text-[#2f463a] shadow-[0_10px_30px_rgba(0,0,0,0.18)] dark:border-border dark:bg-card dark:text-card-foreground"
-    >
+    <Card class="w-full max-w-sm">
       <CardHeader>
-        <CardTitle class="text-2xl text-[#1f3a2f] dark:text-card-foreground">Login</CardTitle>
-        <CardDescription class="text-[#355043] dark:text-muted-foreground">
-          Enter your email below to login to your account
-        </CardDescription>
+        <CardTitle class="text-2xl">Login</CardTitle>
+        <CardDescription> Enter your email below to login to your account </CardDescription>
       </CardHeader>
       <CardContent>
         <div
           v-if="isSessionExpired"
-          class="mb-4 flex items-center gap-2 rounded-md border border-[#7fbf9a] bg-[#d8f0de] px-4 py-3 text-sm text-[#1f3a2f] shadow-sm dark:border-border dark:bg-muted/40 dark:text-foreground"
+          class="mb-4 flex items-center gap-2 rounded-md border border-border bg-muted px-4 py-3 text-sm text-foreground shadow-sm"
         >
-          <TriangleAlert class="h-4 w-4 shrink-0 text-orange-500" />
+          <TriangleAlert class="h-4 w-4 shrink-0 text-destructive" />
           <span>Your session has expired. Please log in again.</span>
         </div>
         <form @submit.prevent="login">
           <div class="grid gap-4">
             <div class="grid gap-2">
-              <Label class="text-[#1f3a2f] dark:text-foreground" for="email">Email</Label>
+              <Label for="email">Email</Label>
               <Input
                 id="email"
                 v-model="email"
                 type="email"
-                autocomplete="email"
                 placeholder="email@example.com"
-                class="border-[#7fbf9a] focus-visible:border-[#6fb08a] focus-visible:ring-[#6fb08a]/40 dark:border-border dark:focus-visible:ring-ring/50"
                 required
               />
             </div>
             <div class="grid gap-2">
               <div class="flex items-center">
-                <Label class="text-[#1f3a2f] dark:text-foreground" for="password">Password</Label>
+                <Label for="password">Password</Label>
               </div>
-              <Input
-                id="password"
-                v-model="password"
-                type="password"
-                autocomplete="current-password"
-                class="border-[#7fbf9a] focus-visible:border-[#6fb08a] focus-visible:ring-[#6fb08a]/40 dark:border-border dark:focus-visible:ring-ring/50"
-                required
-              />
+              <Input id="password" v-model="password" type="password" required />
             </div>
 
-            <p v-if="isAlert" class="text-sm text-red-600 dark:text-red-400">
+            <p v-if="isAlert" class="text-sm text-destructive">
               Invalid email or password. Please try again.
             </p>
 
-            <Button
-              type="submit"
-              :disabled="isSubmitting"
-              class="w-full hover:bg-[#bee4c7] disabled:cursor-not-allowed disabled:opacity-70 dark:hover:bg-primary/90"
-            >
+            <Button type="submit" :disabled="isSubmitting" class="w-full">
               {{ isSubmitting ? 'Logging in...' : 'Login' }}
             </Button>
           </div>
         </form>
         <div class="mt-4 text-center text-sm">
           Don't have an account?
-          <RouterLink to="/registration" class="text-[#3f7f5c] underline dark:text-primary">
+          <RouterLink to="/registration" class="text-(--app-button-fg) underline">
             Sign up
           </RouterLink>
         </div>

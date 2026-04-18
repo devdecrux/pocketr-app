@@ -6,6 +6,7 @@ import com.decrux.pocketr.api.entities.db.ledger.AccountCurrentBalance
 import com.decrux.pocketr.api.entities.db.ledger.AccountType
 import com.decrux.pocketr.api.entities.db.ledger.CategoryTag
 import com.decrux.pocketr.api.entities.db.ledger.Currency
+import com.decrux.pocketr.api.entities.db.ledger.LedgerSplit
 import com.decrux.pocketr.api.entities.db.ledger.LedgerTxn
 import com.decrux.pocketr.api.entities.db.ledger.SplitSide
 import com.decrux.pocketr.api.entities.dtos.CreateSplitDto
@@ -54,7 +55,8 @@ import java.time.Clock
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneOffset
-import java.util.*
+import java.util.Optional
+import java.util.UUID
 
 /**
  * Unit tests for ledger transaction validation (Section 12.1).
@@ -735,8 +737,22 @@ class LedgerTransactionValidationTest {
         fun applySortedProjectionDeltas() {
             val lowerId = UUID.fromString("00000000-0000-0000-0000-000000000001")
             val upperId = UUID.fromString("00000000-0000-0000-0000-000000000010")
-            val lowerAccount = Account(id = lowerId, owner = userA, name = "Lower", type = AccountType.ASSET, currency = eur)
-            val upperAccount = Account(id = upperId, owner = userA, name = "Upper", type = AccountType.ASSET, currency = eur)
+            val lowerAccount =
+                Account(
+                    id = lowerId,
+                    owner = userA,
+                    name = "Lower",
+                    type = AccountType.ASSET,
+                    currency = eur,
+                )
+            val upperAccount =
+                Account(
+                    id = upperId,
+                    owner = userA,
+                    name = "Upper",
+                    type = AccountType.ASSET,
+                    currency = eur,
+                )
             stubAccounts(upperAccount, lowerAccount)
 
             val dto =
@@ -813,6 +829,159 @@ class LedgerTransactionValidationTest {
                 service.createTransaction(dto, userA)
             }
         }
+    }
+
+    @Nested
+    @DisplayName("Transaction deletion")
+    inner class TransactionDeletion {
+        @Test
+        @DisplayName("should reverse projection deltas and delete the transaction")
+        fun reverseProjectionDeltasAndDeleteTransaction() {
+            val lowerId = UUID.fromString("00000000-0000-0000-0000-000000000001")
+            val upperId = UUID.fromString("00000000-0000-0000-0000-000000000010")
+            val lowerAccount = Account(id = lowerId, owner = userA, name = "Lower", type = AccountType.ASSET, currency = eur)
+            val upperAccount = Account(id = upperId, owner = userA, name = "Upper", type = AccountType.ASSET, currency = eur)
+            val txnId = UUID.randomUUID()
+            val txn =
+                LedgerTxn(
+                    id = txnId,
+                    createdBy = userA,
+                    txnDate = LocalDate.of(2026, 2, 20),
+                    description = "Delete me",
+                    currency = eur,
+                )
+            txn.splits =
+                mutableListOf(
+                    LedgerSplit(
+                        id = UUID.randomUUID(),
+                        transaction = txn,
+                        account = upperAccount,
+                        side = SplitSide.CREDIT,
+                        amountMinor = 1_000,
+                    ),
+                    LedgerSplit(
+                        id = UUID.randomUUID(),
+                        transaction = txn,
+                        account = lowerAccount,
+                        side = SplitSide.DEBIT,
+                        amountMinor = 1_000,
+                    ),
+                )
+            `when`(ledgerTxnRepository.findOneById(txnId)).thenReturn(Optional.of(txn))
+
+            service.deleteTransaction(txnId, userA)
+
+            val inOrder = inOrder(accountCurrentBalanceRepository, ledgerTxnRepository)
+            inOrder.verify(accountCurrentBalanceRepository).addDelta(lowerId, -1_000L)
+            inOrder.verify(accountCurrentBalanceRepository).addDelta(upperId, 1_000L)
+            inOrder.verify(ledgerTxnRepository).delete(txn)
+        }
+
+        @Test
+        @DisplayName("should return 404 when deleting a missing transaction")
+        fun notFoundForMissingTransaction() {
+            val missingId = UUID.randomUUID()
+            `when`(ledgerTxnRepository.findOneById(missingId)).thenReturn(Optional.empty())
+
+            assertThrows(NotFoundException::class.java) {
+                service.deleteTransaction(missingId, userA)
+            }
+
+            verifyNoInteractions(accountCurrentBalanceRepository)
+            verify(ledgerTxnRepository, never()).delete(any(LedgerTxn::class.java))
+        }
+
+        @Test
+        @DisplayName("should reject deleting a non-owned individual transaction")
+        fun rejectNonOwnedIndividualTransaction() {
+            val txnId = UUID.randomUUID()
+            val txn =
+                LedgerTxn(
+                    id = txnId,
+                    createdBy = userB,
+                    txnDate = LocalDate.of(2026, 2, 20),
+                    description = "Bob transfer",
+                    currency = eur,
+                )
+            txn.splits =
+                mutableListOf(
+                    LedgerSplit(
+                        id = UUID.randomUUID(),
+                        transaction = txn,
+                        account = userBSavings,
+                        side = SplitSide.DEBIT,
+                        amountMinor = 1_000,
+                    ),
+                    LedgerSplit(
+                        id = UUID.randomUUID(),
+                        transaction = txn,
+                        account = bobLiability(),
+                        side = SplitSide.CREDIT,
+                        amountMinor = 1_000,
+                    ),
+                )
+            `when`(ledgerTxnRepository.findOneById(txnId)).thenReturn(Optional.of(txn))
+
+            assertThrows(ForbiddenException::class.java) {
+                service.deleteTransaction(txnId, userA)
+            }
+
+            verifyNoInteractions(accountCurrentBalanceRepository)
+            verify(ledgerTxnRepository, never()).delete(any(LedgerTxn::class.java))
+        }
+
+        @Test
+        @DisplayName("should allow deleting a household transaction when create-equivalent access still exists")
+        fun allowDeletingHouseholdTransactionWithCreateEquivalentAccess() {
+            val householdId = UUID.randomUUID()
+            val txnId = UUID.randomUUID()
+            val txn =
+                LedgerTxn(
+                    id = txnId,
+                    createdBy = userB,
+                    householdId = householdId,
+                    txnDate = LocalDate.of(2026, 2, 20),
+                    description = "Shared transfer",
+                    currency = eur,
+                )
+            txn.splits =
+                mutableListOf(
+                    LedgerSplit(
+                        id = UUID.randomUUID(),
+                        transaction = txn,
+                        account = checking,
+                        side = SplitSide.DEBIT,
+                        amountMinor = 1_000,
+                    ),
+                    LedgerSplit(
+                        id = UUID.randomUUID(),
+                        transaction = txn,
+                        account = userBSavings,
+                        side = SplitSide.CREDIT,
+                        amountMinor = 1_000,
+                    ),
+                )
+            `when`(ledgerTxnRepository.findOneById(txnId)).thenReturn(Optional.of(txn))
+            `when`(manageHousehold.isActiveMember(householdId, userA.userId!!)).thenReturn(true)
+            `when`(manageHousehold.isAccountShared(householdId, userBSavingsId)).thenReturn(true)
+
+            service.deleteTransaction(txnId, userA)
+
+            verify(manageHousehold).isActiveMember(householdId, userA.userId!!)
+            verify(manageHousehold).isAccountShared(householdId, userBSavingsId)
+            verify(accountCurrentBalanceRepository).addDelta(checkingId, -1_000L)
+            verify(accountCurrentBalanceRepository).addDelta(userBSavingsId, 1_000L)
+            verify(ledgerTxnRepository).delete(txn)
+        }
+
+        private fun bobLiability(): Account =
+            Account(
+                id = UUID.randomUUID(),
+                owner = userB,
+                name = "Bob Liability",
+                type = AccountType.LIABILITY,
+                currency = eur,
+            )
     }
 
     @Nested

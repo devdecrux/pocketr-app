@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.EntityGraph
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor
 import org.springframework.stereotype.Repository
+import java.util.Optional
 import java.util.UUID
 
 @Repository
@@ -22,4 +23,7 @@ interface LedgerTxnRepository :
         spec: Specification<LedgerTxn>,
         pageable: Pageable,
     ): Page<LedgerTxn>
+
+    @EntityGraph(attributePaths = ["splits", "splits.account", "splits.account.owner", "createdBy"])
+    fun findOneById(id: UUID): Optional<LedgerTxn>
 }

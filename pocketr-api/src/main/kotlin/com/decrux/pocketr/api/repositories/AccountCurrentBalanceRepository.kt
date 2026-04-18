@@ -6,7 +6,7 @@ import org.springframework.data.jpa.repository.Modifying
 import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.query.Param
 import org.springframework.stereotype.Repository
-import java.util.*
+import java.util.UUID
 
 @Repository
 interface AccountCurrentBalanceRepository : JpaRepository<AccountCurrentBalance, UUID> {
@@ -114,13 +114,14 @@ interface AccountCurrentBalanceRepository : JpaRepository<AccountCurrentBalance,
         """,
         nativeQuery = true,
     )
-    fun synchronizeSnapshotWithComputedForAccounts(@Param("accountIds") accountIds: Collection<UUID>): Int
+    fun synchronizeSnapshotWithComputedForAccounts(
+        @Param("accountIds") accountIds: Collection<UUID>,
+    ): Int
 
     /**
      * Convenience wrapper for repairing a single account snapshot from computed ledger values.
      */
-    fun synchronizeSnapshotWithComputedForAccount(accountId: UUID): Int =
-        synchronizeSnapshotWithComputedForAccounts(listOf(accountId))
+    fun synchronizeSnapshotWithComputedForAccount(accountId: UUID): Int = synchronizeSnapshotWithComputedForAccounts(listOf(accountId))
 
     fun findAllByAccountIdIn(accountIds: Collection<UUID>): List<AccountCurrentBalance>
 }

@@ -62,8 +62,13 @@ class OpeningBalanceServiceImpl(
                     }
                 }
 
-                AccountType.LIABILITY -> "CREDIT" to "DEBIT"
-                else -> throw BadRequestException("Unsupported account type for opening balance")
+                AccountType.LIABILITY -> {
+                    "CREDIT" to "DEBIT"
+                }
+
+                else -> {
+                    throw BadRequestException("Unsupported account type for opening balance")
+                }
             }
         val descriptionPrefix = if (account.type == AccountType.LIABILITY) "Opening debt" else "Opening balance"
 

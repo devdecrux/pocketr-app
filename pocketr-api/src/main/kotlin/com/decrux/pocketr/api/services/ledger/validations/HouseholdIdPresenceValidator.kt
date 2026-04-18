@@ -6,6 +6,5 @@ import java.util.UUID
 
 @Component
 class HouseholdIdPresenceValidator {
-    fun validate(householdId: UUID?): UUID =
-        householdId ?: throw BadRequestException("householdId is required for household mode")
+    fun validate(householdId: UUID?): UUID = householdId ?: throw BadRequestException("householdId is required for household mode")
 }

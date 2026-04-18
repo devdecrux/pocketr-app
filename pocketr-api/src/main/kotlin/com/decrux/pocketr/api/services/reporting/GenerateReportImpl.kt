@@ -19,7 +19,7 @@ import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.LocalDate
 import java.time.YearMonth
-import java.util.*
+import java.util.UUID
 
 @Service
 class GenerateReportImpl(
@@ -41,56 +41,56 @@ class GenerateReportImpl(
         val liabilityPaymentRows: List<LiabilityPaymentProjection>
 
         when (mode.uppercase()) {
-                MODE_INDIVIDUAL -> {
-                    val userId = requireNotNull(user.userId) { "User ID must not be null" }
-                    expenseRows =
-                        ledgerSplitRepository.monthlyExpensesByUser(
-                            userId,
-                            monthStart,
-                            monthEnd,
-                            SplitSide.DEBIT,
-                            SplitSide.CREDIT,
-                        )
-                    liabilityPaymentRows =
-                        ledgerSplitRepository.monthlyLiabilityPaymentsByUser(
-                            userId,
-                            monthStart,
-                            monthEnd,
-                            SplitSide.DEBIT,
-                            SplitSide.CREDIT,
-                        )
-                }
-
-                MODE_HOUSEHOLD -> {
-                    val hId =
-                        householdId
-                            ?: throw BadRequestException("householdId is required for household mode")
-                    val userId = requireNotNull(user.userId) { "User ID must not be null" }
-                    if (!manageHousehold.isActiveMember(hId, userId)) {
-                        throw ForbiddenException("Not an active member of this household")
-                    }
-                    expenseRows =
-                        ledgerSplitRepository.monthlyExpensesByHousehold(
-                            hId,
-                            monthStart,
-                            monthEnd,
-                            SplitSide.DEBIT,
-                            SplitSide.CREDIT,
-                        )
-                    liabilityPaymentRows =
-                        ledgerSplitRepository.monthlyLiabilityPaymentsByHousehold(
-                            hId,
-                            monthStart,
-                            monthEnd,
-                            SplitSide.DEBIT,
-                            SplitSide.CREDIT,
-                        )
-                }
-
-                else -> {
-                    throw BadRequestException("Invalid mode: $mode. Must be INDIVIDUAL or HOUSEHOLD")
-                }
+            MODE_INDIVIDUAL -> {
+                val userId = requireNotNull(user.userId) { "User ID must not be null" }
+                expenseRows =
+                    ledgerSplitRepository.monthlyExpensesByUser(
+                        userId,
+                        monthStart,
+                        monthEnd,
+                        SplitSide.DEBIT,
+                        SplitSide.CREDIT,
+                    )
+                liabilityPaymentRows =
+                    ledgerSplitRepository.monthlyLiabilityPaymentsByUser(
+                        userId,
+                        monthStart,
+                        monthEnd,
+                        SplitSide.DEBIT,
+                        SplitSide.CREDIT,
+                    )
             }
+
+            MODE_HOUSEHOLD -> {
+                val hId =
+                    householdId
+                        ?: throw BadRequestException("householdId is required for household mode")
+                val userId = requireNotNull(user.userId) { "User ID must not be null" }
+                if (!manageHousehold.isActiveMember(hId, userId)) {
+                    throw ForbiddenException("Not an active member of this household")
+                }
+                expenseRows =
+                    ledgerSplitRepository.monthlyExpensesByHousehold(
+                        hId,
+                        monthStart,
+                        monthEnd,
+                        SplitSide.DEBIT,
+                        SplitSide.CREDIT,
+                    )
+                liabilityPaymentRows =
+                    ledgerSplitRepository.monthlyLiabilityPaymentsByHousehold(
+                        hId,
+                        monthStart,
+                        monthEnd,
+                        SplitSide.DEBIT,
+                        SplitSide.CREDIT,
+                    )
+            }
+
+            else -> {
+                throw BadRequestException("Invalid mode: $mode. Must be INDIVIDUAL or HOUSEHOLD")
+            }
+        }
 
         return buildList {
             addAll(expenseRows.map { it.toDto() })

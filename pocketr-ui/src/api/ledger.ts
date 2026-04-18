@@ -13,6 +13,10 @@ export function createTxn(req: CreateTxnRequest): Promise<LedgerTxn> {
   return api.post(`${BASE}/transactions`, { json: req }).json<LedgerTxn>()
 }
 
+export function deleteTxn(id: string): Promise<void> {
+  return api.delete(`${BASE}/transactions/${id}`).then(() => undefined)
+}
+
 export function listTxns(params: TxnQuery): Promise<PagedResponse<LedgerTxn>> {
   const searchParams: Record<string, string> = { mode: params.mode }
   if (params.householdId) searchParams.householdId = params.householdId

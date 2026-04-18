@@ -7,6 +7,7 @@ import com.decrux.pocketr.api.entities.db.ledger.LedgerSplit
 import com.decrux.pocketr.api.entities.db.ledger.LedgerTxn
 import com.decrux.pocketr.api.entities.db.ledger.SplitSide
 import com.decrux.pocketr.api.entities.dtos.BalanceDto
+import com.decrux.pocketr.api.entities.dtos.CreateSplitDto
 import com.decrux.pocketr.api.entities.dtos.CreateTransactionDto
 import com.decrux.pocketr.api.entities.dtos.PagedTransactionsDto
 import com.decrux.pocketr.api.entities.dtos.SplitDto
@@ -43,7 +44,7 @@ import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.Clock
 import java.time.LocalDate
-import java.util.*
+import java.util.UUID
 import java.util.concurrent.TimeUnit
 
 @Service
@@ -161,6 +162,22 @@ class ManageLedgerImpl(
         val savedTxn = ledgerTxnRepository.save(txn)
         applyCurrentBalanceProjection(savedTxn.splits)
         return savedTxn.toDto(userAvatarService)
+    }
+
+    @Transactional
+    override fun deleteTransaction(
+        id: UUID,
+        user: User,
+    ) {
+        val userId = requireNotNull(user.userId) { "User ID must not be null" }
+        val txn =
+            ledgerTxnRepository
+                .findOneById(id)
+                .orElseThrow { NotFoundException("Transaction not found") }
+
+        validateDeleteTransactionAccess(txn, userId)
+        reverseCurrentBalanceProjection(txn.splits)
+        ledgerTxnRepository.delete(txn)
     }
 
     @Transactional(readOnly = true)
@@ -305,8 +322,55 @@ class ManageLedgerImpl(
         )
     }
 
+    private enum class DeltaDirection {
+        FORWARD,
+        REVERSE,
+    }
+
+    private fun validateDeleteTransactionAccess(
+        txn: LedgerTxn,
+        userId: Long,
+    ) {
+        val accounts =
+            txn.splits
+                .map { requireNotNull(it.account) { "Split account must not be null" } }
+                .distinctBy { requireNotNull(it.id) }
+        val nonOwnedAccounts = accounts.filter { it.owner?.userId != userId }
+
+        if (nonOwnedAccounts.isEmpty()) {
+            return
+        }
+
+        val householdId =
+            txn.householdId
+                ?: throw ForbiddenException("Not the owner of this transaction")
+
+        householdMembershipValidator.validate(manageHousehold, householdId, userId)
+        householdSharedAccountValidator.validate(nonOwnedAccounts, manageHousehold, householdId)
+        crossUserAssetAccountTypeValidator.validate(accounts, txn.splits.map { it.toCreateSplitDto() }, userId)
+    }
+
+    private fun LedgerSplit.toCreateSplitDto(): CreateSplitDto =
+        CreateSplitDto(
+            accountId = requireAccountId(),
+            side = side.name,
+            amountMinor = amountMinor,
+            categoryTagId = categoryTag?.id,
+        )
+
     private fun applyCurrentBalanceProjection(splits: List<LedgerSplit>) {
-        val deltasByAccountId = accumulateDeltasByAccount(splits)
+        applyCurrentBalanceProjectionDeltas(splits, DeltaDirection.FORWARD)
+    }
+
+    private fun reverseCurrentBalanceProjection(splits: List<LedgerSplit>) {
+        applyCurrentBalanceProjectionDeltas(splits, DeltaDirection.REVERSE)
+    }
+
+    private fun applyCurrentBalanceProjectionDeltas(
+        splits: List<LedgerSplit>,
+        direction: DeltaDirection,
+    ) {
+        val deltasByAccountId = accumulateDeltasByAccount(splits, direction)
         val orderedDeltasByAccountId = deltasByAccountId.toSortedMap()
 
         try {
@@ -331,12 +395,15 @@ class ManageLedgerImpl(
         )
     }
 
-    private fun accumulateDeltasByAccount(splits: List<LedgerSplit>): MutableMap<UUID, Long> {
+    private fun accumulateDeltasByAccount(
+        splits: List<LedgerSplit>,
+        direction: DeltaDirection,
+    ): MutableMap<UUID, Long> {
         val deltasByAccountId = mutableMapOf<UUID, Long>()
 
         splits.forEach { split ->
             val accountId = split.requireAccountId()
-            val signedDelta = split.toRawSignedDelta()
+            val signedDelta = split.toRawSignedDelta(direction)
             val newComputedDelta =
                 deltasByAccountId[accountId]
                     ?.let { currentDelta -> Math.addExact(currentDelta, signedDelta) }
@@ -352,14 +419,19 @@ class ManageLedgerImpl(
         return deltasByAccountId
     }
 
-    private fun LedgerSplit.requireAccountId(): UUID =
-        requireNotNull(account?.id) { "Split account ID must not be null" }
+    private fun LedgerSplit.requireAccountId(): UUID = requireNotNull(account?.id) { "Split account ID must not be null" }
 
-    private fun LedgerSplit.toRawSignedDelta(): Long =
-        when (side) {
-            SplitSide.DEBIT -> amountMinor
-            SplitSide.CREDIT -> -amountMinor
+    private fun LedgerSplit.toRawSignedDelta(direction: DeltaDirection): Long {
+        val delta =
+            when (side) {
+                SplitSide.DEBIT -> amountMinor
+                SplitSide.CREDIT -> -amountMinor
+            }
+        return when (direction) {
+            DeltaDirection.FORWARD -> delta
+            DeltaDirection.REVERSE -> Math.negateExact(delta)
         }
+    }
 
     private fun resolveRawBalances(
         accountIds: Collection<UUID>,
@@ -400,7 +472,8 @@ class ManageLedgerImpl(
             if (notSnapshotEligibleAccountId.isNotEmpty()) {
                 balancesByAccountId.putAll(computeRawBalancesFromLedger(notSnapshotEligibleAccountId, asOf))
                 logger.debug(
-                    "Resolved balances for {} account(s) as of {} using {} snapshot balance(s) and {} computed ledger balance(s). Took {} ms.",
+                    "Resolved balances for {} account(s) as of {} using {} snapshot balance(s) and {} computed " +
+                        "ledger balance(s). Took {} ms.",
                     accountIds.size,
                     asOf,
                     snapshotEligibleAccountIds.size,
@@ -478,8 +551,7 @@ class ManageLedgerImpl(
                     asOf,
                     SplitSide.DEBIT,
                     SplitSide.CREDIT,
-                )
-                .associate { it.accountId to it.rawBalance }
+                ).associate { it.accountId to it.rawBalance }
 
         if (reason != null) {
             logger.debug(

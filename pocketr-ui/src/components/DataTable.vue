@@ -6,7 +6,6 @@ export default { inheritAttrs: false }
 import { computed, useSlots } from 'vue'
 import { FlexRender } from '@tanstack/vue-table'
 import type { Row, RowData, Table } from '@tanstack/vue-table'
-import type {} from '@/types/tanstack-table'
 import type { AcceptableValue } from 'reka-ui'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -67,7 +66,7 @@ function handlePageSizeChange(val: AcceptableValue): void {
 </script>
 
 <template>
-  <div v-bind="$attrs" class="flex flex-col">
+  <div v-bind="$attrs" class="app-data-table flex flex-col">
     <div class="min-w-0 shrink-0 overflow-x-auto rounded-xl border">
       <table class="w-full text-sm">
         <thead :class="theadClass">
@@ -95,7 +94,13 @@ function handlePageSizeChange(val: AcceptableValue): void {
               <td
                 v-for="cell in row.getVisibleCells()"
                 :key="cell.id"
-                :class="cn('px-4 py-3 text-right', cell.column.columnDef.meta?.tdClass)"
+                :class="
+                  cn(
+                    'px-4 py-3 text-right',
+                    cell.column.id === 'actions' && 'w-1 whitespace-nowrap py-0',
+                    cell.column.columnDef.meta?.tdClass,
+                  )
+                "
               >
                 <FlexRender :render="cell.column.columnDef.cell" :props="cell.getContext()" />
               </td>
@@ -173,3 +178,23 @@ function handlePageSizeChange(val: AcceptableValue): void {
     </div>
   </div>
 </template>
+
+<style>
+.app-data-table [data-table-action] {
+  width: 2rem;
+  height: 2rem;
+}
+
+.app-data-table [data-table-action='delete'] {
+  color: #dc2626;
+}
+
+.app-data-table [data-table-action='delete']:hover {
+  background-color: #fef2f2;
+  color: #b91c1c;
+}
+
+.dark .app-data-table [data-table-action='delete']:hover {
+  background-color: rgba(69, 10, 10, 0.3);
+}
+</style>

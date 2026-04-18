@@ -13,7 +13,9 @@ import jakarta.persistence.Index
 import jakarta.persistence.JoinColumn
 import jakarta.persistence.ManyToOne
 import jakarta.persistence.Table
-import java.util.*
+import org.hibernate.annotations.OnDelete
+import org.hibernate.annotations.OnDeleteAction
+import java.util.UUID
 
 @Entity
 @Table(
@@ -28,6 +30,7 @@ class LedgerSplit(
     @GeneratedValue(strategy = GenerationType.UUID)
     var id: UUID? = null,
     @ManyToOne(fetch = FetchType.LAZY)
+    @OnDelete(action = OnDeleteAction.CASCADE)
     @JoinColumn(name = "txn_id", nullable = false, foreignKey = ForeignKey(name = "fk_ledger_split_txn"))
     var transaction: LedgerTxn? = null,
     @ManyToOne(fetch = FetchType.LAZY)

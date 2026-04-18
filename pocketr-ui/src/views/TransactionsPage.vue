@@ -1,13 +1,8 @@
 <script setup lang="ts">
 import { HTTPError } from 'ky'
 import { computed, h, onMounted, ref, watch } from 'vue'
-import {
-  createColumnHelper,
-  getCoreRowModel,
-  getExpandedRowModel,
-  useVueTable,
-} from '@tanstack/vue-table'
-import { createTxn } from '@/api/ledger'
+import { createColumnHelper, getCoreRowModel, getExpandedRowModel, useVueTable } from '@tanstack/vue-table'
+import { createTxn, deleteTxn } from '@/api/ledger'
 import { useAccountStore } from '@/stores/account'
 import { useCategoryStore } from '@/stores/category'
 import { useCurrencyStore } from '@/stores/currency'
@@ -15,12 +10,7 @@ import { useHouseholdStore } from '@/stores/household'
 import { useLedgerStore } from '@/stores/ledger'
 import { useModeStore } from '@/stores/mode'
 import type { LedgerSplit, LedgerTxn } from '@/types/ledger'
-import {
-  debtPaymentStrategy,
-  expenseStrategy,
-  incomeStrategy,
-  transferStrategy,
-} from '@/utils/txnStrategies'
+import { debtPaymentStrategy, expenseStrategy, incomeStrategy, transferStrategy } from '@/utils/txnStrategies'
 import { getTxnPresentation } from '@/utils/txnPresentation'
 import { formatMinor } from '@/utils/money'
 import AccountSelector from '@/components/AccountSelector.vue'
@@ -30,26 +20,11 @@ import CurrencyAmountInput from '@/components/CurrencyAmountInput.vue'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import {
-  ArrowLeftRight,
-  ChevronDown,
-  ChevronRight,
-  Minus,
-  Plus,
-  TrendingDown,
-} from 'lucide-vue-next'
+import { ArrowLeftRight, ChevronDown, ChevronRight, Minus, Plus, Trash2, TrendingDown } from 'lucide-vue-next'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { initialsFromName } from '@/utils/initials'
 import DataTable from '@/components/DataTable.vue'
@@ -73,6 +48,8 @@ const dialogOpen = ref(false)
 const activeTab = ref('expense')
 const isSubmitting = ref(false)
 const submitError = ref('')
+const deleteError = ref('')
+const deletingTxnId = ref<string | null>(null)
 
 // Expense form
 const expenseDate = ref(todayString())
@@ -361,6 +338,28 @@ const columns = computed(() => {
     )
   }
 
+  cols.push(
+    columnHelper.display({
+      id: 'actions',
+      header: '',
+      cell: ({ row }) =>
+        h(
+          Button,
+          {
+            variant: 'ghost',
+            size: 'icon',
+            'data-table-action': 'delete',
+            disabled: deletingTxnId.value === row.original.id,
+            onClick: (event: MouseEvent) => {
+              event.stopPropagation()
+              void deleteTransaction(row.original)
+            },
+          },
+          () => h(Trash2, { class: 'size-4' }),
+        ),
+    }),
+  )
+
   return cols
 })
 
@@ -495,6 +494,29 @@ async function submitTransaction(): Promise<void> {
     isSubmitting.value = false
   }
 }
+
+async function deleteTransaction(txn: LedgerTxn): Promise<void> {
+  deleteError.value = ''
+
+  const confirmed = window.confirm(`Delete transaction "${txn.description}"?`)
+  if (!confirmed) return
+
+  deletingTxnId.value = txn.id
+
+  try {
+    await deleteTxn(txn.id)
+    await loadData()
+  } catch (error: unknown) {
+    if (error instanceof HTTPError) {
+      const payload = await error.response.json<{ message?: string }>().catch(() => null)
+      deleteError.value = payload?.message?.trim() || 'Failed to delete transaction.'
+    } else {
+      deleteError.value = 'Failed to delete transaction.'
+    }
+  } finally {
+    deletingTxnId.value = null
+  }
+}
 </script>
 
 <template>
@@ -518,33 +540,31 @@ async function submitTransaction(): Promise<void> {
             </DialogHeader>
 
             <Tabs v-model="activeTab" class="w-full">
-              <TabsList
-                class="grid h-auto w-full grid-cols-4 gap-1.5 rounded-xl bg-primary/20 p-1.5 dark:bg-primary/10"
-              >
+              <TabsList class="grid h-auto w-full grid-cols-4 gap-1.5 rounded-xl bg-muted p-1.5">
                 <TabsTrigger
                   value="expense"
-                  class="h-auto flex flex-col items-center justify-center gap-1 rounded-lg px-2 py-2.5 text-[11px] font-medium text-foreground/70 transition-colors hover:bg-primary/40 hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm dark:hover:bg-primary/20 dark:data-[state=active]:bg-primary dark:data-[state=active]:text-primary-foreground"
+                  class="h-auto flex flex-col items-center justify-center gap-1 rounded-lg border border-transparent px-2 py-2.5 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-(--app-button-hover) hover:text-(--app-button-fg) data-[state=active]:bg-(--app-button-bg) data-[state=active]:text-(--app-button-fg) data-[state=active]:shadow-sm dark:hover:bg-primary/90 dark:hover:text-primary-foreground dark:data-[state=active]:bg-primary dark:data-[state=active]:text-primary-foreground"
                 >
                   <Minus class="size-4 shrink-0" />
                   <span class="text-center leading-tight">Expense</span>
                 </TabsTrigger>
                 <TabsTrigger
                   value="income"
-                  class="h-auto flex flex-col items-center justify-center gap-1 rounded-lg px-2 py-2.5 text-[11px] font-medium text-foreground/70 transition-colors hover:bg-primary/40 hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm dark:hover:bg-primary/20 dark:data-[state=active]:bg-primary dark:data-[state=active]:text-primary-foreground"
+                  class="h-auto flex flex-col items-center justify-center gap-1 rounded-lg border border-transparent px-2 py-2.5 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-(--app-button-hover) hover:text-(--app-button-fg) data-[state=active]:bg-(--app-button-bg) data-[state=active]:text-(--app-button-fg) data-[state=active]:shadow-sm dark:hover:bg-primary/90 dark:hover:text-primary-foreground dark:data-[state=active]:bg-primary dark:data-[state=active]:text-primary-foreground"
                 >
                   <Plus class="size-4 shrink-0" />
                   <span class="text-center leading-tight">Income</span>
                 </TabsTrigger>
                 <TabsTrigger
                   value="transfer"
-                  class="h-auto flex flex-col items-center justify-center gap-1 rounded-lg px-2 py-2.5 text-[11px] font-medium text-foreground/70 transition-colors hover:bg-primary/40 hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm dark:hover:bg-primary/20 dark:data-[state=active]:bg-primary dark:data-[state=active]:text-primary-foreground"
+                  class="h-auto flex flex-col items-center justify-center gap-1 rounded-lg border border-transparent px-2 py-2.5 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-(--app-button-hover) hover:text-(--app-button-fg) data-[state=active]:bg-(--app-button-bg) data-[state=active]:text-(--app-button-fg) data-[state=active]:shadow-sm dark:hover:bg-primary/90 dark:hover:text-primary-foreground dark:data-[state=active]:bg-primary dark:data-[state=active]:text-primary-foreground"
                 >
                   <ArrowLeftRight class="size-4 shrink-0" />
                   <span class="text-center leading-tight">Transfer</span>
                 </TabsTrigger>
                 <TabsTrigger
                   value="debt-payment"
-                  class="h-auto flex flex-col items-center justify-center gap-1 rounded-lg px-2 py-2.5 text-[11px] font-medium text-foreground/70 transition-colors hover:bg-primary/40 hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm dark:hover:bg-primary/20 dark:data-[state=active]:bg-primary dark:data-[state=active]:text-primary-foreground"
+                  class="h-auto flex flex-col items-center justify-center gap-1 rounded-lg border border-transparent px-2 py-2.5 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-(--app-button-hover) hover:text-(--app-button-fg) data-[state=active]:bg-(--app-button-bg) data-[state=active]:text-(--app-button-fg) data-[state=active]:shadow-sm dark:hover:bg-primary/90 dark:hover:text-primary-foreground dark:data-[state=active]:bg-primary dark:data-[state=active]:text-primary-foreground"
                 >
                   <TrendingDown class="size-4 shrink-0" />
                   <span class="text-center leading-tight">Debt Payment</span>
@@ -838,6 +858,8 @@ async function submitTransaction(): Promise<void> {
             </div>
           </template>
         </DataTable>
+
+        <p v-if="deleteError" class="mt-3 text-sm text-red-600">{{ deleteError }}</p>
       </CardContent>
     </Card>
   </section>

@@ -51,7 +51,6 @@ class DevelopmentDatabaseSeeder(
     private val accountCurrentBalanceRepository: AccountCurrentBalanceRepository,
     private val passwordEncoder: PasswordEncoder,
 ) : ApplicationRunner {
-
     @Transactional
     override fun run(args: ApplicationArguments) {
         if (!isFreshDomainDatabase()) {

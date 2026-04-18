@@ -146,14 +146,13 @@ const columns = computed<ColumnDef<Account>[]>(() => {
   cols.push({
     id: 'actions',
     header: '',
-    meta: { tdClass: 'py-0' },
     cell: ({ row }) => {
       return h(
         Button,
         {
           variant: 'ghost',
           size: 'icon',
-          class: 'size-8',
+          'data-table-action': 'edit',
           onClick: () => startRename(row.original),
         },
         () => h(Pencil, { class: 'size-4' }),
@@ -291,33 +290,31 @@ function todayString(): string {
             </DialogHeader>
 
             <Tabs v-model="newAccount.type" class="w-full">
-              <TabsList
-                class="grid h-auto w-full grid-cols-4 gap-1.5 rounded-xl bg-primary/20 p-1.5 dark:bg-primary/10"
-              >
+              <TabsList class="grid h-auto w-full grid-cols-4 gap-1.5 rounded-xl bg-muted p-1.5">
                 <TabsTrigger
                   value="ASSET"
-                  class="h-auto flex flex-col items-center justify-center gap-1 rounded-lg px-2 py-2.5 text-[11px] font-medium text-foreground/70 transition-colors hover:bg-primary/40 hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm dark:hover:bg-primary/20 dark:data-[state=active]:bg-primary dark:data-[state=active]:text-primary-foreground"
+                  class="h-auto flex flex-col items-center justify-center gap-1 rounded-lg border border-transparent px-2 py-2.5 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-[var(--app-button-hover)] hover:text-[var(--app-button-fg)] data-[state=active]:bg-[var(--app-button-bg)] data-[state=active]:text-[var(--app-button-fg)] data-[state=active]:shadow-sm dark:hover:bg-primary/90 dark:hover:text-primary-foreground dark:data-[state=active]:bg-primary dark:data-[state=active]:text-primary-foreground"
                 >
                   <Wallet class="size-4 shrink-0" />
                   <span class="text-center leading-tight">Asset</span>
                 </TabsTrigger>
                 <TabsTrigger
                   value="EXPENSE"
-                  class="h-auto flex flex-col items-center justify-center gap-1 rounded-lg px-2 py-2.5 text-[11px] font-medium text-foreground/70 transition-colors hover:bg-primary/40 hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm dark:hover:bg-primary/20 dark:data-[state=active]:bg-primary dark:data-[state=active]:text-primary-foreground"
+                  class="h-auto flex flex-col items-center justify-center gap-1 rounded-lg border border-transparent px-2 py-2.5 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-[var(--app-button-hover)] hover:text-[var(--app-button-fg)] data-[state=active]:bg-[var(--app-button-bg)] data-[state=active]:text-[var(--app-button-fg)] data-[state=active]:shadow-sm dark:hover:bg-primary/90 dark:hover:text-primary-foreground dark:data-[state=active]:bg-primary dark:data-[state=active]:text-primary-foreground"
                 >
                   <ShoppingCart class="size-4 shrink-0" />
                   <span class="text-center leading-tight">Expense</span>
                 </TabsTrigger>
                 <TabsTrigger
                   value="INCOME"
-                  class="h-auto flex flex-col items-center justify-center gap-1 rounded-lg px-2 py-2.5 text-[11px] font-medium text-foreground/70 transition-colors hover:bg-primary/40 hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm dark:hover:bg-primary/20 dark:data-[state=active]:bg-primary dark:data-[state=active]:text-primary-foreground"
+                  class="h-auto flex flex-col items-center justify-center gap-1 rounded-lg border border-transparent px-2 py-2.5 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-[var(--app-button-hover)] hover:text-[var(--app-button-fg)] data-[state=active]:bg-[var(--app-button-bg)] data-[state=active]:text-[var(--app-button-fg)] data-[state=active]:shadow-sm dark:hover:bg-primary/90 dark:hover:text-primary-foreground dark:data-[state=active]:bg-primary dark:data-[state=active]:text-primary-foreground"
                 >
                   <TrendingUp class="size-4 shrink-0" />
                   <span class="text-center leading-tight">Income</span>
                 </TabsTrigger>
                 <TabsTrigger
                   value="LIABILITY"
-                  class="h-auto flex flex-col items-center justify-center gap-1 rounded-lg px-2 py-2.5 text-[11px] font-medium text-foreground/70 transition-colors hover:bg-primary/40 hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm dark:hover:bg-primary/20 dark:data-[state=active]:bg-primary dark:data-[state=active]:text-primary-foreground"
+                  class="h-auto flex flex-col items-center justify-center gap-1 rounded-lg border border-transparent px-2 py-2.5 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-[var(--app-button-hover)] hover:text-[var(--app-button-fg)] data-[state=active]:bg-[var(--app-button-bg)] data-[state=active]:text-[var(--app-button-fg)] data-[state=active]:shadow-sm dark:hover:bg-primary/90 dark:hover:text-primary-foreground dark:data-[state=active]:bg-primary dark:data-[state=active]:text-primary-foreground"
                 >
                   <CreditCard class="size-4 shrink-0" />
                   <span class="text-center leading-tight">Liability</span>

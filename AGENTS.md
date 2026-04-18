@@ -20,8 +20,7 @@
 - Backend checks:
   - `./gradlew build` (compile, test, and package backend)
   - `./gradlew test` (all tests)
-  - `./gradlew lint` (ktlint check)
-  - `./gradlew lintFix` (auto-format Kotlin)
+  - `./gradlew ktlintFormat` (fix Kotlin formatting)
 - Frontend dev server: `cd pocketr-ui && npm run dev`
 - Frontend checks:
   - `npm run type-check`
@@ -53,7 +52,7 @@
 ## Agent Startup, Context & Output
 - `AGENTS.md` has higher priority than task-specific plans/docs/files. If there is any conflict, follow `AGENTS.md`.
 - Treat `AGENTS.md` and task-relevant files as the single source of truth; check them first before spending tokens on broad codebase exploration.
-- At the start of every Codex/Claude run (including multi-agent runs), explicitly confirm that `AGENTS.md` and all task-relevant files are loaded in context.
+- At the start of every Codex/Claude run (including multi-agent runs), explicitly confirm that `AGENTS.md` and all task-relevant files are loaded in context. Show the confirmation only once at the start of codex in the repository.
 - Do not repeatedly reconfirm `AGENTS.md` usage during the same run; the initial confirmation is sufficient.
 - Use only the smallest relevant set of files in context to improve signal quality and reduce token usage.
 - If required files are missing from context, load them before proposing or applying changes.
@@ -70,6 +69,7 @@
 - Release automation treats `feat` as a minor release, `BREAKING CHANGE:` footers or `!` markers as major releases, and other allowed Conventional Commit types as patch releases.
 - The `master` branch is tagged automatically after merges; GitHub releases are built manually from a selected tag.
 - Keep commits focused to one concern.
+- `git push *` commands needs to explicitly allowed by the user. You don't have permission to execute such commands.
 - PRs should include:
   - What changed and why
   - Validation steps/commands run

@@ -14,6 +14,11 @@ interface ManageLedger {
         creator: User,
     ): TransactionDto
 
+    fun deleteTransaction(
+        id: UUID,
+        user: User,
+    )
+
     fun listTransactions(
         user: User,
         mode: String?,

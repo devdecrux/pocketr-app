@@ -173,7 +173,6 @@ const columns: ColumnDef<CategoryTag>[] = [
   {
     id: 'actions',
     header: '',
-    meta: { tdClass: 'py-0' },
     cell: ({ row }) =>
       h('div', { class: 'flex items-center justify-end gap-1' }, [
         h(
@@ -181,7 +180,7 @@ const columns: ColumnDef<CategoryTag>[] = [
           {
             variant: 'ghost',
             size: 'icon',
-            class: 'size-8',
+            'data-table-action': 'edit',
             onClick: () => startRename(row.original),
           },
           () => h(Pencil, { class: 'size-4' }),
@@ -191,7 +190,7 @@ const columns: ColumnDef<CategoryTag>[] = [
           {
             variant: 'ghost',
             size: 'icon',
-            class: 'size-8 text-red-600 hover:text-red-700',
+            'data-table-action': 'delete',
             disabled: deletingId.value === row.original.id,
             onClick: () => deleteCategory(row.original),
           },
