@@ -7,11 +7,10 @@ import org.springframework.web.bind.annotation.GetMapping
 class FrontendSpaController {
     @GetMapping(
         value = [
-            "/frontend",
-            "/frontend/",
-            "/frontend/{path:^(?!assets$)[^.]+}",
-            "/frontend/{path:^(?!assets$)[^.]+}/{*subpath}",
+            "/",
+            "/{path:^(?!api$|assets$|favicon\\.ico$)[^.]+}",
+            "/{path:^(?!api$|assets$)[^.]+}/{*subpath}",
         ],
     )
-    fun forwardToFrontendIndex(): String = "forward:/frontend/index.html"
+    fun forwardToFrontendIndex(): String = "forward:/index.html"
 }

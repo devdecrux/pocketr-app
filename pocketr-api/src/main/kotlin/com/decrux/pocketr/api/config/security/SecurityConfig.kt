@@ -3,6 +3,7 @@ package com.decrux.pocketr.api.config.security
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
+import org.springframework.http.HttpMethod
 import org.springframework.security.config.annotation.web.builders.HttpSecurity
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder
@@ -49,22 +50,28 @@ class SecurityConfig(
                     .failureHandler(customAuthenticationFailureHandler)
             }.authorizeHttpRequests { authorizeRequests ->
                 authorizeRequests
-                    .requestMatchers(SecurityConstants.FRONTEND_STATIC_ASSETS.value)
-                    .permitAll()
-                    .requestMatchers(SecurityConstants.FRONTEND_FAVICON.value)
-                    .permitAll()
-                    .requestMatchers(SecurityConstants.FRONTEND_LANDING_PAGE.value)
-                    .permitAll()
-                    .requestMatchers(SecurityConstants.FRONTEND_LOGIN_URL.value)
-                    .permitAll()
-                    .requestMatchers(SecurityConstants.FRONTEND_REGISTER_URL.value)
+                    .requestMatchers(SecurityConstants.BACKEND_LOGIN_PROCESSING_URL.value)
                     .permitAll()
                     .requestMatchers(SecurityConstants.BACKEND_REGISTER_ENDPOINT.value)
                     .permitAll()
                     .requestMatchers(SecurityConstants.GET_CSRF_TOKEN_ENDPOINT.value)
                     .permitAll()
-                    .anyRequest()
+                    .requestMatchers(SecurityConstants.BACKEND_API_ROOT.value)
                     .authenticated()
+                    .requestMatchers(SecurityConstants.BACKEND_API.value)
+                    .authenticated()
+                    .requestMatchers(SecurityConstants.FRONTEND_STATIC_ASSETS.value)
+                    .permitAll()
+                    .requestMatchers(SecurityConstants.FRONTEND_FAVICON.value)
+                    .permitAll()
+                    .requestMatchers(SecurityConstants.FRONTEND_INDEX.value)
+                    .permitAll()
+                    .requestMatchers(SecurityConstants.FRONTEND_ROOT.value)
+                    .permitAll()
+                    .requestMatchers(HttpMethod.GET, "/**")
+                    .permitAll()
+                    .anyRequest()
+                    .denyAll()
             }.exceptionHandling { exception ->
                 exception.authenticationEntryPoint(customAuthenticationEntryPoint)
             }.userDetailsService(customUserDetailsService)
