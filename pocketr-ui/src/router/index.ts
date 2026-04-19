@@ -1,14 +1,15 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import AccountsPage from '@/views/AccountsPage.vue'
-import CategoriesPage from '@/views/CategoriesPage.vue'
-import DashboardPage from '@/views/DashboardPage.vue'
-import HouseholdSettingsPage from '@/views/HouseholdSettingsPage.vue'
-import LoginPage from '@/views/auth/LoginPage.vue'
-import NotFoundPage from '@/views/NotFoundPage.vue'
-import RegistrationPage from '@/views/auth/RegistrationPage.vue'
-import SettingsPage from '@/views/SettingsPage.vue'
-import TransactionsPage from '@/views/TransactionsPage.vue'
 import { authGuard } from '@/router/guards'
+
+const AccountsPage = () => import('@/views/AccountsPage.vue')
+const CategoriesPage = () => import('@/views/CategoriesPage.vue')
+const DashboardPage = () => import('@/views/DashboardPage.vue')
+const HouseholdSettingsPage = () => import('@/views/HouseholdSettingsPage.vue')
+const LoginPage = () => import('@/views/auth/LoginPage.vue')
+const NotFoundPage = () => import('@/views/NotFoundPage.vue')
+const RegistrationPage = () => import('@/views/auth/RegistrationPage.vue')
+const SettingsPage = () => import('@/views/SettingsPage.vue')
+const TransactionsPage = () => import('@/views/TransactionsPage.vue')
 
 const routes = [
   {

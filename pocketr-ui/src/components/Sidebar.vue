@@ -163,10 +163,10 @@ async function logout(): Promise<void> {
             <DropdownMenuContent>
               <DropdownMenuGroup>
                 <DropdownMenuItem
-                  class="font-semibold text-destructive focus:text-destructive dark:text-red-400 dark:focus:text-red-400"
+                  class="font-semibold text-[var(--app-sidebar-danger-fg)] focus:text-[var(--app-sidebar-danger-fg)]"
                   @click="logout"
                 >
-                  <LogOut class="text-destructive dark:text-red-400" />
+                  <LogOut class="text-[var(--app-sidebar-danger-fg)]" />
                   Log out
                 </DropdownMenuItem>
                 <DropdownMenuItem @click="router.push('/settings')">

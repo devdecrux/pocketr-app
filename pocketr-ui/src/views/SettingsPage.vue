@@ -13,7 +13,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
+import { AppFormField, AppListItem, AppStatusText } from '@/components/app'
 
 const authStore = useAuthStore()
 const householdStore = useHouseholdStore()
@@ -227,8 +227,8 @@ async function handleLeaveHousehold(householdId: string): Promise<void> {
             Accepted formats: JPEG, PNG, GIF, WEBP. Maximum size: 5MB.
           </p>
 
-          <p v-if="uploadSuccess" class="text-sm text-emerald-600">{{ uploadSuccess }}</p>
-          <p v-if="uploadError" class="text-sm text-red-600">{{ uploadError }}</p>
+          <AppStatusText v-if="uploadSuccess" variant="success">{{ uploadSuccess }}</AppStatusText>
+          <AppStatusText v-if="uploadError">{{ uploadError }}</AppStatusText>
         </div>
       </CardContent>
     </Card>
@@ -243,64 +243,63 @@ async function handleLeaveHousehold(householdId: string): Promise<void> {
       <CardContent class="space-y-6">
         <!-- Active households -->
         <div v-if="activeHouseholds.length" class="space-y-3">
-          <div
-            v-for="household in activeHouseholds"
-            :key="household.id"
-            class="flex items-center justify-between rounded-md border border-border px-3 py-2"
-          >
+          <AppListItem v-for="household in activeHouseholds" :key="household.id">
             <div class="flex flex-col gap-0.5">
               <span class="text-sm font-medium">{{ household.name }}</span>
               <span class="text-xs text-muted-foreground">
                 {{ household.role }}
               </span>
             </div>
-            <div class="flex items-center gap-2">
-              <Button
-                size="sm"
-                variant="secondary"
-                class="h-8 px-3 text-xs"
-                @click="
-                  router.push({ name: 'household-settings', params: { householdId: household.id } })
-                "
-              >
-                Manage
-              </Button>
-              <Button
-                size="sm"
-                variant="destructive"
-                class="h-8 px-3 text-xs"
-                :disabled="isLeavingHousehold"
-                @click="handleLeaveHousehold(household.id)"
-              >
-                {{ isLeavingHousehold ? 'Leaving...' : 'Leave' }}
-              </Button>
-            </div>
-          </div>
-          <p v-if="leaveError" class="text-sm text-red-600">{{ leaveError }}</p>
+            <template #actions>
+              <div class="flex items-center gap-2">
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  class="h-8 px-3 text-xs"
+                  @click="
+                    router.push({
+                      name: 'household-settings',
+                      params: { householdId: household.id },
+                    })
+                  "
+                >
+                  Manage
+                </Button>
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  class="h-8 px-3 text-xs"
+                  :disabled="isLeavingHousehold"
+                  @click="handleLeaveHousehold(household.id)"
+                >
+                  {{ isLeavingHousehold ? 'Leaving...' : 'Leave' }}
+                </Button>
+              </div>
+            </template>
+          </AppListItem>
+          <AppStatusText v-if="leaveError">{{ leaveError }}</AppStatusText>
         </div>
 
         <!-- Pending invitations -->
         <div v-if="pendingInvites.length" class="space-y-3">
           <p class="text-sm font-medium">Pending Invitations</p>
-          <div
-            v-for="invite in pendingInvites"
-            :key="invite.id"
-            class="flex items-center justify-between rounded-md border border-border px-3 py-2"
-          >
+          <AppListItem v-for="invite in pendingInvites" :key="invite.id">
             <div class="flex flex-col gap-0.5">
               <span class="text-sm font-medium">{{ invite.name }}</span>
               <Badge variant="secondary">Invited</Badge>
             </div>
-            <Button
-              size="sm"
-              class="h-8 px-3 text-xs"
-              :disabled="activeHouseholds.length > 0"
-              @click="handleAcceptInvite(invite.id)"
-            >
-              Accept
-            </Button>
-          </div>
-          <p v-if="inviteActionError" class="text-sm text-red-600">{{ inviteActionError }}</p>
+            <template #actions>
+              <Button
+                size="sm"
+                class="h-8 px-3 text-xs"
+                :disabled="activeHouseholds.length > 0"
+                @click="handleAcceptInvite(invite.id)"
+              >
+                Accept
+              </Button>
+            </template>
+          </AppListItem>
+          <AppStatusText v-if="inviteActionError">{{ inviteActionError }}</AppStatusText>
         </div>
 
         <!-- Create household (only when user is not in any household) -->
@@ -310,19 +309,18 @@ async function handleLeaveHousehold(householdId: string): Promise<void> {
               You are not part of any household yet. Create one to start sharing accounts with
               family or roommates.
             </p>
-            <div class="grid gap-2">
-              <Label for="household-name">Household name</Label>
+            <AppFormField label="Household name" control-id="household-name">
               <Input
                 id="household-name"
                 v-model="householdName"
                 type="text"
                 placeholder="My Household name (min. 3 characters)"
-                :class="{ 'border-red-500': householdNameError }"
+                :class="{ 'border-[color:var(--app-field-invalid-border)]': householdNameError }"
               />
-              <p v-if="householdNameError" class="text-xs text-red-600">
+              <AppStatusText v-if="householdNameError" size="xs">
                 {{ householdNameError }}
-              </p>
-            </div>
+              </AppStatusText>
+            </AppFormField>
             <Button
               size="sm"
               class="w-fit"
@@ -331,7 +329,7 @@ async function handleLeaveHousehold(householdId: string): Promise<void> {
             >
               {{ isCreatingHousehold ? 'Creating...' : 'Create Household' }}
             </Button>
-            <p v-if="householdError" class="text-sm text-red-600">{{ householdError }}</p>
+            <AppStatusText v-if="householdError">{{ householdError }}</AppStatusText>
           </div>
         </div>
       </CardContent>

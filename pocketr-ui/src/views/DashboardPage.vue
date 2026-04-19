@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { ArrowUpDown, TrendingDown, Wallet } from 'lucide-vue-next'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useAccountStore } from '@/stores/account'
@@ -13,6 +13,7 @@ import { getAccountBalances } from '@/api/ledger'
 import { getMonthlyReport } from '@/api/reports'
 import { formatMinor } from '@/utils/money'
 import type { MonthlyReportEntry } from '@/types/ledger'
+import { AppCardHeader, AppListItem, AppPageHeader, AppStateMessage } from '@/components/app'
 
 const accountStore = useAccountStore()
 const currencyStore = useCurrencyStore()
@@ -165,91 +166,88 @@ function txnAmount(txn: (typeof recentTransactions.value)[number]): string {
 
 <template>
   <section class="grid gap-4">
-    <h1 class="text-2xl font-semibold">Dashboard</h1>
-    <p class="text-sm text-muted-foreground">
-      {{ modeStore.isHousehold ? 'Household overview' : 'Your personal overview' }}
-    </p>
+    <AppPageHeader
+      title="Dashboard"
+      :subtitle="modeStore.isHousehold ? 'Household overview' : 'Your personal overview'"
+    />
 
     <div class="grid gap-4 md:grid-cols-2">
       <!-- Account Balances -->
       <Card>
-        <CardHeader class="flex flex-row items-center gap-2">
-          <Wallet class="size-5 text-muted-foreground" />
-          <CardTitle>Account Balances</CardTitle>
-        </CardHeader>
+        <AppCardHeader title="Account Balances" class="justify-start gap-2">
+          <template #leading>
+            <Wallet class="size-5 text-muted-foreground" />
+          </template>
+        </AppCardHeader>
         <CardContent>
           <div v-if="accountStore.isLoading || balancesLoading" class="space-y-3">
             <Skeleton class="h-8 w-full" />
             <Skeleton class="h-8 w-full" />
             <Skeleton class="h-8 w-full" />
           </div>
-          <div v-else-if="topAccounts.length === 0" class="text-sm text-muted-foreground">
-            No accounts yet.
-          </div>
+          <AppStateMessage v-else-if="topAccounts.length === 0"> No accounts yet. </AppStateMessage>
           <ul v-else class="space-y-2">
-            <li
-              v-for="account in topAccounts"
-              :key="account.id"
-              class="flex items-center justify-between rounded-md border px-3 py-2"
-            >
+            <AppListItem v-for="account in topAccounts" :key="account.id" as="li">
               <div class="flex items-center gap-2">
                 <span class="text-sm font-medium">{{ account.name }}</span>
                 <Badge variant="outline" class="text-xs">{{ account.type }}</Badge>
               </div>
-              <span class="text-sm font-mono">
-                {{ formatAccountBalance(account.id, account.currency) }}
-              </span>
-            </li>
+              <template #actions>
+                <span class="text-sm font-mono">
+                  {{ formatAccountBalance(account.id, account.currency) }}
+                </span>
+              </template>
+            </AppListItem>
           </ul>
         </CardContent>
       </Card>
 
       <!-- Recent Transactions -->
       <Card>
-        <CardHeader class="flex flex-row items-center gap-2">
-          <ArrowUpDown class="size-5 text-muted-foreground" />
-          <CardTitle>Recent Transactions</CardTitle>
-        </CardHeader>
+        <AppCardHeader title="Recent Transactions" class="justify-start gap-2">
+          <template #leading>
+            <ArrowUpDown class="size-5 text-muted-foreground" />
+          </template>
+        </AppCardHeader>
         <CardContent>
           <div v-if="ledgerStore.isLoading" class="space-y-3">
             <Skeleton class="h-8 w-full" />
             <Skeleton class="h-8 w-full" />
             <Skeleton class="h-8 w-full" />
           </div>
-          <div v-else-if="recentTransactions.length === 0" class="text-sm text-muted-foreground">
+          <AppStateMessage v-else-if="recentTransactions.length === 0">
             No transactions yet.
-          </div>
+          </AppStateMessage>
           <ul v-else class="space-y-2">
-            <li
-              v-for="txn in recentTransactions"
-              :key="txn.id"
-              class="flex items-center justify-between rounded-md border px-3 py-2"
-            >
+            <AppListItem v-for="txn in recentTransactions" :key="txn.id" as="li">
               <div>
                 <span class="text-sm font-medium">{{ txn.description }}</span>
                 <span class="ml-2 text-xs text-muted-foreground">{{ txn.txnDate }}</span>
               </div>
-              <span class="text-sm font-mono">{{ txnAmount(txn) }}</span>
-            </li>
+              <template #actions>
+                <span class="text-sm font-mono">{{ txnAmount(txn) }}</span>
+              </template>
+            </AppListItem>
           </ul>
         </CardContent>
       </Card>
 
       <!-- Monthly Spending by Category -->
       <Card>
-        <CardHeader class="flex flex-row items-center gap-2">
-          <TrendingDown class="size-5 text-muted-foreground" />
-          <CardTitle>Spending by Category</CardTitle>
-        </CardHeader>
+        <AppCardHeader title="Spending by Category" class="justify-start gap-2">
+          <template #leading>
+            <TrendingDown class="size-5 text-muted-foreground" />
+          </template>
+        </AppCardHeader>
         <CardContent>
           <p class="mb-2 text-xs text-muted-foreground">{{ currentPeriod }}</p>
           <div v-if="reportLoading" class="space-y-3">
             <Skeleton class="h-6 w-full" />
             <Skeleton class="h-6 w-full" />
           </div>
-          <div v-else-if="spendingByCategory.length === 0" class="text-sm text-muted-foreground">
+          <AppStateMessage v-else-if="spendingByCategory.length === 0">
             No spending data for this month.
-          </div>
+          </AppStateMessage>
           <ul v-else class="space-y-2">
             <li
               v-for="cat in spendingByCategory"
@@ -265,19 +263,20 @@ function txnAmount(txn: (typeof recentTransactions.value)[number]): string {
 
       <!-- Monthly Spending by Expense Account -->
       <Card>
-        <CardHeader class="flex flex-row items-center gap-2">
-          <TrendingDown class="size-5 text-muted-foreground" />
-          <CardTitle>Spending by Account</CardTitle>
-        </CardHeader>
+        <AppCardHeader title="Spending by Account" class="justify-start gap-2">
+          <template #leading>
+            <TrendingDown class="size-5 text-muted-foreground" />
+          </template>
+        </AppCardHeader>
         <CardContent>
           <p class="mb-2 text-xs text-muted-foreground">{{ currentPeriod }}</p>
           <div v-if="reportLoading" class="space-y-3">
             <Skeleton class="h-6 w-full" />
             <Skeleton class="h-6 w-full" />
           </div>
-          <div v-else-if="spendingByAccount.length === 0" class="text-sm text-muted-foreground">
+          <AppStateMessage v-else-if="spendingByAccount.length === 0">
             No spending data for this month.
-          </div>
+          </AppStateMessage>
           <ul v-else class="space-y-2">
             <li
               v-for="acc in spendingByAccount"

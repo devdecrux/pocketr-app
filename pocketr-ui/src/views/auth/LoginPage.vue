@@ -1,23 +1,16 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Moon, Sun, TriangleAlert } from 'lucide-vue-next'
-import { useColorMode } from '@vueuse/core'
+import { TriangleAlert } from 'lucide-vue-next'
 import { primeCsrfToken } from '@/api/csrf'
 import { api } from '@/api/http'
 import { useAuthStore } from '@/stores/auth'
 import { sanitizeInternalRedirect } from '@/utils/sanitizeRedirect'
 import type { AuthUser } from '@/types/auth'
+import { AppFormField, AuthPageShell } from '@/components/app'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import ThemeMenu from '@/components/ThemeMenu.vue'
 
 const authStore = useAuthStore()
 const route = useRoute()
@@ -29,8 +22,6 @@ const email = ref('')
 const password = ref('')
 const isAlert = ref(false)
 const isSubmitting = ref(false)
-
-useColorMode()
 
 async function login(): Promise<void> {
   isAlert.value = false
@@ -61,22 +52,7 @@ async function login(): Promise<void> {
 </script>
 
 <template>
-  <div class="app-shell relative flex min-h-screen w-full items-center justify-center px-4 py-8">
-    <div class="absolute top-6 right-6">
-      <DropdownMenu>
-        <DropdownMenuTrigger as-child>
-          <Button variant="outline" size="icon" aria-label="Theme">
-            <Sun class="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-            <Moon
-              class="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100"
-            />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          <ThemeMenu />
-        </DropdownMenuContent>
-      </DropdownMenu>
-    </div>
+  <AuthPageShell>
     <Card class="w-full max-w-sm">
       <CardHeader>
         <CardTitle class="text-2xl">Login</CardTitle>
@@ -92,8 +68,7 @@ async function login(): Promise<void> {
         </div>
         <form @submit.prevent="login">
           <div class="grid gap-4">
-            <div class="grid gap-2">
-              <Label for="email">Email</Label>
+            <AppFormField label="Email" control-id="email">
               <Input
                 id="email"
                 v-model="email"
@@ -101,13 +76,10 @@ async function login(): Promise<void> {
                 placeholder="email@example.com"
                 required
               />
-            </div>
-            <div class="grid gap-2">
-              <div class="flex items-center">
-                <Label for="password">Password</Label>
-              </div>
+            </AppFormField>
+            <AppFormField label="Password" control-id="password">
               <Input id="password" v-model="password" type="password" required />
-            </div>
+            </AppFormField>
 
             <p v-if="isAlert" class="text-sm text-destructive">
               Invalid email or password. Please try again.
@@ -126,5 +98,5 @@ async function login(): Promise<void> {
         </div>
       </CardContent>
     </Card>
-  </div>
+  </AuthPageShell>
 </template>

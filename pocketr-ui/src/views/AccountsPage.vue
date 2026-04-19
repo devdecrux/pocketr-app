@@ -2,10 +2,9 @@
 import { computed, h, onMounted, ref, watch } from 'vue'
 import { type ColumnDef, getCoreRowModel, useVueTable } from '@tanstack/vue-table'
 import { CreditCard, Pencil, Plus, ShoppingCart, TrendingUp, Wallet } from 'lucide-vue-next'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import {
   Select,
@@ -14,15 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog'
+import { Dialog, DialogTrigger } from '@/components/ui/dialog'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useAccountStore } from '@/stores/account'
 import { useCurrencyStore } from '@/stores/currency'
@@ -32,6 +23,15 @@ import { createAccount, updateAccount } from '@/api/accounts'
 import { getAccountBalances } from '@/api/ledger'
 import { formatMinor } from '@/utils/money'
 import type { Account, AccountType, CreateAccountRequest } from '@/types/ledger'
+import {
+  AppCardHeader,
+  AppDialogBody,
+  AppDialogContent,
+  AppFilterBar,
+  AppFormField,
+  AppStateMessage,
+  AppStatusText,
+} from '@/components/app'
 import CurrencyAmountInput from '@/components/CurrencyAmountInput.vue'
 import DataTable from '@/components/DataTable.vue'
 
@@ -219,6 +219,7 @@ watch(
 const renameDialog = ref(false)
 const renameTarget = ref<Account | null>(null)
 const renameName = ref('')
+const renameDescription = computed(() => `Enter a new name for "${renameTarget.value?.name}".`)
 
 function startRename(account: Account): void {
   renameTarget.value = account
@@ -274,8 +275,7 @@ function todayString(): string {
 <template>
   <section class="flex flex-col gap-4">
     <Card>
-      <CardHeader class="flex flex-row items-center justify-between">
-        <CardTitle class="text-2xl">Accounts</CardTitle>
+      <AppCardHeader title="Accounts" title-class="text-2xl">
         <Dialog v-model:open="createDialogOpen">
           <DialogTrigger as-child>
             <Button size="sm">
@@ -283,39 +283,26 @@ function todayString(): string {
               New Account
             </Button>
           </DialogTrigger>
-          <DialogContent class="max-w-lg">
-            <DialogHeader>
-              <DialogTitle>Create Account</DialogTitle>
-              <DialogDescription>Add a new account to your ledger.</DialogDescription>
-            </DialogHeader>
-
+          <AppDialogContent
+            title="Create Account"
+            description="Add a new account to your ledger."
+            class="max-w-lg"
+          >
             <Tabs v-model="newAccount.type" class="w-full">
-              <TabsList class="grid h-auto w-full grid-cols-4 gap-1.5 rounded-xl bg-muted p-1.5">
-                <TabsTrigger
-                  value="ASSET"
-                  class="h-auto flex flex-col items-center justify-center gap-1 rounded-lg border border-transparent px-2 py-2.5 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-[var(--app-button-hover)] hover:text-[var(--app-button-fg)] data-[state=active]:bg-[var(--app-button-bg)] data-[state=active]:text-[var(--app-button-fg)] data-[state=active]:shadow-sm dark:hover:bg-primary/90 dark:hover:text-primary-foreground dark:data-[state=active]:bg-primary dark:data-[state=active]:text-primary-foreground"
-                >
+              <TabsList>
+                <TabsTrigger value="ASSET">
                   <Wallet class="size-4 shrink-0" />
                   <span class="text-center leading-tight">Asset</span>
                 </TabsTrigger>
-                <TabsTrigger
-                  value="EXPENSE"
-                  class="h-auto flex flex-col items-center justify-center gap-1 rounded-lg border border-transparent px-2 py-2.5 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-[var(--app-button-hover)] hover:text-[var(--app-button-fg)] data-[state=active]:bg-[var(--app-button-bg)] data-[state=active]:text-[var(--app-button-fg)] data-[state=active]:shadow-sm dark:hover:bg-primary/90 dark:hover:text-primary-foreground dark:data-[state=active]:bg-primary dark:data-[state=active]:text-primary-foreground"
-                >
+                <TabsTrigger value="EXPENSE">
                   <ShoppingCart class="size-4 shrink-0" />
                   <span class="text-center leading-tight">Expense</span>
                 </TabsTrigger>
-                <TabsTrigger
-                  value="INCOME"
-                  class="h-auto flex flex-col items-center justify-center gap-1 rounded-lg border border-transparent px-2 py-2.5 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-[var(--app-button-hover)] hover:text-[var(--app-button-fg)] data-[state=active]:bg-[var(--app-button-bg)] data-[state=active]:text-[var(--app-button-fg)] data-[state=active]:shadow-sm dark:hover:bg-primary/90 dark:hover:text-primary-foreground dark:data-[state=active]:bg-primary dark:data-[state=active]:text-primary-foreground"
-                >
+                <TabsTrigger value="INCOME">
                   <TrendingUp class="size-4 shrink-0" />
                   <span class="text-center leading-tight">Income</span>
                 </TabsTrigger>
-                <TabsTrigger
-                  value="LIABILITY"
-                  class="h-auto flex flex-col items-center justify-center gap-1 rounded-lg border border-transparent px-2 py-2.5 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-[var(--app-button-hover)] hover:text-[var(--app-button-fg)] data-[state=active]:bg-[var(--app-button-bg)] data-[state=active]:text-[var(--app-button-fg)] data-[state=active]:shadow-sm dark:hover:bg-primary/90 dark:hover:text-primary-foreground dark:data-[state=active]:bg-primary dark:data-[state=active]:text-primary-foreground"
-                >
+                <TabsTrigger value="LIABILITY">
                   <CreditCard class="size-4 shrink-0" />
                   <span class="text-center leading-tight">Liability</span>
                 </TabsTrigger>
@@ -323,16 +310,14 @@ function todayString(): string {
 
               <!-- Asset tab -->
               <TabsContent value="ASSET" class="space-y-4 pt-4">
-                <div class="grid gap-2">
-                  <Label for="asset-name">Name</Label>
+                <AppFormField label="Name" control-id="asset-name">
                   <Input
                     id="asset-name"
                     v-model="newAccount.name"
                     placeholder="e.g. Checking, Savings"
                   />
-                </div>
-                <div class="grid gap-2">
-                  <Label>Currency</Label>
+                </AppFormField>
+                <AppFormField label="Currency">
                   <Select v-model="newAccount.currency">
                     <SelectTrigger class="w-full">
                       <SelectValue />
@@ -347,19 +332,17 @@ function todayString(): string {
                       </SelectItem>
                     </SelectContent>
                   </Select>
-                </div>
+                </AppFormField>
                 <div class="grid grid-cols-2 gap-4">
-                  <div class="grid gap-2">
-                    <Label for="asset-opening-date">Opening date</Label>
+                  <AppFormField label="Opening date" control-id="asset-opening-date">
                     <Input
                       id="asset-opening-date"
                       v-model="openingBalanceDate"
                       type="date"
                       :disabled="openingBalanceMinor === 0"
                     />
-                  </div>
-                  <div class="grid gap-2">
-                    <Label>Initial balance</Label>
+                  </AppFormField>
+                  <AppFormField label="Initial balance">
                     <CurrencyAmountInput
                       v-model="openingBalanceMinor"
                       :minor-unit="openingBalanceMinorUnit"
@@ -367,7 +350,7 @@ function todayString(): string {
                       :allow-negative="true"
                       placeholder="0.00"
                     />
-                  </div>
+                  </AppFormField>
                 </div>
                 <p class="text-xs text-muted-foreground">
                   Posted as an opening balance journal entry against Opening Equity. Opening balance
@@ -377,16 +360,14 @@ function todayString(): string {
 
               <!-- Expense tab -->
               <TabsContent value="EXPENSE" class="space-y-4 pt-4">
-                <div class="grid gap-2">
-                  <Label for="expense-name">Name</Label>
+                <AppFormField label="Name" control-id="expense-name">
                   <Input
                     id="expense-name"
                     v-model="newAccount.name"
                     placeholder="e.g. Groceries, Utilities"
                   />
-                </div>
-                <div class="grid gap-2">
-                  <Label>Currency</Label>
+                </AppFormField>
+                <AppFormField label="Currency">
                   <Select v-model="newAccount.currency">
                     <SelectTrigger class="w-full">
                       <SelectValue />
@@ -401,21 +382,19 @@ function todayString(): string {
                       </SelectItem>
                     </SelectContent>
                   </Select>
-                </div>
+                </AppFormField>
               </TabsContent>
 
               <!-- Income tab -->
               <TabsContent value="INCOME" class="space-y-4 pt-4">
-                <div class="grid gap-2">
-                  <Label for="income-name">Name</Label>
+                <AppFormField label="Name" control-id="income-name">
                   <Input
                     id="income-name"
                     v-model="newAccount.name"
                     placeholder="e.g. Salary, Freelance"
                   />
-                </div>
-                <div class="grid gap-2">
-                  <Label>Currency</Label>
+                </AppFormField>
+                <AppFormField label="Currency">
                   <Select v-model="newAccount.currency">
                     <SelectTrigger class="w-full">
                       <SelectValue />
@@ -430,21 +409,19 @@ function todayString(): string {
                       </SelectItem>
                     </SelectContent>
                   </Select>
-                </div>
+                </AppFormField>
               </TabsContent>
 
               <!-- Liability tab -->
               <TabsContent value="LIABILITY" class="space-y-4 pt-4">
-                <div class="grid gap-2">
-                  <Label for="liability-name">Name</Label>
+                <AppFormField label="Name" control-id="liability-name">
                   <Input
                     id="liability-name"
                     v-model="newAccount.name"
                     placeholder="e.g. Mortgage, Car Loan"
                   />
-                </div>
-                <div class="grid gap-2">
-                  <Label>Currency</Label>
+                </AppFormField>
+                <AppFormField label="Currency">
                   <Select v-model="newAccount.currency">
                     <SelectTrigger class="w-full">
                       <SelectValue />
@@ -459,19 +436,17 @@ function todayString(): string {
                       </SelectItem>
                     </SelectContent>
                   </Select>
-                </div>
+                </AppFormField>
                 <div class="grid grid-cols-2 gap-4">
-                  <div class="grid gap-2">
-                    <Label for="liability-opening-date">Opening date</Label>
+                  <AppFormField label="Opening date" control-id="liability-opening-date">
                     <Input
                       id="liability-opening-date"
                       v-model="openingBalanceDate"
                       type="date"
                       :disabled="openingBalanceMinor === 0"
                     />
-                  </div>
-                  <div class="grid gap-2">
-                    <Label>Initial balance</Label>
+                  </AppFormField>
+                  <AppFormField label="Initial balance">
                     <CurrencyAmountInput
                       v-model="openingBalanceMinor"
                       :minor-unit="openingBalanceMinorUnit"
@@ -479,7 +454,7 @@ function todayString(): string {
                       :allow-negative="false"
                       placeholder="0.00"
                     />
-                  </div>
+                  </AppFormField>
                 </div>
                 <p class="text-xs text-muted-foreground">
                   Posted as opening debt against Opening Equity. Liability opening amounts must be
@@ -488,18 +463,18 @@ function todayString(): string {
               </TabsContent>
             </Tabs>
 
-            <p v-if="createError" class="text-sm text-red-600">{{ createError }}</p>
+            <AppStatusText v-if="createError">{{ createError }}</AppStatusText>
 
-            <DialogFooter>
+            <template #footer>
               <Button :disabled="isCreating || !newAccount.name.trim()" @click="submitCreate">
                 {{ isCreating ? 'Creating...' : 'Create' }}
               </Button>
-            </DialogFooter>
-          </DialogContent>
+            </template>
+          </AppDialogContent>
         </Dialog>
-      </CardHeader>
+      </AppCardHeader>
       <CardContent class="flex flex-col pb-6">
-        <div class="mb-4 flex flex-wrap items-center gap-3">
+        <AppFilterBar align="center">
           <Select v-model="typeFilter">
             <SelectTrigger class="w-36">
               <SelectValue placeholder="Filter type" />
@@ -522,47 +497,34 @@ function todayString(): string {
               </SelectItem>
             </SelectContent>
           </Select>
-        </div>
+        </AppFilterBar>
 
-        <div
-          v-if="accountStore.isLoading"
-          class="flex flex-1 items-center justify-center text-sm text-muted-foreground"
-        >
+        <AppStateMessage v-if="accountStore.isLoading" center>
           Loading accounts...
-        </div>
+        </AppStateMessage>
 
-        <div
-          v-else-if="accountStore.error"
-          class="flex flex-1 items-center justify-center text-sm text-red-600"
-        >
+        <AppStateMessage v-else-if="accountStore.error" variant="error" center>
           {{ accountStore.error }}
-        </div>
+        </AppStateMessage>
 
-        <div
-          v-else-if="filteredAccounts.length === 0"
-          class="flex flex-1 items-center justify-center text-sm text-muted-foreground"
-        >
+        <AppStateMessage v-else-if="filteredAccounts.length === 0" center>
           No accounts found.
-        </div>
+        </AppStateMessage>
 
         <DataTable v-else :table="table" sticky-header empty-text="No accounts found." />
       </CardContent>
     </Card>
 
     <Dialog v-model:open="renameDialog">
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Rename Account</DialogTitle>
-          <DialogDescription> Enter a new name for "{{ renameTarget?.name }}". </DialogDescription>
-        </DialogHeader>
-        <div class="grid gap-2 py-4">
+      <AppDialogContent title="Rename Account" :description="renameDescription">
+        <AppDialogBody gap="2">
           <Input v-model="renameName" placeholder="Account name" />
-          <p v-if="renameError" class="text-sm text-red-600">{{ renameError }}</p>
-        </div>
-        <DialogFooter>
+          <AppStatusText v-if="renameError">{{ renameError }}</AppStatusText>
+        </AppDialogBody>
+        <template #footer>
           <Button :disabled="!renameName.trim()" @click="submitRename"> Save </Button>
-        </DialogFooter>
-      </DialogContent>
+        </template>
+      </AppDialogContent>
     </Dialog>
   </section>
 </template>

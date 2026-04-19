@@ -3,14 +3,14 @@ import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 import Sidebar from '@/components/Sidebar.vue'
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar'
-import { useColorMode } from '@vueuse/core'
+import { useAppTheme } from '@/composables/useAppTheme'
 import { useSessionManager } from '@/composables/useSessionManager'
 
 const route = useRoute()
 
 const isAuthLayout = computed(() => route.meta.layout === 'auth')
 
-useColorMode()
+useAppTheme()
 useSessionManager()
 </script>
 

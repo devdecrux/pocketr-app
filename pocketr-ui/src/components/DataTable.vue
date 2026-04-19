@@ -5,7 +5,7 @@ export default { inheritAttrs: false }
 <script setup lang="ts" generic="TData extends RowData">
 import { computed, useSlots } from 'vue'
 import { FlexRender } from '@tanstack/vue-table'
-import type { Row, RowData, Table } from '@tanstack/vue-table'
+import type { Cell, Row, RowData, Table } from '@tanstack/vue-table'
 import type { AcceptableValue } from 'reka-ui'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -32,6 +32,10 @@ interface Props {
   emptyText?: string
   pagination?: Pagination
   pageSizeOptions?: number[]
+}
+
+interface DataTableColumnMeta {
+  tdClass?: string
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -62,6 +66,10 @@ const theadClass = computed(() =>
 function handlePageSizeChange(val: AcceptableValue): void {
   if (typeof val !== 'string') return
   emit('update:page-size', Number(val))
+}
+
+function tdClassForCell(cell: Cell<TData, unknown>): string | undefined {
+  return (cell.column.columnDef.meta as DataTableColumnMeta | undefined)?.tdClass
 }
 </script>
 
@@ -98,7 +106,7 @@ function handlePageSizeChange(val: AcceptableValue): void {
                   cn(
                     'px-4 py-3 text-right',
                     cell.column.id === 'actions' && 'w-1 whitespace-nowrap py-0',
-                    cell.column.columnDef.meta?.tdClass,
+                    tdClassForCell(cell),
                   )
                 "
               >
@@ -186,15 +194,11 @@ function handlePageSizeChange(val: AcceptableValue): void {
 }
 
 .app-data-table [data-table-action='delete'] {
-  color: #dc2626;
+  color: var(--app-action-danger-fg);
 }
 
 .app-data-table [data-table-action='delete']:hover {
-  background-color: #fef2f2;
-  color: #b91c1c;
-}
-
-.dark .app-data-table [data-table-action='delete']:hover {
-  background-color: rgba(69, 10, 10, 0.3);
+  background-color: var(--app-action-danger-hover-bg);
+  color: var(--app-action-danger-hover-fg);
 }
 </style>

@@ -14,36 +14,42 @@ const DEFAULT_PRESENTATION: TxnPresentation = {
   indicator: 'transfer',
 }
 
+const TRANSACTION_AMOUNT_CLASS = {
+  negative: 'text-[var(--app-transaction-amount-negative-fg)]',
+  positive: 'text-[var(--app-transaction-amount-positive-fg)]',
+  warning: 'text-[var(--app-transaction-amount-warning-fg)]',
+} as const
+
 const TXN_PRESENTATION_BY_KIND: Record<string, TxnPresentation> = {
   EXPENSE: {
     label: 'Expense',
     badgeVariant: 'destructive',
-    amountClass: 'text-red-500',
+    amountClass: TRANSACTION_AMOUNT_CLASS.negative,
     indicator: 'minus',
   },
   INCOME: {
     label: 'Income',
     badgeVariant: 'default',
-    amountClass: 'text-green-500',
+    amountClass: TRANSACTION_AMOUNT_CLASS.positive,
     indicator: 'plus',
   },
   TRANSFER: DEFAULT_PRESENTATION,
   DEBT_PAYMENT: {
     label: 'Debt Payment',
     badgeVariant: 'destructive',
-    amountClass: 'text-red-500',
+    amountClass: TRANSACTION_AMOUNT_CLASS.negative,
     indicator: 'minus',
   },
   OPENING_BALANCE: {
     label: 'Opening Balance',
     badgeVariant: 'secondary',
-    amountClass: 'text-green-500',
+    amountClass: TRANSACTION_AMOUNT_CLASS.positive,
     indicator: 'plus',
   },
   OPENING_DEBT: {
     label: 'Opening Debt',
     badgeVariant: 'outline',
-    amountClass: 'text-amber-600',
+    amountClass: TRANSACTION_AMOUNT_CLASS.warning,
     indicator: 'plus',
   },
 }

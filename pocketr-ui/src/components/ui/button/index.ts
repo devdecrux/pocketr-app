@@ -8,7 +8,7 @@ export const buttonVariants = cva(
     variants: {
       variant: {
         default:
-          'border border-transparent bg-[var(--app-button-bg)] text-[var(--app-button-fg)] shadow-xs hover:bg-[var(--app-button-hover)] dark:border-border dark:bg-primary dark:text-primary-foreground dark:hover:bg-primary/90',
+          'border border-transparent bg-[var(--app-button-bg)] text-[var(--app-button-fg)] shadow-xs hover:bg-[var(--app-button-hover)] disabled:bg-[var(--app-button-disabled-bg)] disabled:text-[var(--app-button-disabled-fg)] disabled:shadow-none dark:border-border dark:disabled:opacity-70',
         destructive:
           'bg-destructive text-white shadow-xs hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40 dark:bg-destructive/60',
         outline:

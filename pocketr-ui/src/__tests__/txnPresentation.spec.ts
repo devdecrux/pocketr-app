@@ -6,7 +6,7 @@ describe('getTxnPresentation', () => {
     expect(getTxnPresentation('OPENING_BALANCE')).toEqual({
       label: 'Opening Balance',
       badgeVariant: 'secondary',
-      amountClass: 'text-green-500',
+      amountClass: 'text-[var(--app-transaction-amount-positive-fg)]',
       indicator: 'plus',
     })
   })
@@ -15,7 +15,7 @@ describe('getTxnPresentation', () => {
     expect(getTxnPresentation('OPENING_DEBT')).toEqual({
       label: 'Opening Debt',
       badgeVariant: 'outline',
-      amountClass: 'text-amber-600',
+      amountClass: 'text-[var(--app-transaction-amount-warning-fg)]',
       indicator: 'plus',
     })
   })

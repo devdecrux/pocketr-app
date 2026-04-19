@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
+import { AppFormField, AppListItem, AppStateMessage, AppStatusText } from '@/components/app'
 import type { HouseholdRole } from '@/types/household'
 import type { AccountType } from '@/types/ledger'
 
@@ -155,14 +155,11 @@ async function handleInvite(): Promise<void> {
             <CardDescription>Manage household members and their roles.</CardDescription>
           </CardHeader>
           <CardContent>
-            <div v-if="householdStore.isLoading" class="text-sm text-muted-foreground">
-              Loading members...
-            </div>
+            <AppStateMessage v-if="householdStore.isLoading"> Loading members... </AppStateMessage>
             <div v-else-if="householdStore.currentHousehold?.members.length" class="space-y-3">
-              <div
+              <AppListItem
                 v-for="member in householdStore.currentHousehold.members"
                 :key="member.userId"
-                class="flex items-center justify-between rounded-md border border-border px-3 py-2"
               >
                 <div class="flex flex-col gap-0.5">
                   <span class="text-sm font-medium">
@@ -173,17 +170,19 @@ async function handleInvite(): Promise<void> {
                     Joined {{ new Date(member.joinedAt).toLocaleDateString() }}
                   </span>
                 </div>
-                <div class="flex items-center gap-2">
-                  <Badge :variant="roleBadgeVariant(member.role)">
-                    {{ member.role }}
-                  </Badge>
-                  <Badge :variant="statusBadgeVariant(member.status)">
-                    {{ member.status }}
-                  </Badge>
-                </div>
-              </div>
+                <template #actions>
+                  <div class="flex items-center gap-2">
+                    <Badge :variant="roleBadgeVariant(member.role)">
+                      {{ member.role }}
+                    </Badge>
+                    <Badge :variant="statusBadgeVariant(member.status)">
+                      {{ member.status }}
+                    </Badge>
+                  </div>
+                </template>
+              </AppListItem>
             </div>
-            <p v-else class="text-sm text-muted-foreground">No members found.</p>
+            <AppStateMessage v-else>No members found.</AppStateMessage>
           </CardContent>
         </Card>
 
@@ -194,20 +193,21 @@ async function handleInvite(): Promise<void> {
             <CardDescription>Send an invitation to join this household by email.</CardDescription>
           </CardHeader>
           <CardContent class="space-y-4">
-            <div class="grid gap-2">
-              <Label for="invite-email">Email</Label>
+            <AppFormField label="Email" control-id="invite-email">
               <Input
                 id="invite-email"
                 v-model="inviteEmail"
                 type="email"
                 placeholder="name@example.com"
               />
-            </div>
+            </AppFormField>
             <Button size="sm" :disabled="isInviting || !inviteEmail.trim()" @click="handleInvite">
               {{ isInviting ? 'Sending...' : 'Send Invitation' }}
             </Button>
-            <p v-if="inviteSuccess" class="text-sm text-emerald-600">{{ inviteSuccess }}</p>
-            <p v-if="inviteError" class="text-sm text-red-600">{{ inviteError }}</p>
+            <AppStatusText v-if="inviteSuccess" variant="success">{{
+              inviteSuccess
+            }}</AppStatusText>
+            <AppStatusText v-if="inviteError">{{ inviteError }}</AppStatusText>
           </CardContent>
         </Card>
       </div>
@@ -221,11 +221,7 @@ async function handleInvite(): Promise<void> {
           </CardHeader>
           <CardContent>
             <div v-if="householdStore.sharedAccounts.length" class="space-y-3">
-              <div
-                v-for="share in householdStore.sharedAccounts"
-                :key="share.accountId"
-                class="flex items-center justify-between rounded-md border border-border px-3 py-2"
-              >
+              <AppListItem v-for="share in householdStore.sharedAccounts" :key="share.accountId">
                 <div class="flex flex-col gap-0.5">
                   <span class="text-sm font-medium">{{ share.accountName }}</span>
                   <span class="text-xs text-muted-foreground">
@@ -233,12 +229,14 @@ async function handleInvite(): Promise<void> {
                     {{ displayPerson(share.ownerFirstName, share.ownerLastName, share.ownerEmail) }}
                   </span>
                 </div>
-                <span class="text-xs text-muted-foreground">
-                  {{ new Date(share.sharedAt).toLocaleDateString() }}
-                </span>
-              </div>
+                <template #actions>
+                  <span class="text-xs text-muted-foreground">
+                    {{ new Date(share.sharedAt).toLocaleDateString() }}
+                  </span>
+                </template>
+              </AppListItem>
             </div>
-            <p v-else class="text-sm text-muted-foreground">No accounts are shared yet.</p>
+            <AppStateMessage v-else>No accounts are shared yet.</AppStateMessage>
           </CardContent>
         </Card>
       </div>
@@ -253,18 +251,14 @@ async function handleInvite(): Promise<void> {
             >
           </CardHeader>
           <CardContent>
-            <div v-if="myAccounts.length === 0" class="text-sm text-muted-foreground">
+            <AppStateMessage v-if="myAccounts.length === 0">
               You have no accounts to share. Create accounts first.
-            </div>
+            </AppStateMessage>
             <div v-else class="space-y-4">
               <div v-for="[type, accounts] in myAccountsByType" :key="type">
                 <p class="mb-2 text-xs font-medium uppercase text-muted-foreground">{{ type }}</p>
                 <div class="space-y-2">
-                  <div
-                    v-for="account in accounts"
-                    :key="account.id"
-                    class="flex items-center justify-between rounded-md border border-border px-3 py-2"
-                  >
+                  <AppListItem v-for="account in accounts" :key="account.id">
                     <div class="flex flex-col gap-0.5">
                       <div class="flex items-center gap-2">
                         <span class="text-sm font-medium">{{ account.name }}</span>
@@ -284,28 +278,30 @@ async function handleInvite(): Promise<void> {
                         Shared {{ sharedAtForAccount(account.id) }}
                       </span>
                     </div>
-                    <Button
-                      size="sm"
-                      :variant="isAccountShared(account.id) ? 'destructive' : 'secondary'"
-                      class="h-8 px-3 text-xs"
-                      :disabled="sharingAccountId === account.id"
-                      @click="toggleShareAccount(account.id)"
-                    >
-                      {{
-                        sharingAccountId === account.id
-                          ? '...'
-                          : isAccountShared(account.id)
-                            ? 'Unshare'
-                            : 'Share'
-                      }}
-                    </Button>
-                  </div>
+                    <template #actions>
+                      <Button
+                        size="sm"
+                        :variant="isAccountShared(account.id) ? 'destructive' : 'secondary'"
+                        class="h-8 px-3 text-xs"
+                        :disabled="sharingAccountId === account.id"
+                        @click="toggleShareAccount(account.id)"
+                      >
+                        {{
+                          sharingAccountId === account.id
+                            ? '...'
+                            : isAccountShared(account.id)
+                              ? 'Unshare'
+                              : 'Share'
+                        }}
+                      </Button>
+                    </template>
+                  </AppListItem>
                 </div>
               </div>
             </div>
-            <p v-if="householdStore.error" class="mt-2 text-sm text-red-600">
+            <AppStatusText v-if="householdStore.error" class="mt-2">
               {{ householdStore.error }}
-            </p>
+            </AppStatusText>
           </CardContent>
         </Card>
       </div>

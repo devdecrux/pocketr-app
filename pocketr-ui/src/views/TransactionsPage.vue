@@ -17,12 +17,12 @@ import AccountSelector from '@/components/AccountSelector.vue'
 import CategoryTagSelector from '@/components/CategoryTagSelector.vue'
 import DateRangePicker from '@/components/DateRangePicker.vue'
 import CurrencyAmountInput from '@/components/CurrencyAmountInput.vue'
+import { AppCardHeader, AppDialogContent, AppFilterBar, AppFormField, AppNotice, AppStateMessage, AppStatusText } from '@/components/app'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import { Card, CardContent } from '@/components/ui/card'
+import { Dialog, DialogTrigger } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ArrowLeftRight, ChevronDown, ChevronRight, Minus, Plus, Trash2, TrendingDown } from 'lucide-vue-next'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
@@ -522,8 +522,7 @@ async function deleteTransaction(txn: LedgerTxn): Promise<void> {
 <template>
   <section class="flex flex-col gap-4">
     <Card>
-      <CardHeader class="flex flex-row items-center justify-between">
-        <CardTitle class="text-2xl">Transactions</CardTitle>
+      <AppCardHeader title="Transactions" title-class="text-2xl">
         <Dialog v-model:open="dialogOpen">
           <DialogTrigger as-child>
             <Button size="sm" @click="resetForms">
@@ -531,41 +530,26 @@ async function deleteTransaction(txn: LedgerTxn): Promise<void> {
               New Transaction
             </Button>
           </DialogTrigger>
-          <DialogContent class="max-w-lg">
-            <DialogHeader>
-              <DialogTitle>Create Transaction</DialogTitle>
-              <DialogDescription>
-                Record an expense, income, transfer, or debt payment.
-              </DialogDescription>
-            </DialogHeader>
-
+          <AppDialogContent
+            title="Create Transaction"
+            description="Record an expense, income, transfer, or debt payment."
+            class="max-w-lg"
+          >
             <Tabs v-model="activeTab" class="w-full">
-              <TabsList class="grid h-auto w-full grid-cols-4 gap-1.5 rounded-xl bg-muted p-1.5">
-                <TabsTrigger
-                  value="expense"
-                  class="h-auto flex flex-col items-center justify-center gap-1 rounded-lg border border-transparent px-2 py-2.5 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-(--app-button-hover) hover:text-(--app-button-fg) data-[state=active]:bg-(--app-button-bg) data-[state=active]:text-(--app-button-fg) data-[state=active]:shadow-sm dark:hover:bg-primary/90 dark:hover:text-primary-foreground dark:data-[state=active]:bg-primary dark:data-[state=active]:text-primary-foreground"
-                >
+              <TabsList>
+                <TabsTrigger value="expense">
                   <Minus class="size-4 shrink-0" />
                   <span class="text-center leading-tight">Expense</span>
                 </TabsTrigger>
-                <TabsTrigger
-                  value="income"
-                  class="h-auto flex flex-col items-center justify-center gap-1 rounded-lg border border-transparent px-2 py-2.5 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-(--app-button-hover) hover:text-(--app-button-fg) data-[state=active]:bg-(--app-button-bg) data-[state=active]:text-(--app-button-fg) data-[state=active]:shadow-sm dark:hover:bg-primary/90 dark:hover:text-primary-foreground dark:data-[state=active]:bg-primary dark:data-[state=active]:text-primary-foreground"
-                >
+                <TabsTrigger value="income">
                   <Plus class="size-4 shrink-0" />
                   <span class="text-center leading-tight">Income</span>
                 </TabsTrigger>
-                <TabsTrigger
-                  value="transfer"
-                  class="h-auto flex flex-col items-center justify-center gap-1 rounded-lg border border-transparent px-2 py-2.5 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-(--app-button-hover) hover:text-(--app-button-fg) data-[state=active]:bg-(--app-button-bg) data-[state=active]:text-(--app-button-fg) data-[state=active]:shadow-sm dark:hover:bg-primary/90 dark:hover:text-primary-foreground dark:data-[state=active]:bg-primary dark:data-[state=active]:text-primary-foreground"
-                >
+                <TabsTrigger value="transfer">
                   <ArrowLeftRight class="size-4 shrink-0" />
                   <span class="text-center leading-tight">Transfer</span>
                 </TabsTrigger>
-                <TabsTrigger
-                  value="debt-payment"
-                  class="h-auto flex flex-col items-center justify-center gap-1 rounded-lg border border-transparent px-2 py-2.5 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-(--app-button-hover) hover:text-(--app-button-fg) data-[state=active]:bg-(--app-button-bg) data-[state=active]:text-(--app-button-fg) data-[state=active]:shadow-sm dark:hover:bg-primary/90 dark:hover:text-primary-foreground dark:data-[state=active]:bg-primary dark:data-[state=active]:text-primary-foreground"
-                >
+                <TabsTrigger value="debt-payment">
                   <TrendingDown class="size-4 shrink-0" />
                   <span class="text-center leading-tight">Debt Payment</span>
                 </TabsTrigger>
@@ -574,256 +558,216 @@ async function deleteTransaction(txn: LedgerTxn): Promise<void> {
               <!-- Expense Tab -->
               <TabsContent value="expense" class="space-y-4 pt-4">
                 <div class="grid grid-cols-2 gap-4">
-                  <div class="grid gap-2">
-                    <Label for="expense-date">Date</Label>
+                  <AppFormField label="Date" control-id="expense-date">
                     <Input id="expense-date" v-model="expenseDate" type="date" />
-                  </div>
-                  <div class="grid gap-2">
-                    <Label>Amount</Label>
+                  </AppFormField>
+                  <AppFormField label="Amount">
                     <CurrencyAmountInput
                       v-model="expenseAmount"
                       :minor-unit="expenseMinorUnit"
                       :currency-code="expenseCurrency"
                     />
-                  </div>
+                  </AppFormField>
                 </div>
-                <div class="grid gap-2">
-                  <Label>Pay from (Asset/Liability)</Label>
+                <AppFormField label="Pay from (Asset/Liability)">
                   <AccountSelector
                     v-model="expensePayFrom"
                     :allowed-types="['ASSET', 'LIABILITY']"
                     placeholder="Select pay-from account"
                   />
-                </div>
-                <div class="grid gap-2">
-                  <Label>Expense account</Label>
+                </AppFormField>
+                <AppFormField label="Expense account">
                   <AccountSelector
                     v-model="expenseAccount"
                     :allowed-types="['EXPENSE']"
                     placeholder="Select expense account"
                   />
-                </div>
-                <div class="grid gap-2">
-                  <Label>Category</Label>
+                </AppFormField>
+                <AppFormField label="Category">
                   <CategoryTagSelector v-model="expenseCategory" />
-                </div>
-                <div class="grid gap-2">
-                  <Label for="expense-desc">Description</Label>
+                </AppFormField>
+                <AppFormField label="Description" control-id="expense-desc">
                   <Input
                     id="expense-desc"
                     v-model="expenseDescription"
                     placeholder="What was this for?"
                   />
-                </div>
+                </AppFormField>
               </TabsContent>
 
               <!-- Income Tab -->
               <TabsContent value="income" class="space-y-4 pt-4">
                 <div class="grid grid-cols-2 gap-4">
-                  <div class="grid gap-2">
-                    <Label for="income-date">Date</Label>
+                  <AppFormField label="Date" control-id="income-date">
                     <Input id="income-date" v-model="incomeDate" type="date" />
-                  </div>
-                  <div class="grid gap-2">
-                    <Label>Amount</Label>
+                  </AppFormField>
+                  <AppFormField label="Amount">
                     <CurrencyAmountInput
                       v-model="incomeAmount"
                       :minor-unit="incomeMinorUnit"
                       :currency-code="incomeCurrency"
                     />
-                  </div>
+                  </AppFormField>
                 </div>
-                <div class="grid gap-2">
-                  <Label>Deposit to (Asset)</Label>
+                <AppFormField label="Deposit to (Asset)">
                   <AccountSelector
                     v-model="incomeDeposit"
                     :allowed-types="['ASSET']"
                     placeholder="Select deposit account"
                   />
-                </div>
-                <div class="grid gap-2">
-                  <Label>Income account</Label>
+                </AppFormField>
+                <AppFormField label="Income account">
                   <AccountSelector
                     v-model="incomeAccount"
                     :allowed-types="['INCOME']"
                     placeholder="Select income account"
                   />
-                </div>
-                <div class="grid gap-2">
-                  <Label for="income-desc">Description</Label>
+                </AppFormField>
+                <AppFormField label="Description" control-id="income-desc">
                   <Input id="income-desc" v-model="incomeDescription" placeholder="Income source" />
-                </div>
+                </AppFormField>
               </TabsContent>
 
               <!-- Transfer Tab -->
               <TabsContent value="transfer" class="space-y-4 pt-4">
-                <div
-                  v-if="modeStore.isHousehold"
-                  class="rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-700 dark:border-blue-900 dark:bg-blue-950 dark:text-blue-300"
-                >
+                <AppNotice v-if="modeStore.isHousehold">
                   Transfers between household accounts are allowed. You cannot post expenses to
                   other users' accounts.
-                </div>
+                </AppNotice>
                 <div class="grid grid-cols-2 gap-4">
-                  <div class="grid gap-2">
-                    <Label for="transfer-date">Date</Label>
+                  <AppFormField label="Date" control-id="transfer-date">
                     <Input id="transfer-date" v-model="transferDate" type="date" />
-                  </div>
-                  <div class="grid gap-2">
-                    <Label>Amount</Label>
+                  </AppFormField>
+                  <AppFormField label="Amount">
                     <CurrencyAmountInput
                       v-model="transferAmount"
                       :minor-unit="transferMinorUnit"
                       :currency-code="transferCurrency"
                     />
-                  </div>
+                  </AppFormField>
                 </div>
-                <div class="grid gap-2">
-                  <Label>From account (Asset)</Label>
+                <AppFormField label="From account (Asset)">
                   <AccountSelector
                     v-model="transferFrom"
                     :allowed-types="['ASSET']"
                     placeholder="Select source account"
                   />
-                </div>
-                <div class="grid gap-2">
-                  <Label>To account (Asset)</Label>
+                </AppFormField>
+                <AppFormField label="To account (Asset)">
                   <AccountSelector
                     v-model="transferTo"
                     :allowed-types="['ASSET']"
                     :currency="transferCurrency || undefined"
                     placeholder="Select destination account"
                   />
-                </div>
-                <div class="grid gap-2">
-                  <Label for="transfer-desc">Description</Label>
+                </AppFormField>
+                <AppFormField label="Description" control-id="transfer-desc">
                   <Input
                     id="transfer-desc"
                     v-model="transferDescription"
                     placeholder="Transfer reason"
                   />
-                </div>
-                <div
-                  v-if="isCrossUserTransfer"
-                  class="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-300"
-                >
+                </AppFormField>
+                <AppNotice v-if="isCrossUserTransfer" variant="warning">
                   This is a cross-user transfer between household members.
-                </div>
+                </AppNotice>
               </TabsContent>
 
               <!-- Debt Payment Tab -->
               <TabsContent value="debt-payment" class="space-y-4 pt-4">
                 <div class="grid grid-cols-2 gap-4">
-                  <div class="grid gap-2">
-                    <Label for="debt-payment-date">Date</Label>
+                  <AppFormField label="Date" control-id="debt-payment-date">
                     <Input id="debt-payment-date" v-model="debtPaymentDate" type="date" />
-                  </div>
-                  <div class="grid gap-2">
-                    <Label>Amount</Label>
+                  </AppFormField>
+                  <AppFormField label="Amount">
                     <CurrencyAmountInput
                       v-model="debtPaymentAmount"
                       :minor-unit="debtPaymentMinorUnit"
                       :currency-code="debtPaymentCurrency"
                     />
-                  </div>
+                  </AppFormField>
                 </div>
-                <div class="grid gap-2">
-                  <Label>Pay from (Asset)</Label>
+                <AppFormField label="Pay from (Asset)">
                   <AccountSelector
                     v-model="debtPaymentPayFrom"
                     :allowed-types="['ASSET']"
                     placeholder="Select asset account"
                   />
-                </div>
-                <div class="grid gap-2">
-                  <Label>Liability account</Label>
+                </AppFormField>
+                <AppFormField label="Liability account">
                   <AccountSelector
                     v-model="debtPaymentLiabilityAccount"
                     :allowed-types="['LIABILITY']"
                     :currency="debtPaymentCurrency || undefined"
                     placeholder="Select liability account"
                   />
-                </div>
-                <div class="grid gap-2">
-                  <Label for="debt-payment-desc">Description</Label>
+                </AppFormField>
+                <AppFormField label="Description" control-id="debt-payment-desc">
                   <Input
                     id="debt-payment-desc"
                     v-model="debtPaymentDescription"
                     placeholder="Debt payment note"
                   />
-                </div>
+                </AppFormField>
               </TabsContent>
             </Tabs>
 
-            <p v-if="submitError" class="text-sm text-red-600">{{ submitError }}</p>
+            <AppStatusText v-if="submitError">{{ submitError }}</AppStatusText>
 
-            <DialogFooter>
+            <template #footer>
               <Button :disabled="isSubmitting || !isFormValid" @click="submitTransaction">
                 {{ isSubmitting ? 'Creating...' : 'Create Transaction' }}
               </Button>
-            </DialogFooter>
-          </DialogContent>
+            </template>
+          </AppDialogContent>
         </Dialog>
-      </CardHeader>
+      </AppCardHeader>
 
       <CardContent class="flex flex-col pb-6">
         <!-- Filters -->
-        <div class="mb-4 flex flex-wrap items-end gap-3">
-          <div class="grid gap-1">
-            <Label class="text-xs">Date range</Label>
+        <AppFilterBar>
+          <AppFormField label="Date range" class="gap-1" label-class="text-xs">
             <DateRangePicker
               :from="filterDateFrom"
               :to="filterDateTo"
               @update:from="filterDateFrom = $event"
               @update:to="filterDateTo = $event"
             />
-          </div>
-          <div class="grid gap-1">
-            <Label class="text-xs">Account</Label>
+          </AppFormField>
+          <AppFormField label="Account" class="gap-1" label-class="text-xs">
             <div class="w-48">
               <AccountSelector v-model="filterAccountId" placeholder="All accounts" />
             </div>
-          </div>
-          <div class="grid gap-1">
-            <Label class="text-xs">Category</Label>
+          </AppFormField>
+          <AppFormField label="Category" class="gap-1" label-class="text-xs">
             <div class="w-48">
               <CategoryTagSelector v-model="filterCategoryId" />
             </div>
-          </div>
-          <div class="grid gap-1">
-            <Label class="text-xs">Search</Label>
+          </AppFormField>
+          <AppFormField label="Search" class="gap-1" label-class="text-xs">
             <Input
               v-model="filterSearch"
               type="text"
               placeholder="Search descriptions..."
               class="h-8 w-48 text-xs"
             />
-          </div>
-        </div>
+          </AppFormField>
+        </AppFilterBar>
 
         <!-- Loading state -->
-        <div
-          v-if="ledgerStore.isLoading"
-          class="flex flex-1 items-center justify-center text-sm text-muted-foreground"
-        >
+        <AppStateMessage v-if="ledgerStore.isLoading" center>
           Loading transactions...
-        </div>
+        </AppStateMessage>
 
         <!-- Empty state -->
-        <div
-          v-else-if="filteredTransactions.length === 0"
-          class="flex flex-1 items-center justify-center text-sm text-muted-foreground"
-        >
+        <AppStateMessage v-else-if="filteredTransactions.length === 0" center>
           No transactions found. Create your first transaction to get started.
-        </div>
+        </AppStateMessage>
 
         <!-- Error state (only reached when transactions exist but a reload failed) -->
-        <div
-          v-else-if="ledgerStore.error"
-          class="flex flex-1 items-center justify-center text-sm text-red-600"
-        >
+        <AppStateMessage v-else-if="ledgerStore.error" variant="error" center>
           {{ ledgerStore.error }}
-        </div>
+        </AppStateMessage>
 
         <!-- Transaction table -->
         <DataTable
@@ -859,7 +803,7 @@ async function deleteTransaction(txn: LedgerTxn): Promise<void> {
           </template>
         </DataTable>
 
-        <p v-if="deleteError" class="mt-3 text-sm text-red-600">{{ deleteError }}</p>
+        <AppStatusText v-if="deleteError" class="mt-3">{{ deleteError }}</AppStatusText>
       </CardContent>
     </Card>
   </section>

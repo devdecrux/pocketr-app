@@ -4,37 +4,23 @@ import { type ColumnDef, getCoreRowModel, useVueTable } from '@tanstack/vue-tabl
 import { Pencil, Plus, Trash2 } from 'lucide-vue-next'
 import { useCategoryStore } from '@/stores/category'
 import type { CategoryTag } from '@/types/ledger'
+import { CATEGORY_PRESET_COLORS } from '@/utils/categoryColors'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog'
+import { Card, CardContent } from '@/components/ui/card'
+import { Dialog, DialogTrigger } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
+import {
+  AppCardHeader,
+  AppDialogBody,
+  AppDialogContent,
+  AppFormField,
+  AppStateMessage,
+  AppStatusText,
+} from '@/components/app'
+import CategoryColorPicker from '@/components/CategoryColorPicker.vue'
 import DataTable from '@/components/DataTable.vue'
 
 const categoryStore = useCategoryStore()
-
-const PRESET_COLORS = [
-  '#ef4444',
-  '#f97316',
-  '#f59e0b',
-  '#84cc16',
-  '#22c55e',
-  '#14b8a6',
-  '#06b6d4',
-  '#3b82f6',
-  '#8b5cf6',
-  '#ec4899',
-  '#6b7280',
-  '#0ea5e9',
-]
 
 const createDialogOpen = ref(false)
 const createName = ref('')
@@ -212,9 +198,7 @@ const table = useVueTable({
 <template>
   <section class="flex flex-col gap-4">
     <Card>
-      <CardHeader class="flex flex-row items-center justify-between">
-        <CardTitle class="text-2xl">Categories</CardTitle>
-
+      <AppCardHeader title="Categories" title-class="text-2xl">
         <Dialog v-model:open="createDialogOpen">
           <DialogTrigger as-child>
             <Button size="sm">
@@ -222,72 +206,41 @@ const table = useVueTable({
               New Category
             </Button>
           </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Create Category</DialogTitle>
-              <DialogDescription> Add a category for transaction tagging. </DialogDescription>
-            </DialogHeader>
-
-            <div class="grid gap-4 py-4">
-              <div class="grid gap-2">
-                <Label for="create-category-name">Name</Label>
+          <AppDialogContent
+            title="Create Category"
+            description="Add a category for transaction tagging."
+          >
+            <AppDialogBody>
+              <AppFormField label="Name" control-id="create-category-name">
                 <Input
                   id="create-category-name"
                   v-model="createName"
                   placeholder="e.g. Groceries, Utilities"
                 />
-              </div>
-              <div class="grid gap-2">
-                <Label>Color</Label>
-                <div class="flex flex-wrap gap-2">
-                  <button
-                    v-for="color in PRESET_COLORS"
-                    :key="color"
-                    type="button"
-                    class="h-6 w-6 rounded-full border-2 transition-transform hover:scale-110"
-                    :style="{ backgroundColor: color }"
-                    :class="
-                      createColor === color ? 'border-foreground scale-110' : 'border-transparent'
-                    "
-                    @click="createColor = color"
-                  />
-                  <button
-                    type="button"
-                    class="flex h-6 w-6 items-center justify-center rounded-full border-2 border-dashed text-[10px] text-muted-foreground transition-colors hover:border-foreground"
-                    :class="createColor === null ? 'border-foreground' : 'border-muted-foreground'"
-                    title="No color"
-                    @click="createColor = null"
-                  >
-                    ✕
-                  </button>
-                </div>
-              </div>
-              <p v-if="createError" class="text-sm text-red-600">{{ createError }}</p>
-            </div>
+              </AppFormField>
+              <AppFormField label="Color">
+                <CategoryColorPicker v-model="createColor" :colors="CATEGORY_PRESET_COLORS" />
+              </AppFormField>
+              <AppStatusText v-if="createError">{{ createError }}</AppStatusText>
+            </AppDialogBody>
 
-            <DialogFooter>
+            <template #footer>
               <Button :disabled="isCreating || !createName.trim()" @click="submitCreate">
                 {{ isCreating ? 'Creating...' : 'Create' }}
               </Button>
-            </DialogFooter>
-          </DialogContent>
+            </template>
+          </AppDialogContent>
         </Dialog>
-      </CardHeader>
+      </AppCardHeader>
 
       <CardContent class="flex flex-col pb-6">
-        <div
-          v-if="categoryStore.isLoading"
-          class="flex flex-1 items-center justify-center text-sm text-muted-foreground"
-        >
+        <AppStateMessage v-if="categoryStore.isLoading" center>
           Loading categories...
-        </div>
+        </AppStateMessage>
 
-        <div
-          v-else-if="categoryStore.error"
-          class="flex flex-1 items-center justify-center text-sm text-red-600"
-        >
+        <AppStateMessage v-else-if="categoryStore.error" variant="error" center>
           {{ categoryStore.error }}
-        </div>
+        </AppStateMessage>
 
         <DataTable
           v-else
@@ -296,56 +249,28 @@ const table = useVueTable({
           empty-text="No categories yet. Create your first category to get started."
         />
 
-        <p v-if="deleteError" class="mt-3 text-sm text-red-600">{{ deleteError }}</p>
+        <AppStatusText v-if="deleteError" class="mt-3">{{ deleteError }}</AppStatusText>
       </CardContent>
     </Card>
 
     <Dialog v-model:open="renameDialogOpen">
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Rename Category</DialogTitle>
-          <DialogDescription> Update the category name. </DialogDescription>
-        </DialogHeader>
-
-        <div class="grid gap-4 py-4">
-          <div class="grid gap-2">
-            <Label for="rename-category-name">Name</Label>
+      <AppDialogContent title="Rename Category" description="Update the category name.">
+        <AppDialogBody>
+          <AppFormField label="Name" control-id="rename-category-name">
             <Input id="rename-category-name" v-model="renameName" />
-          </div>
-          <div class="grid gap-2">
-            <Label>Color</Label>
-            <div class="flex flex-wrap gap-2">
-              <button
-                v-for="color in PRESET_COLORS"
-                :key="color"
-                type="button"
-                class="h-6 w-6 rounded-full border-2 transition-transform hover:scale-110"
-                :style="{ backgroundColor: color }"
-                :class="
-                  renameColor === color ? 'border-foreground scale-110' : 'border-transparent'
-                "
-                @click="renameColor = color"
-              />
-              <button
-                type="button"
-                class="flex h-6 w-6 items-center justify-center rounded-full border-2 border-dashed text-[10px] text-muted-foreground transition-colors hover:border-foreground"
-                :class="renameColor === null ? 'border-foreground' : 'border-muted-foreground'"
-                title="No color"
-                @click="renameColor = null"
-              >
-                ✕
-              </button>
-            </div>
-          </div>
-          <p v-if="renameError" class="text-sm text-red-600">{{ renameError }}</p>
-        </div>
+          </AppFormField>
+          <AppFormField label="Color">
+            <CategoryColorPicker v-model="renameColor" :colors="CATEGORY_PRESET_COLORS" />
+          </AppFormField>
+          <AppStatusText v-if="renameError">{{ renameError }}</AppStatusText>
+        </AppDialogBody>
 
-        <DialogFooter>
+        <template #footer>
           <Button :disabled="isRenaming || !renameName.trim()" @click="submitRename">
             {{ isRenaming ? 'Saving...' : 'Save' }}
           </Button>
-        </DialogFooter>
-      </DialogContent>
+        </template>
+      </AppDialogContent>
     </Dialog>
   </section>
 </template>
