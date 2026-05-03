@@ -1,14 +1,14 @@
 import { useColorMode } from '@vueuse/core'
 
 export const APP_THEME_OPTIONS = [
-  { value: 'light', label: 'Light' },
-  { value: 'dark', label: 'Dark' },
-  { value: 'auto', label: 'System' },
+  { value: 'light', labelKey: 'components.theme.modes.light' },
+  { value: 'dark', labelKey: 'components.theme.modes.dark' },
+  { value: 'auto', labelKey: 'components.theme.modes.auto' },
 ] as const
 
 export const APP_THEME_PRESETS = {
   pocketr: {
-    label: 'Pocketr',
+    labelKey: 'components.theme.presets.pocketr',
   },
 } as const
 

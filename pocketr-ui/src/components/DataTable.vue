@@ -41,7 +41,6 @@ interface DataTableColumnMeta {
 const props = withDefaults(defineProps<Props>(), {
   stickyHeader: false,
   clickable: false,
-  emptyText: 'No data.',
   pageSizeOptions: () => [5, 10, 15, 25, 50, 100],
 })
 
@@ -124,7 +123,9 @@ function tdClassForCell(cell: Cell<TData, unknown>): string | undefined {
               :colspan="table.getAllColumns().length"
               class="px-4 py-8 text-center text-muted-foreground"
             >
-              <slot name="empty" :colspan="table.getAllColumns().length">{{ emptyText }}</slot>
+              <slot name="empty" :colspan="table.getAllColumns().length">
+                {{ emptyText ?? $t('common.states.noData') }}
+              </slot>
             </td>
           </tr>
         </tbody>
@@ -136,7 +137,7 @@ function tdClassForCell(cell: Cell<TData, unknown>): string | undefined {
       class="mt-4 flex items-center justify-between gap-4"
     >
       <div class="flex items-center gap-2">
-        <span class="text-xs text-muted-foreground">Rows per page</span>
+        <span class="text-xs text-muted-foreground">{{ $t('common.table.rowsPerPage') }}</span>
         <Select
           :model-value="String(pagination.pageSize)"
           @update:model-value="handlePageSizeChange"
@@ -159,8 +160,9 @@ function tdClassForCell(cell: Cell<TData, unknown>): string | undefined {
 
       <div class="flex items-center gap-3">
         <span class="text-xs text-muted-foreground">
-          Page {{ pagination.page + 1 }} of {{ pagination.totalPages }} &middot;
-          {{ pagination.totalElements }} total
+          {{ $t('common.table.pageOf', { page: pagination.page + 1, totalPages: pagination.totalPages }) }}
+          &middot;
+          {{ $t('common.table.total', { totalElements: pagination.totalElements }) }}
         </span>
         <div class="flex gap-1">
           <Button

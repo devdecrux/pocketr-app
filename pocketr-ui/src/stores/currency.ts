@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 import { listCurrencies } from '@/api/currencies'
+import { translate } from '@/i18n/translate'
 import type { Currency } from '@/types/ledger'
 
 export const useCurrencyStore = defineStore('currency', () => {
@@ -27,7 +28,7 @@ export const useCurrencyStore = defineStore('currency', () => {
     try {
       currencies.value = await listCurrencies()
     } catch {
-      error.value = 'Failed to load currencies.'
+      error.value = translate('errors.currencies.load')
     } finally {
       isLoading.value = false
     }

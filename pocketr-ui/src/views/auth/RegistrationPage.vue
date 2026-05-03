@@ -13,18 +13,18 @@ const password = ref('')
 const confirmPassword = ref('')
 const email = ref('')
 const isAlert = ref(false)
-const alertMessage = ref('Unable to register user')
+const alertMessage = ref('')
 const isSubmitting = ref(false)
 
 const router = useRouter()
 
 async function register(): Promise<void> {
   isAlert.value = false
-  alertMessage.value = 'Unable to register user'
+  alertMessage.value = ''
 
   if (password.value !== confirmPassword.value) {
     isAlert.value = true
-    alertMessage.value = 'Passwords do not match'
+    alertMessage.value = 'views.auth.registration.errors.passwordsMismatch'
     return
   }
 
@@ -43,6 +43,7 @@ async function register(): Promise<void> {
     await router.push('/login')
   } catch {
     isAlert.value = true
+    alertMessage.value = 'views.auth.registration.errors.unableToRegister'
   } finally {
     isSubmitting.value = false
   }
@@ -53,48 +54,67 @@ async function register(): Promise<void> {
   <AuthPageShell>
     <Card class="w-full max-w-md">
       <CardHeader>
-        <CardTitle class="text-xl">Sign Up</CardTitle>
-        <CardDescription> Enter your information to create an account </CardDescription>
+        <CardTitle class="text-xl">{{ $t('views.auth.registration.title') }}</CardTitle>
+        <CardDescription>{{ $t('views.auth.registration.description') }}</CardDescription>
       </CardHeader>
       <CardContent>
         <form @submit.prevent="register">
           <div class="grid gap-4">
             <div class="grid gap-4 sm:grid-cols-2">
-              <AppFormField label="First name" control-id="first-name">
-                <Input id="first-name" v-model="firstName" placeholder="John" required />
+              <AppFormField :label="$t('common.fields.firstName')" control-id="first-name">
+                <Input
+                  id="first-name"
+                  v-model="firstName"
+                  :placeholder="$t('common.placeholders.personFirstName')"
+                  required
+                />
               </AppFormField>
-              <AppFormField label="Last name" control-id="last-name">
-                <Input id="last-name" v-model="lastName" placeholder="Doe" required />
+              <AppFormField :label="$t('common.fields.lastName')" control-id="last-name">
+                <Input
+                  id="last-name"
+                  v-model="lastName"
+                  :placeholder="$t('common.placeholders.personLastName')"
+                  required
+                />
               </AppFormField>
             </div>
-            <AppFormField label="Email" control-id="email">
+            <AppFormField :label="$t('common.fields.email')" control-id="email">
               <Input
                 id="email"
                 v-model="email"
                 type="email"
-                placeholder="email@example.com"
+                :placeholder="$t('common.placeholders.email')"
                 required
               />
             </AppFormField>
-            <AppFormField label="Password" control-id="password">
+            <AppFormField :label="$t('common.fields.password')" control-id="password">
               <Input id="password" v-model="password" type="password" required />
             </AppFormField>
-            <AppFormField label="Confirm password" control-id="confirm-password">
+            <AppFormField
+              :label="$t('common.fields.confirmPassword')"
+              control-id="confirm-password"
+            >
               <Input id="confirm-password" v-model="confirmPassword" type="password" required />
             </AppFormField>
 
             <p v-if="isAlert" class="text-sm text-destructive">
-              {{ alertMessage }}
+              {{ $t(alertMessage) }}
             </p>
 
             <Button type="submit" class="w-full" :disabled="isSubmitting">
-              {{ isSubmitting ? 'Creating account...' : 'Create an account' }}
+              {{
+                isSubmitting
+                  ? $t('common.feedback.creatingAccount')
+                  : $t('views.auth.registration.submit')
+              }}
             </Button>
           </div>
         </form>
         <div class="mt-4 text-center text-sm">
-          Already have an account?
-          <RouterLink to="/login" class="text-(--app-button-fg) underline"> Sign in </RouterLink>
+          {{ $t('views.auth.registration.links.loginPrompt') }}
+          <RouterLink to="/login" class="text-(--app-button-fg) underline">
+            {{ $t('common.actions.signIn') }}
+          </RouterLink>
         </div>
       </CardContent>
     </Card>

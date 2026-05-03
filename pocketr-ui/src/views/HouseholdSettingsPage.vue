@@ -12,6 +12,7 @@ import { Input } from '@/components/ui/input'
 import { AppFormField, AppListItem, AppStateMessage, AppStatusText } from '@/components/app'
 import type { HouseholdRole } from '@/types/household'
 import type { AccountType } from '@/types/ledger'
+import { translate } from '@/i18n/translate'
 
 const route = useRoute()
 const householdStore = useHouseholdStore()
@@ -81,7 +82,7 @@ function displayPerson(
   email: string | null | undefined,
 ): string {
   const name = `${firstName?.trim() ?? ''} ${lastName?.trim() ?? ''}`.trim()
-  return name || (email?.trim() ?? 'Unknown user')
+  return name || (email?.trim() ?? translate('common.states.unknownUser'))
 }
 
 async function toggleShareAccount(accountId: string): Promise<void> {
@@ -99,7 +100,7 @@ async function toggleShareAccount(accountId: string): Promise<void> {
 
 async function handleInvite(): Promise<void> {
   if (!inviteEmail.value.trim()) {
-    inviteError.value = 'Email is required.'
+    inviteError.value = translate('validation.household.emailRequired')
     return
   }
 
@@ -113,17 +114,19 @@ async function handleInvite(): Promise<void> {
     })
 
     if (success) {
-      inviteSuccess.value = `Invitation sent to ${inviteEmail.value}.`
+      inviteSuccess.value = translate('views.householdSettings.invite.success', {
+        email: inviteEmail.value,
+      })
       inviteEmail.value = ''
     } else {
-      inviteError.value = householdStore.error ?? 'Failed to send invitation.'
+      inviteError.value = householdStore.error ?? translate('errors.households.sendInvitation')
     }
   } catch (error: unknown) {
     if (error instanceof HTTPError) {
       const payload = await error.response.json<{ message?: string }>().catch(() => null)
-      inviteError.value = payload?.message?.trim() || 'Failed to send invitation.'
+      inviteError.value = payload?.message?.trim() || translate('errors.households.sendInvitation')
     } else {
-      inviteError.value = 'Failed to send invitation.'
+      inviteError.value = translate('errors.households.sendInvitation')
     }
   } finally {
     isInviting.value = false
@@ -138,7 +141,11 @@ async function handleInvite(): Promise<void> {
       <CardHeader>
         <CardTitle class="text-2xl">{{ householdStore.currentHousehold.name }}</CardTitle>
         <CardDescription>
-          Created {{ new Date(householdStore.currentHousehold.createdAt).toLocaleDateString() }}
+          {{
+            $t('views.householdSettings.header.created', {
+              date: new Date(householdStore.currentHousehold.createdAt).toLocaleDateString(),
+            })
+          }}
         </CardDescription>
       </CardHeader>
     </Card>
@@ -151,11 +158,15 @@ async function handleInvite(): Promise<void> {
         <!-- Note: Using a simple v-for list for v1. Consider tanstack/vue-table if the member list grows. -->
         <Card :class="!householdStore.isOwnerOrAdmin ? 'flex-1' : ''">
           <CardHeader>
-            <CardTitle>Members</CardTitle>
-            <CardDescription>Manage household members and their roles.</CardDescription>
+            <CardTitle>{{ $t('views.householdSettings.members.title') }}</CardTitle>
+            <CardDescription>{{
+              $t('views.householdSettings.members.description')
+            }}</CardDescription>
           </CardHeader>
           <CardContent>
-            <AppStateMessage v-if="householdStore.isLoading"> Loading members... </AppStateMessage>
+            <AppStateMessage v-if="householdStore.isLoading">
+              {{ $t('views.householdSettings.members.loading') }}
+            </AppStateMessage>
             <div v-else-if="householdStore.currentHousehold?.members.length" class="space-y-3">
               <AppListItem
                 v-for="member in householdStore.currentHousehold.members"
@@ -167,42 +178,54 @@ async function handleInvite(): Promise<void> {
                   </span>
                   <span class="text-xs text-muted-foreground">{{ member.email }}</span>
                   <span v-if="member.joinedAt" class="text-xs text-muted-foreground">
-                    Joined {{ new Date(member.joinedAt).toLocaleDateString() }}
+                    {{
+                      $t('views.householdSettings.members.joined', {
+                        date: new Date(member.joinedAt).toLocaleDateString(),
+                      })
+                    }}
                   </span>
                 </div>
                 <template #actions>
                   <div class="flex items-center gap-2">
                     <Badge :variant="roleBadgeVariant(member.role)">
-                      {{ member.role }}
+                      {{ $t(`display.householdRoles.${member.role}`) }}
                     </Badge>
                     <Badge :variant="statusBadgeVariant(member.status)">
-                      {{ member.status }}
+                      {{ $t(`display.memberStatuses.${member.status}`) }}
                     </Badge>
                   </div>
                 </template>
               </AppListItem>
             </div>
-            <AppStateMessage v-else>No members found.</AppStateMessage>
+            <AppStateMessage v-else>{{
+              $t('views.householdSettings.members.empty')
+            }}</AppStateMessage>
           </CardContent>
         </Card>
 
         <!-- Invite Member -->
         <Card v-if="householdStore.isOwnerOrAdmin" class="flex-1">
           <CardHeader>
-            <CardTitle>Invite Member</CardTitle>
-            <CardDescription>Send an invitation to join this household by email.</CardDescription>
+            <CardTitle>{{ $t('views.householdSettings.invite.title') }}</CardTitle>
+            <CardDescription>{{
+              $t('views.householdSettings.invite.description')
+            }}</CardDescription>
           </CardHeader>
           <CardContent class="space-y-4">
-            <AppFormField label="Email" control-id="invite-email">
+            <AppFormField :label="$t('common.fields.email')" control-id="invite-email">
               <Input
                 id="invite-email"
                 v-model="inviteEmail"
                 type="email"
-                placeholder="name@example.com"
+                :placeholder="$t('views.householdSettings.invite.placeholder')"
               />
             </AppFormField>
             <Button size="sm" :disabled="isInviting || !inviteEmail.trim()" @click="handleInvite">
-              {{ isInviting ? 'Sending...' : 'Send Invitation' }}
+              {{
+                isInviting
+                  ? $t('common.feedback.sending')
+                  : $t('views.householdSettings.invite.sendAction')
+              }}
             </Button>
             <AppStatusText v-if="inviteSuccess" variant="success">{{
               inviteSuccess
@@ -216,8 +239,10 @@ async function handleInvite(): Promise<void> {
       <div class="flex flex-col gap-4">
         <Card class="flex-1">
           <CardHeader>
-            <CardTitle>Shared Accounts</CardTitle>
-            <CardDescription>Accounts currently shared in this household.</CardDescription>
+            <CardTitle>{{ $t('views.householdSettings.accounts.sharedTitle') }}</CardTitle>
+            <CardDescription>{{
+              $t('views.householdSettings.accounts.sharedDescription')
+            }}</CardDescription>
           </CardHeader>
           <CardContent>
             <div v-if="householdStore.sharedAccounts.length" class="space-y-3">
@@ -225,8 +250,15 @@ async function handleInvite(): Promise<void> {
                 <div class="flex flex-col gap-0.5">
                   <span class="text-sm font-medium">{{ share.accountName }}</span>
                   <span class="text-xs text-muted-foreground">
-                    Shared by
-                    {{ displayPerson(share.ownerFirstName, share.ownerLastName, share.ownerEmail) }}
+                    {{
+                      $t('views.householdSettings.accounts.sharedBy', {
+                        name: displayPerson(
+                          share.ownerFirstName,
+                          share.ownerLastName,
+                          share.ownerEmail,
+                        ),
+                      })
+                    }}
                   </span>
                 </div>
                 <template #actions>
@@ -236,7 +268,9 @@ async function handleInvite(): Promise<void> {
                 </template>
               </AppListItem>
             </div>
-            <AppStateMessage v-else>No accounts are shared yet.</AppStateMessage>
+            <AppStateMessage v-else>{{
+              $t('views.householdSettings.accounts.sharedEmpty')
+            }}</AppStateMessage>
           </CardContent>
         </Card>
       </div>
@@ -245,18 +279,20 @@ async function handleInvite(): Promise<void> {
       <div class="flex flex-col gap-4">
         <Card class="flex-1">
           <CardHeader>
-            <CardTitle>Your Accounts</CardTitle>
-            <CardDescription
-              >Toggle sharing for your own accounts in this household.</CardDescription
-            >
+            <CardTitle>{{ $t('views.householdSettings.accounts.yoursTitle') }}</CardTitle>
+            <CardDescription>{{
+              $t('views.householdSettings.accounts.yoursDescription')
+            }}</CardDescription>
           </CardHeader>
           <CardContent>
             <AppStateMessage v-if="myAccounts.length === 0">
-              You have no accounts to share. Create accounts first.
+              {{ $t('views.householdSettings.accounts.emptyMine') }}
             </AppStateMessage>
             <div v-else class="space-y-4">
               <div v-for="[type, accounts] in myAccountsByType" :key="type">
-                <p class="mb-2 text-xs font-medium uppercase text-muted-foreground">{{ type }}</p>
+                <p class="mb-2 text-xs font-medium uppercase text-muted-foreground">
+                  {{ $t(`display.accountTypes.${type}`) }}
+                </p>
                 <div class="space-y-2">
                   <AppListItem v-for="account in accounts" :key="account.id">
                     <div class="flex flex-col gap-0.5">
@@ -268,14 +304,18 @@ async function handleInvite(): Promise<void> {
                           variant="default"
                           class="text-[10px]"
                         >
-                          Shared
+                          {{ $t('views.householdSettings.accounts.sharedBadge') }}
                         </Badge>
                       </div>
                       <span
                         v-if="sharedAtForAccount(account.id)"
                         class="text-xs text-muted-foreground"
                       >
-                        Shared {{ sharedAtForAccount(account.id) }}
+                        {{
+                          $t('views.householdSettings.accounts.sharedAt', {
+                            date: sharedAtForAccount(account.id),
+                          })
+                        }}
                       </span>
                     </div>
                     <template #actions>
@@ -290,8 +330,8 @@ async function handleInvite(): Promise<void> {
                           sharingAccountId === account.id
                             ? '...'
                             : isAccountShared(account.id)
-                              ? 'Unshare'
-                              : 'Share'
+                              ? $t('common.actions.unshare')
+                              : $t('common.actions.share')
                         }}
                       </Button>
                     </template>

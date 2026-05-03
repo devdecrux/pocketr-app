@@ -8,6 +8,7 @@ import {
   updateCategory as apiUpdateCategory,
 } from '@/api/categories'
 import type { CategoryTag } from '@/types/ledger'
+import { translate } from '@/i18n/translate'
 
 export const useCategoryStore = defineStore('category', () => {
   const categories = ref<CategoryTag[]>([])
@@ -20,7 +21,7 @@ export const useCategoryStore = defineStore('category', () => {
     try {
       categories.value = await listCategories()
     } catch (nextError: unknown) {
-      error.value = await resolveErrorMessage(nextError, 'Failed to load categories.')
+      error.value = await resolveErrorMessage(nextError, translate('errors.categories.load'))
     } finally {
       isLoading.value = false
     }
@@ -34,7 +35,7 @@ export const useCategoryStore = defineStore('category', () => {
       categories.value = [...categories.value, created]
       return created
     } catch (nextError: unknown) {
-      error.value = await resolveErrorMessage(nextError, 'Failed to create category.')
+      error.value = await resolveErrorMessage(nextError, translate('errors.categories.create'))
       return null
     }
   }
@@ -53,7 +54,7 @@ export const useCategoryStore = defineStore('category', () => {
       )
       return updated
     } catch (nextError: unknown) {
-      error.value = await resolveErrorMessage(nextError, 'Failed to rename category.')
+      error.value = await resolveErrorMessage(nextError, translate('errors.categories.rename'))
       return null
     }
   }
@@ -66,7 +67,7 @@ export const useCategoryStore = defineStore('category', () => {
       categories.value = categories.value.filter((category) => category.id !== id)
       return true
     } catch (nextError: unknown) {
-      error.value = await resolveErrorMessage(nextError, 'Failed to delete category.')
+      error.value = await resolveErrorMessage(nextError, translate('errors.categories.delete'))
       return false
     }
   }

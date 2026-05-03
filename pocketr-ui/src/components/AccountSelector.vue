@@ -12,6 +12,7 @@ import {
 import { useAccountStore } from '@/stores/account'
 import { useModeStore } from '@/stores/mode'
 import type { AccountType } from '@/types/ledger'
+import { translate } from '@/i18n/translate'
 
 const props = withDefaults(
   defineProps<{
@@ -24,7 +25,7 @@ const props = withDefaults(
     modelValue: undefined,
     allowedTypes: undefined,
     currency: undefined,
-    placeholder: 'Select account',
+    placeholder: undefined,
   },
 )
 
@@ -56,7 +57,7 @@ const groupedAccounts = computed(() => {
       byType.set(a.type, list)
     }
     return [...byType.entries()].map(([type, accounts]) => ({
-      label: type,
+      label: translate(`display.accountTypes.${type}`),
       accounts,
     }))
   }
@@ -69,7 +70,7 @@ const groupedAccounts = computed(() => {
     byOwner.set(a.ownerUserId, list)
   }
   return [...byOwner.entries()].map(([ownerId, accounts]) => ({
-    label: `Owner: ${ownerId}`,
+    label: translate('components.accountSelector.ownerGroup', { ownerId }),
     accounts,
   }))
 })
@@ -85,7 +86,7 @@ const groupedAccounts = computed(() => {
     "
   >
     <SelectTrigger class="w-full">
-      <SelectValue :placeholder="placeholder" />
+      <SelectValue :placeholder="placeholder ?? $t('common.placeholders.selectAccount')" />
     </SelectTrigger>
     <SelectContent>
       <SelectGroup v-for="group in groupedAccounts" :key="group.label">

@@ -8,6 +8,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import { translate } from '@/i18n/translate'
 import Command from './Command.vue'
 
 const props = withDefaults(
@@ -18,8 +19,8 @@ const props = withDefaults(
     }
   >(),
   {
-    title: 'Command Palette',
-    description: 'Search for a command to run...',
+    title: translate('components.ui.commandPalette.title'),
+    description: translate('components.ui.commandPalette.description'),
   },
 )
 const emits = defineEmits<DialogRootEmits>()

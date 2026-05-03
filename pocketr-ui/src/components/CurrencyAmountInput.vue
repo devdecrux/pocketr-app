@@ -17,7 +17,7 @@ const props = withDefaults(
     minorUnit: 2,
     currencyCode: undefined,
     allowNegative: false,
-    placeholder: '0.00',
+    placeholder: undefined,
   },
 )
 
@@ -64,7 +64,7 @@ function onBlur(): void {
       type="text"
       inputmode="decimal"
       :value="displayValue"
-      :placeholder="placeholder"
+      :placeholder="placeholder ?? $t('common.placeholders.money')"
       :class="suffix ? 'pr-14' : ''"
       @input="onInput"
       @blur="onBlur"

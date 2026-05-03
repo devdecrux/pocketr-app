@@ -84,7 +84,9 @@ function clear() {
           ]"
         >
           <CalendarIcon class="size-3.5 shrink-0" />
-          <span class="flex-1 truncate text-left">{{ label ?? 'Date range' }}</span>
+          <span class="flex-1 truncate text-left">{{
+            label ?? $t('common.fields.dateRange')
+          }}</span>
         </Button>
       </PopoverTrigger>
 
@@ -156,7 +158,7 @@ function clear() {
       v-if="label"
       type="button"
       class="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none"
-      aria-label="Clear date range"
+      :aria-label="$t('components.dateRangePicker.clearAriaLabel')"
       @click="clear"
     >
       <X class="size-3.5" />

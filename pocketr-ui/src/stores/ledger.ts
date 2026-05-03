@@ -3,6 +3,7 @@ import { ref } from 'vue'
 import { listTxns } from '@/api/ledger'
 import type { LedgerTxn, TxnQuery } from '@/types/ledger'
 import { useModeStore } from '@/stores/mode'
+import { translate } from '@/i18n/translate'
 
 export const useLedgerStore = defineStore('ledger', () => {
   const transactions = ref<LedgerTxn[]>([])
@@ -34,7 +35,7 @@ export const useLedgerStore = defineStore('ledger', () => {
       totalPages.value = result.totalPages
       totalElements.value = result.totalElements
     } catch {
-      error.value = 'Failed to load transactions.'
+      error.value = translate('errors.transactions.load')
     } finally {
       isLoading.value = false
     }

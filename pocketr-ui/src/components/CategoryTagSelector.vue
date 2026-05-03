@@ -1,14 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { Check, ChevronsUpDown } from 'lucide-vue-next'
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from '@/components/ui/command'
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -46,15 +39,15 @@ function onSelect(id: string): void {
         :aria-expanded="open"
         class="w-full justify-between"
       >
-        {{ selectedLabel || 'Select category...' }}
+        {{ selectedLabel || $t('common.placeholders.selectCategory') }}
         <ChevronsUpDown class="ml-2 size-4 shrink-0 opacity-50" />
       </Button>
     </PopoverTrigger>
     <PopoverContent class="w-[--reka-popover-trigger-width] p-0">
       <Command>
-        <CommandInput placeholder="Search categories..." />
+        <CommandInput :placeholder="$t('components.categoryTagSelector.searchPlaceholder')" />
         <CommandList>
-          <CommandEmpty>No categories found.</CommandEmpty>
+          <CommandEmpty>{{ $t('components.categoryTagSelector.empty') }}</CommandEmpty>
           <CommandGroup>
             <CommandItem
               v-for="cat in categoryStore.categories"

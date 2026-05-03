@@ -19,6 +19,7 @@ import {
 } from '@/components/app'
 import CategoryColorPicker from '@/components/CategoryColorPicker.vue'
 import DataTable from '@/components/DataTable.vue'
+import { translate } from '@/i18n/translate'
 
 const categoryStore = useCategoryStore()
 
@@ -67,11 +68,11 @@ function startRename(category: CategoryTag): void {
 async function submitCreate(): Promise<void> {
   const trimmedName = createName.value.trim()
   if (!trimmedName) {
-    createError.value = 'Category name is required.'
+    createError.value = translate('validation.category.nameRequired')
     return
   }
   if (hasDuplicateName(trimmedName)) {
-    createError.value = `Category '${trimmedName}' already exists.`
+    createError.value = translate('validation.category.duplicate', { name: trimmedName })
     return
   }
 
@@ -84,7 +85,7 @@ async function submitCreate(): Promise<void> {
     createName.value = ''
     createColor.value = null
   } else {
-    createError.value = categoryStore.error ?? 'Failed to create category.'
+    createError.value = categoryStore.error ?? translate('errors.categories.create')
   }
 
   isCreating.value = false
@@ -96,11 +97,11 @@ async function submitRename(): Promise<void> {
   if (!target) return
 
   if (!trimmedName) {
-    renameError.value = 'Category name is required.'
+    renameError.value = translate('validation.category.nameRequired')
     return
   }
   if (hasDuplicateName(trimmedName, target.id)) {
-    renameError.value = `Category '${trimmedName}' already exists.`
+    renameError.value = translate('validation.category.duplicate', { name: trimmedName })
     return
   }
 
@@ -114,7 +115,7 @@ async function submitRename(): Promise<void> {
     renameName.value = ''
     renameColor.value = null
   } else {
-    renameError.value = categoryStore.error ?? 'Failed to rename category.'
+    renameError.value = categoryStore.error ?? translate('errors.categories.rename')
   }
 
   isRenaming.value = false
@@ -123,13 +124,15 @@ async function submitRename(): Promise<void> {
 async function deleteCategory(category: CategoryTag): Promise<void> {
   deleteError.value = ''
 
-  const confirmed = window.confirm(`Delete category "${category.name}"?`)
+  const confirmed = window.confirm(
+    translate('views.categories.confirmDelete', { name: category.name }),
+  )
   if (!confirmed) return
 
   deletingId.value = category.id
   const success = await categoryStore.remove(category.id)
   if (!success) {
-    deleteError.value = categoryStore.error ?? 'Failed to delete category.'
+    deleteError.value = categoryStore.error ?? translate('errors.categories.delete')
   }
   deletingId.value = null
 }
@@ -137,7 +140,7 @@ async function deleteCategory(category: CategoryTag): Promise<void> {
 const columns: ColumnDef<CategoryTag>[] = [
   {
     accessorKey: 'name',
-    header: 'Name',
+    header: translate('common.table.name'),
     cell: ({ row }) => {
       const cat = row.original
       return h('div', { class: 'flex items-center justify-end gap-2' }, [
@@ -153,7 +156,7 @@ const columns: ColumnDef<CategoryTag>[] = [
   },
   {
     accessorKey: 'createdAt',
-    header: 'Created',
+    header: translate('common.table.created'),
     cell: ({ row }) => new Date(row.original.createdAt).toLocaleDateString(),
   },
   {
@@ -198,27 +201,27 @@ const table = useVueTable({
 <template>
   <section class="flex flex-col gap-4">
     <Card>
-      <AppCardHeader title="Categories" title-class="text-2xl">
+      <AppCardHeader :title="$t('views.categories.title')" title-class="text-2xl">
         <Dialog v-model:open="createDialogOpen">
           <DialogTrigger as-child>
             <Button size="sm">
               <Plus class="size-4" />
-              New Category
+              {{ $t('views.categories.actions.new') }}
             </Button>
           </DialogTrigger>
           <AppDialogContent
-            title="Create Category"
-            description="Add a category for transaction tagging."
+            :title="$t('views.categories.create.title')"
+            :description="$t('views.categories.create.description')"
           >
             <AppDialogBody>
-              <AppFormField label="Name" control-id="create-category-name">
+              <AppFormField :label="$t('common.fields.name')" control-id="create-category-name">
                 <Input
                   id="create-category-name"
                   v-model="createName"
-                  placeholder="e.g. Groceries, Utilities"
+                  :placeholder="$t('common.placeholders.categoryExamples')"
                 />
               </AppFormField>
-              <AppFormField label="Color">
+              <AppFormField :label="$t('common.fields.color')">
                 <CategoryColorPicker v-model="createColor" :colors="CATEGORY_PRESET_COLORS" />
               </AppFormField>
               <AppStatusText v-if="createError">{{ createError }}</AppStatusText>
@@ -226,7 +229,7 @@ const table = useVueTable({
 
             <template #footer>
               <Button :disabled="isCreating || !createName.trim()" @click="submitCreate">
-                {{ isCreating ? 'Creating...' : 'Create' }}
+                {{ isCreating ? $t('common.feedback.creating') : $t('common.actions.create') }}
               </Button>
             </template>
           </AppDialogContent>
@@ -235,31 +238,29 @@ const table = useVueTable({
 
       <CardContent class="flex flex-col pb-6">
         <AppStateMessage v-if="categoryStore.isLoading" center>
-          Loading categories...
+          {{ $t('views.categories.loading') }}
         </AppStateMessage>
 
         <AppStateMessage v-else-if="categoryStore.error" variant="error" center>
           {{ categoryStore.error }}
         </AppStateMessage>
 
-        <DataTable
-          v-else
-          :table="table"
-          sticky-header
-          empty-text="No categories yet. Create your first category to get started."
-        />
+        <DataTable v-else :table="table" sticky-header :empty-text="$t('views.categories.empty')" />
 
         <AppStatusText v-if="deleteError" class="mt-3">{{ deleteError }}</AppStatusText>
       </CardContent>
     </Card>
 
     <Dialog v-model:open="renameDialogOpen">
-      <AppDialogContent title="Rename Category" description="Update the category name.">
+      <AppDialogContent
+        :title="$t('views.categories.rename.title')"
+        :description="$t('views.categories.rename.description')"
+      >
         <AppDialogBody>
-          <AppFormField label="Name" control-id="rename-category-name">
+          <AppFormField :label="$t('common.fields.name')" control-id="rename-category-name">
             <Input id="rename-category-name" v-model="renameName" />
           </AppFormField>
-          <AppFormField label="Color">
+          <AppFormField :label="$t('common.fields.color')">
             <CategoryColorPicker v-model="renameColor" :colors="CATEGORY_PRESET_COLORS" />
           </AppFormField>
           <AppStatusText v-if="renameError">{{ renameError }}</AppStatusText>
@@ -267,7 +268,7 @@ const table = useVueTable({
 
         <template #footer>
           <Button :disabled="isRenaming || !renameName.trim()" @click="submitRename">
-            {{ isRenaming ? 'Saving...' : 'Save' }}
+            {{ isRenaming ? $t('common.feedback.saving') : $t('common.actions.save') }}
           </Button>
         </template>
       </AppDialogContent>

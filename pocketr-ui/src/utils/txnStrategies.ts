@@ -1,4 +1,5 @@
 import type { CreateTxnRequest, SplitSide } from '@/types/ledger'
+import { translate } from '@/i18n/translate'
 
 export interface TxnModeContext {
   mode: 'INDIVIDUAL' | 'HOUSEHOLD'
@@ -42,7 +43,9 @@ export interface DebtPaymentFields {
   description: string
 }
 
-const VALIDATION_MSG = 'Please fill in all required fields and enter a positive amount.'
+function validationMessage(): string {
+  return translate('validation.transactions.requiredPositiveAmount')
+}
 
 export interface TxnTabStrategy<F> {
   validate(fields: F): string | null
@@ -52,7 +55,7 @@ export interface TxnTabStrategy<F> {
 export const expenseStrategy: TxnTabStrategy<ExpenseFields> = {
   validate(f) {
     if (!f.payFrom || !f.account || f.amount <= 0) {
-      return VALIDATION_MSG
+      return validationMessage()
     }
     return null
   },
@@ -83,7 +86,7 @@ export const expenseStrategy: TxnTabStrategy<ExpenseFields> = {
 export const incomeStrategy: TxnTabStrategy<IncomeFields> = {
   validate(f) {
     if (!f.deposit || !f.account || f.amount <= 0) {
-      return VALIDATION_MSG
+      return validationMessage()
     }
     return null
   },
@@ -113,7 +116,7 @@ export const incomeStrategy: TxnTabStrategy<IncomeFields> = {
 export const transferStrategy: TxnTabStrategy<TransferFields> = {
   validate(f) {
     if (!f.from || !f.to || f.amount <= 0) {
-      return VALIDATION_MSG
+      return validationMessage()
     }
     return null
   },
@@ -143,7 +146,7 @@ export const transferStrategy: TxnTabStrategy<TransferFields> = {
 export const debtPaymentStrategy: TxnTabStrategy<DebtPaymentFields> = {
   validate(f) {
     if (!f.payFrom || !f.liabilityAccount || f.amount <= 0) {
-      return VALIDATION_MSG
+      return validationMessage()
     }
     return null
   },

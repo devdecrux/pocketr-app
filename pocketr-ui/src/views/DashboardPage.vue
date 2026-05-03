@@ -14,12 +14,14 @@ import { getMonthlyReport } from '@/api/reports'
 import { formatMinor } from '@/utils/money'
 import type { MonthlyReportEntry } from '@/types/ledger'
 import { AppCardHeader, AppListItem, AppPageHeader, AppStateMessage } from '@/components/app'
+import { useI18n } from 'vue-i18n'
 
 const accountStore = useAccountStore()
 const currencyStore = useCurrencyStore()
 const ledgerStore = useLedgerStore()
 const modeStore = useModeStore()
 const householdStore = useHouseholdStore()
+const { t } = useI18n()
 
 const balances = ref<Map<string, number>>(new Map())
 const balancesLoading = ref(false)
@@ -60,7 +62,7 @@ const spendingByCategory = computed(() => {
       existing.total += entry.netMinor
     } else {
       map.set(key, {
-        name: entry.categoryTagName ?? 'Uncategorized',
+        name: entry.categoryTagName ?? t('views.dashboard.uncategorized'),
         total: entry.netMinor,
         currency: entry.currency,
       })
@@ -167,14 +169,21 @@ function txnAmount(txn: (typeof recentTransactions.value)[number]): string {
 <template>
   <section class="grid gap-4">
     <AppPageHeader
-      title="Dashboard"
-      :subtitle="modeStore.isHousehold ? 'Household overview' : 'Your personal overview'"
+      :title="$t('views.dashboard.title')"
+      :subtitle="
+        modeStore.isHousehold
+          ? $t('views.dashboard.subtitle.household')
+          : $t('views.dashboard.subtitle.individual')
+      "
     />
 
     <div class="grid gap-4 md:grid-cols-2">
       <!-- Account Balances -->
       <Card>
-        <AppCardHeader title="Account Balances" class="justify-start gap-2">
+        <AppCardHeader
+          :title="$t('views.dashboard.cards.accountBalances')"
+          class="justify-start gap-2"
+        >
           <template #leading>
             <Wallet class="size-5 text-muted-foreground" />
           </template>
@@ -185,12 +194,16 @@ function txnAmount(txn: (typeof recentTransactions.value)[number]): string {
             <Skeleton class="h-8 w-full" />
             <Skeleton class="h-8 w-full" />
           </div>
-          <AppStateMessage v-else-if="topAccounts.length === 0"> No accounts yet. </AppStateMessage>
+          <AppStateMessage v-else-if="topAccounts.length === 0">
+            {{ $t('views.dashboard.empty.accounts') }}
+          </AppStateMessage>
           <ul v-else class="space-y-2">
             <AppListItem v-for="account in topAccounts" :key="account.id" as="li">
               <div class="flex items-center gap-2">
                 <span class="text-sm font-medium">{{ account.name }}</span>
-                <Badge variant="outline" class="text-xs">{{ account.type }}</Badge>
+                <Badge variant="outline" class="text-xs">{{
+                  $t(`display.accountTypes.${account.type}`)
+                }}</Badge>
               </div>
               <template #actions>
                 <span class="text-sm font-mono">
@@ -204,7 +217,10 @@ function txnAmount(txn: (typeof recentTransactions.value)[number]): string {
 
       <!-- Recent Transactions -->
       <Card>
-        <AppCardHeader title="Recent Transactions" class="justify-start gap-2">
+        <AppCardHeader
+          :title="$t('views.dashboard.cards.recentTransactions')"
+          class="justify-start gap-2"
+        >
           <template #leading>
             <ArrowUpDown class="size-5 text-muted-foreground" />
           </template>
@@ -216,7 +232,7 @@ function txnAmount(txn: (typeof recentTransactions.value)[number]): string {
             <Skeleton class="h-8 w-full" />
           </div>
           <AppStateMessage v-else-if="recentTransactions.length === 0">
-            No transactions yet.
+            {{ $t('views.dashboard.empty.transactions') }}
           </AppStateMessage>
           <ul v-else class="space-y-2">
             <AppListItem v-for="txn in recentTransactions" :key="txn.id" as="li">
@@ -234,7 +250,10 @@ function txnAmount(txn: (typeof recentTransactions.value)[number]): string {
 
       <!-- Monthly Spending by Category -->
       <Card>
-        <AppCardHeader title="Spending by Category" class="justify-start gap-2">
+        <AppCardHeader
+          :title="$t('views.dashboard.cards.spendingByCategory')"
+          class="justify-start gap-2"
+        >
           <template #leading>
             <TrendingDown class="size-5 text-muted-foreground" />
           </template>
@@ -246,7 +265,7 @@ function txnAmount(txn: (typeof recentTransactions.value)[number]): string {
             <Skeleton class="h-6 w-full" />
           </div>
           <AppStateMessage v-else-if="spendingByCategory.length === 0">
-            No spending data for this month.
+            {{ $t('views.dashboard.empty.monthlySpending') }}
           </AppStateMessage>
           <ul v-else class="space-y-2">
             <li
@@ -263,7 +282,10 @@ function txnAmount(txn: (typeof recentTransactions.value)[number]): string {
 
       <!-- Monthly Spending by Expense Account -->
       <Card>
-        <AppCardHeader title="Spending by Account" class="justify-start gap-2">
+        <AppCardHeader
+          :title="$t('views.dashboard.cards.spendingByAccount')"
+          class="justify-start gap-2"
+        >
           <template #leading>
             <TrendingDown class="size-5 text-muted-foreground" />
           </template>
@@ -275,7 +297,7 @@ function txnAmount(txn: (typeof recentTransactions.value)[number]): string {
             <Skeleton class="h-6 w-full" />
           </div>
           <AppStateMessage v-else-if="spendingByAccount.length === 0">
-            No spending data for this month.
+            {{ $t('views.dashboard.empty.monthlySpending') }}
           </AppStateMessage>
           <ul v-else class="space-y-2">
             <li

@@ -55,8 +55,8 @@ async function login(): Promise<void> {
   <AuthPageShell>
     <Card class="w-full max-w-sm">
       <CardHeader>
-        <CardTitle class="text-2xl">Login</CardTitle>
-        <CardDescription> Enter your email below to login to your account </CardDescription>
+        <CardTitle class="text-2xl">{{ $t('views.auth.login.title') }}</CardTitle>
+        <CardDescription>{{ $t('views.auth.login.description') }}</CardDescription>
       </CardHeader>
       <CardContent>
         <div
@@ -64,36 +64,36 @@ async function login(): Promise<void> {
           class="mb-4 flex items-center gap-2 rounded-md border border-border bg-muted px-4 py-3 text-sm text-foreground shadow-sm"
         >
           <TriangleAlert class="h-4 w-4 shrink-0 text-destructive" />
-          <span>Your session has expired. Please log in again.</span>
+          <span>{{ $t('views.auth.login.errors.sessionExpired') }}</span>
         </div>
         <form @submit.prevent="login">
           <div class="grid gap-4">
-            <AppFormField label="Email" control-id="email">
+            <AppFormField :label="$t('common.fields.email')" control-id="email">
               <Input
                 id="email"
                 v-model="email"
                 type="email"
-                placeholder="email@example.com"
+                :placeholder="$t('common.placeholders.email')"
                 required
               />
             </AppFormField>
-            <AppFormField label="Password" control-id="password">
+            <AppFormField :label="$t('common.fields.password')" control-id="password">
               <Input id="password" v-model="password" type="password" required />
             </AppFormField>
 
             <p v-if="isAlert" class="text-sm text-destructive">
-              Invalid email or password. Please try again.
+              {{ $t('views.auth.login.errors.invalidCredentials') }}
             </p>
 
             <Button type="submit" :disabled="isSubmitting" class="w-full">
-              {{ isSubmitting ? 'Logging in...' : 'Login' }}
+              {{ isSubmitting ? $t('common.feedback.loggingIn') : $t('views.auth.login.submit') }}
             </Button>
           </div>
         </form>
         <div class="mt-4 text-center text-sm">
-          Don't have an account?
+          {{ $t('views.auth.login.links.registerPrompt') }}
           <RouterLink to="/registration" class="text-(--app-button-fg) underline">
-            Sign up
+            {{ $t('common.actions.signUp') }}
           </RouterLink>
         </div>
       </CardContent>

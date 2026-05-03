@@ -46,13 +46,13 @@ async function onSelect(
 <template>
   <Select :model-value="currentValue" @update:model-value="onSelect">
     <SelectTrigger class="app-sidebar-select-trigger w-full">
-      <SelectValue placeholder="Select mode" />
+      <SelectValue :placeholder="$t('common.placeholders.selectMode')" />
     </SelectTrigger>
     <SelectContent>
       <SelectItem value="individual">
         <div class="flex items-center gap-2">
           <UserRound class="size-4" />
-          <span>Individual</span>
+          <span>{{ $t('components.viewMode.individual') }}</span>
         </div>
       </SelectItem>
       <SelectItem v-for="h in householdStore.households" :key="h.id" :value="`household:${h.id}`">

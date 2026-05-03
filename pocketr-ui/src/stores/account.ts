@@ -3,6 +3,7 @@ import { computed, ref } from 'vue'
 import { listAccounts } from '@/api/accounts'
 import type { Account, AccountType } from '@/types/ledger'
 import { useModeStore } from '@/stores/mode'
+import { translate } from '@/i18n/translate'
 
 export const useAccountStore = defineStore('account', () => {
   const accounts = ref<Account[]>([])
@@ -42,7 +43,7 @@ export const useAccountStore = defineStore('account', () => {
         householdId: viewModeStore.householdId ?? undefined,
       })
     } catch {
-      error.value = 'Failed to load accounts.'
+      error.value = translate('errors.accounts.load')
     } finally {
       isLoading.value = false
     }

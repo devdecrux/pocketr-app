@@ -13,10 +13,17 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { AppFormField, AppListItem, AppStatusText } from '@/components/app'
 import { supportedLocaleLabels, supportedLocales } from '@/i18n'
 import { updateUserLanguage } from '@/api/user'
+import { translate } from '@/i18n/translate'
 
 const authStore = useAuthStore()
 const householdStore = useHouseholdStore()
@@ -45,7 +52,9 @@ const activeHouseholds = computed(() => householdStore.activeHouseholds)
 
 const pendingInvites = computed(() => householdStore.pendingInvites)
 
-const selectedFilename = computed(() => selectedFile.value?.name ?? 'No file selected')
+const selectedFilename = computed(
+  () => selectedFile.value?.name ?? translate('views.settings.profile.noFileSelected'),
+)
 
 const hasLanguageChanged = computed(() => selectedLanguage.value !== authStore.user?.language)
 
@@ -70,7 +79,7 @@ function clearSelectedFile(): void {
 
 async function uploadAvatar(): Promise<void> {
   if (!selectedFile.value) {
-    uploadError.value = 'Please choose an image before uploading.'
+    uploadError.value = translate('errors.avatar.chooseImage')
     return
   }
 
@@ -84,7 +93,7 @@ async function uploadAvatar(): Promise<void> {
   try {
     const updatedUser = await api.post('/api/v1/user/avatar', { body: formData }).json<AuthUser>()
     authStore.setUser(updatedUser)
-    uploadSuccess.value = 'Avatar updated.'
+    uploadSuccess.value = translate('success.avatar.updated')
     clearSelectedFile()
   } catch (error: unknown) {
     uploadError.value = await resolveUploadError(error)
@@ -102,7 +111,7 @@ async function resolveUploadError(error: unknown): Promise<string> {
     }
   }
 
-  return 'Failed to upload avatar. Please try again.'
+  return translate('errors.avatar.upload')
 }
 
 async function saveLanguage(): Promise<void> {
@@ -114,13 +123,13 @@ async function saveLanguage(): Promise<void> {
     const updatedUser = await updateUserLanguage(selectedLanguage.value)
     authStore.setUser(updatedUser)
     selectedLanguage.value = updatedUser.language
-    languageSuccess.value = 'Language updated.'
+    languageSuccess.value = translate('views.settings.profile.languageUpdated')
   } catch (error: unknown) {
     if (error instanceof HTTPError) {
       const payload = await error.response.json<{ message?: string }>().catch(() => null)
-      languageError.value = payload?.message?.trim() || 'Failed to update language.'
+      languageError.value = payload?.message?.trim() || translate('errors.language.update')
     } else {
-      languageError.value = 'Failed to update language.'
+      languageError.value = translate('errors.language.update')
     }
   } finally {
     isSavingLanguage.value = false
@@ -133,7 +142,7 @@ async function createHousehold(): Promise<void> {
 
   const trimmed = householdName.value.trim()
   if (trimmed.length < 3) {
-    householdNameError.value = 'Household name must be at least 3 characters.'
+    householdNameError.value = translate('validation.household.nameMinLength')
     return
   }
 
@@ -147,14 +156,14 @@ async function createHousehold(): Promise<void> {
       modeStore.switchToHousehold(household.id)
       await router.push({ name: 'household-settings', params: { householdId: household.id } })
     } else {
-      householdError.value = householdStore.error ?? 'Failed to create household.'
+      householdError.value = householdStore.error ?? translate('errors.households.create')
     }
   } catch (error: unknown) {
     if (error instanceof HTTPError) {
       const payload = await error.response.json<{ message?: string }>().catch(() => null)
-      householdError.value = payload?.message?.trim() || 'Failed to create household.'
+      householdError.value = payload?.message?.trim() || translate('errors.households.create')
     } else {
-      householdError.value = 'Failed to create household.'
+      householdError.value = translate('errors.households.create')
     }
   } finally {
     isCreatingHousehold.value = false
@@ -165,7 +174,7 @@ async function handleAcceptInvite(householdId: string): Promise<void> {
   inviteActionError.value = ''
 
   if (activeHouseholds.value.length > 0) {
-    inviteActionError.value = 'Leave your current household before accepting another invitation.'
+    inviteActionError.value = translate('views.settings.household.acceptInviteBlocked')
     return
   }
 
@@ -174,7 +183,7 @@ async function handleAcceptInvite(householdId: string): Promise<void> {
     modeStore.switchToHousehold(householdId)
     await router.push({ name: 'household-settings', params: { householdId } })
   } else {
-    inviteActionError.value = householdStore.error ?? 'Failed to accept invitation.'
+    inviteActionError.value = householdStore.error ?? translate('errors.households.acceptInvite')
   }
 }
 
@@ -187,14 +196,14 @@ async function handleLeaveHousehold(householdId: string): Promise<void> {
     if (success) {
       modeStore.switchToIndividual()
     } else {
-      leaveError.value = householdStore.error ?? 'Failed to leave household.'
+      leaveError.value = householdStore.error ?? translate('errors.households.leave')
     }
   } catch (error: unknown) {
     if (error instanceof HTTPError) {
       const payload = await error.response.json<{ message?: string }>().catch(() => null)
-      leaveError.value = payload?.message?.trim() || 'Failed to leave household.'
+      leaveError.value = payload?.message?.trim() || translate('errors.households.leave')
     } else {
-      leaveError.value = 'Failed to leave household.'
+      leaveError.value = translate('errors.households.leave')
     }
   } finally {
     isLeavingHousehold.value = false
@@ -206,8 +215,8 @@ async function handleLeaveHousehold(householdId: string): Promise<void> {
   <section class="grid w-full grid-cols-1 gap-4 md:grid-cols-4">
     <Card>
       <CardHeader>
-        <CardTitle class="text-2xl">Profile Settings</CardTitle>
-        <CardDescription>Upload your avatar and personalize your profile.</CardDescription>
+        <CardTitle class="text-2xl">{{ $t('views.settings.profile.title') }}</CardTitle>
+        <CardDescription>{{ $t('views.settings.profile.description') }}</CardDescription>
       </CardHeader>
       <CardContent class="space-y-6">
         <div class="flex items-center gap-5">
@@ -241,7 +250,7 @@ async function handleLeaveHousehold(householdId: string): Promise<void> {
             </span>
             <div class="flex items-center gap-2">
               <Button as-child size="sm" variant="secondary" class="h-8 px-3 text-xs">
-                <label for="avatar-upload">Browse</label>
+                <label for="avatar-upload">{{ $t('common.actions.browse') }}</label>
               </Button>
               <Button
                 size="sm"
@@ -249,13 +258,13 @@ async function handleLeaveHousehold(householdId: string): Promise<void> {
                 :disabled="isUploading || !selectedFile"
                 @click="uploadAvatar"
               >
-                {{ isUploading ? 'Uploading...' : 'Upload' }}
+                {{ isUploading ? $t('common.feedback.uploading') : $t('common.actions.upload') }}
               </Button>
             </div>
           </div>
 
           <p class="text-xs text-muted-foreground">
-            Accepted formats: JPEG, PNG, GIF, WEBP. Maximum size: 5MB.
+            {{ $t('views.settings.profile.acceptedFormats') }}
           </p>
 
           <AppStatusText v-if="uploadSuccess" variant="success">{{ uploadSuccess }}</AppStatusText>
@@ -263,7 +272,7 @@ async function handleLeaveHousehold(householdId: string): Promise<void> {
         </div>
 
         <div class="grid gap-3 border-t border-border pt-4">
-          <AppFormField label="Language">
+          <AppFormField :label="$t('views.settings.profile.language')">
             <Select v-model="selectedLanguage">
               <SelectTrigger class="w-full">
                 <SelectValue />
@@ -281,7 +290,11 @@ async function handleLeaveHousehold(householdId: string): Promise<void> {
             :disabled="isSavingLanguage || !hasLanguageChanged"
             @click="saveLanguage"
           >
-            {{ isSavingLanguage ? 'Saving...' : 'Save language' }}
+            {{
+              isSavingLanguage
+                ? $t('common.feedback.saving')
+                : $t('views.settings.profile.saveLanguage')
+            }}
           </Button>
           <AppStatusText v-if="languageSuccess" variant="success">{{
             languageSuccess
@@ -293,9 +306,9 @@ async function handleLeaveHousehold(householdId: string): Promise<void> {
 
     <Card>
       <CardHeader>
-        <CardTitle class="text-2xl">Household Budgeting</CardTitle>
+        <CardTitle class="text-2xl">{{ $t('views.settings.household.title') }}</CardTitle>
         <CardDescription>
-          Create or manage a household to share accounts and track expenses together.
+          {{ $t('views.settings.household.description') }}
         </CardDescription>
       </CardHeader>
       <CardContent class="space-y-6">
@@ -305,7 +318,7 @@ async function handleLeaveHousehold(householdId: string): Promise<void> {
             <div class="flex flex-col gap-0.5">
               <span class="text-sm font-medium">{{ household.name }}</span>
               <span class="text-xs text-muted-foreground">
-                {{ household.role }}
+                {{ $t(`display.householdRoles.${household.role}`) }}
               </span>
             </div>
             <template #actions>
@@ -321,7 +334,7 @@ async function handleLeaveHousehold(householdId: string): Promise<void> {
                     })
                   "
                 >
-                  Manage
+                  {{ $t('common.actions.manage') }}
                 </Button>
                 <Button
                   size="sm"
@@ -330,7 +343,9 @@ async function handleLeaveHousehold(householdId: string): Promise<void> {
                   :disabled="isLeavingHousehold"
                   @click="handleLeaveHousehold(household.id)"
                 >
-                  {{ isLeavingHousehold ? 'Leaving...' : 'Leave' }}
+                  {{
+                    isLeavingHousehold ? $t('common.feedback.leaving') : $t('common.actions.leave')
+                  }}
                 </Button>
               </div>
             </template>
@@ -340,11 +355,11 @@ async function handleLeaveHousehold(householdId: string): Promise<void> {
 
         <!-- Pending invitations -->
         <div v-if="pendingInvites.length" class="space-y-3">
-          <p class="text-sm font-medium">Pending Invitations</p>
+          <p class="text-sm font-medium">{{ $t('views.settings.household.pendingInvitations') }}</p>
           <AppListItem v-for="invite in pendingInvites" :key="invite.id">
             <div class="flex flex-col gap-0.5">
               <span class="text-sm font-medium">{{ invite.name }}</span>
-              <Badge variant="secondary">Invited</Badge>
+              <Badge variant="secondary">{{ $t('views.settings.household.invitedBadge') }}</Badge>
             </div>
             <template #actions>
               <Button
@@ -353,7 +368,7 @@ async function handleLeaveHousehold(householdId: string): Promise<void> {
                 :disabled="activeHouseholds.length > 0"
                 @click="handleAcceptInvite(invite.id)"
               >
-                Accept
+                {{ $t('common.actions.accept') }}
               </Button>
             </template>
           </AppListItem>
@@ -364,15 +379,14 @@ async function handleLeaveHousehold(householdId: string): Promise<void> {
         <div v-if="!householdStore.hasHousehold">
           <div class="grid gap-3">
             <p class="text-sm text-muted-foreground">
-              You are not part of any household yet. Create one to start sharing accounts with
-              family or roommates.
+              {{ $t('views.settings.household.createDescription') }}
             </p>
-            <AppFormField label="Household name" control-id="household-name">
+            <AppFormField :label="$t('common.fields.householdName')" control-id="household-name">
               <Input
                 id="household-name"
                 v-model="householdName"
                 type="text"
-                placeholder="My Household name (min. 3 characters)"
+                :placeholder="$t('common.placeholders.householdName')"
                 :class="{ 'border-[color:var(--app-field-invalid-border)]': householdNameError }"
               />
               <AppStatusText v-if="householdNameError" size="xs">
@@ -385,7 +399,11 @@ async function handleLeaveHousehold(householdId: string): Promise<void> {
               :disabled="isCreatingHousehold || householdName.trim().length < 3"
               @click="createHousehold"
             >
-              {{ isCreatingHousehold ? 'Creating...' : 'Create Household' }}
+              {{
+                isCreatingHousehold
+                  ? $t('common.feedback.creating')
+                  : $t('views.settings.household.createAction')
+              }}
             </Button>
             <AppStatusText v-if="householdError">{{ householdError }}</AppStatusText>
           </div>

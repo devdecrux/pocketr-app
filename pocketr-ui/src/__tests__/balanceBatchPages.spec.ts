@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, shallowMount } from '@vue/test-utils'
+import { i18n } from '@/i18n'
 import type { Account } from '@/types/ledger'
 
 const getAccountBalances = vi.fn()
@@ -143,7 +144,11 @@ describe('batch balances page wiring', () => {
     ]
     accountStore.accounts = [...accountStore.activeAccounts]
 
-    const wrapper = shallowMount(AccountsPage)
+    const wrapper = shallowMount(AccountsPage, {
+      global: {
+        plugins: [i18n],
+      },
+    })
     await flushPromises()
 
     expect(getAccountBalances).toHaveBeenCalledTimes(1)
@@ -210,7 +215,11 @@ describe('batch balances page wiring', () => {
       },
     ])
 
-    const wrapper = shallowMount(DashboardPage)
+    const wrapper = shallowMount(DashboardPage, {
+      global: {
+        plugins: [i18n],
+      },
+    })
     await flushPromises()
 
     expect(householdStore.loadSharedAccounts).toHaveBeenCalledTimes(1)

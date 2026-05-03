@@ -1,5 +1,9 @@
 <script setup lang="ts">
-import { DropdownMenuLabel, DropdownMenuRadioGroup, DropdownMenuRadioItem } from '@/components/ui/dropdown-menu'
+import {
+  DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+} from '@/components/ui/dropdown-menu'
 import { Monitor, Moon, Sun } from 'lucide-vue-next'
 import { useAppTheme } from '@/composables/useAppTheme'
 
@@ -13,11 +17,11 @@ const themeIcons = {
 </script>
 
 <template>
-  <DropdownMenuLabel>Theme</DropdownMenuLabel>
+  <DropdownMenuLabel>{{ $t('components.theme.label') }}</DropdownMenuLabel>
   <DropdownMenuRadioGroup v-model="mode">
     <DropdownMenuRadioItem v-for="option in options" :key="option.value" :value="option.value">
       <component :is="themeIcons[option.value]" class="size-4" />
-      {{ option.label }}
+      {{ $t(option.labelKey) }}
     </DropdownMenuRadioItem>
   </DropdownMenuRadioGroup>
 </template>

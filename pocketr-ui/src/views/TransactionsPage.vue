@@ -1,7 +1,12 @@
 <script setup lang="ts">
 import { HTTPError } from 'ky'
 import { computed, h, onMounted, ref, watch } from 'vue'
-import { createColumnHelper, getCoreRowModel, getExpandedRowModel, useVueTable } from '@tanstack/vue-table'
+import {
+  createColumnHelper,
+  getCoreRowModel,
+  getExpandedRowModel,
+  useVueTable,
+} from '@tanstack/vue-table'
 import { createTxn, deleteTxn } from '@/api/ledger'
 import { useAccountStore } from '@/stores/account'
 import { useCategoryStore } from '@/stores/category'
@@ -10,24 +15,46 @@ import { useHouseholdStore } from '@/stores/household'
 import { useLedgerStore } from '@/stores/ledger'
 import { useModeStore } from '@/stores/mode'
 import type { LedgerSplit, LedgerTxn } from '@/types/ledger'
-import { debtPaymentStrategy, expenseStrategy, incomeStrategy, transferStrategy } from '@/utils/txnStrategies'
+import {
+  debtPaymentStrategy,
+  expenseStrategy,
+  incomeStrategy,
+  transferStrategy,
+} from '@/utils/txnStrategies'
 import { getTxnPresentation } from '@/utils/txnPresentation'
 import { formatMinor } from '@/utils/money'
 import AccountSelector from '@/components/AccountSelector.vue'
 import CategoryTagSelector from '@/components/CategoryTagSelector.vue'
 import DateRangePicker from '@/components/DateRangePicker.vue'
 import CurrencyAmountInput from '@/components/CurrencyAmountInput.vue'
-import { AppCardHeader, AppDialogContent, AppFilterBar, AppFormField, AppNotice, AppStateMessage, AppStatusText } from '@/components/app'
+import {
+  AppCardHeader,
+  AppDialogContent,
+  AppFilterBar,
+  AppFormField,
+  AppNotice,
+  AppStateMessage,
+  AppStatusText,
+} from '@/components/app'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Dialog, DialogTrigger } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { ArrowLeftRight, ChevronDown, ChevronRight, Minus, Plus, Trash2, TrendingDown } from 'lucide-vue-next'
+import {
+  ArrowLeftRight,
+  ChevronDown,
+  ChevronRight,
+  Minus,
+  Plus,
+  Trash2,
+  TrendingDown,
+} from 'lucide-vue-next'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { initialsFromName } from '@/utils/initials'
 import DataTable from '@/components/DataTable.vue'
+import { translate } from '@/i18n/translate'
 
 const ledgerStore = useLedgerStore()
 const accountStore = useAccountStore()
@@ -187,7 +214,7 @@ function getStrategyResult(): {
       : { error: null, request: debtPaymentStrategy.buildRequest(ctx, fields) }
   }
 
-  return { error: 'Unknown tab.' }
+  return { error: translate('validation.transactions.unknownTab') }
 }
 
 const isFormValid = computed(() => getStrategyResult().error === null)
@@ -246,15 +273,15 @@ const columns = computed(() => {
         }),
     }),
     columnHelper.accessor('txnDate', {
-      header: 'Date',
+      header: translate('common.table.date'),
       meta: { tdClass: 'whitespace-nowrap' },
     }),
     columnHelper.accessor('description', {
-      header: 'Description',
+      header: translate('common.table.description'),
     }),
     columnHelper.display({
       id: 'kind',
-      header: 'Type',
+      header: translate('common.table.type'),
       cell: ({ row }) => {
         const presentation = txnPresentation(row.original)
         return h(
@@ -266,7 +293,7 @@ const columns = computed(() => {
     }),
     columnHelper.display({
       id: 'categories',
-      header: 'Category',
+      header: translate('common.table.category'),
       cell: ({ row }) => {
         const cats = txnCategories(row.original)
         if (!cats.length) return null
@@ -292,7 +319,7 @@ const columns = computed(() => {
     }),
     columnHelper.display({
       id: 'amount',
-      header: 'Amount',
+      header: translate('common.table.amount'),
       cell: ({ row }) => {
         const presentation = txnPresentation(row.original)
         return h(
@@ -315,7 +342,7 @@ const columns = computed(() => {
     cols.push(
       columnHelper.display({
         id: 'member',
-        header: 'Member',
+        header: translate('common.table.member'),
         cell: ({ row }) => {
           const creator = row.original.createdBy
           if (!creator) return null
@@ -486,9 +513,9 @@ async function submitTransaction(): Promise<void> {
   } catch (error: unknown) {
     if (error instanceof HTTPError) {
       const payload = await error.response.json<{ message?: string }>().catch(() => null)
-      submitError.value = payload?.message?.trim() || 'Failed to create transaction.'
+      submitError.value = payload?.message?.trim() || translate('errors.transactions.create')
     } else {
-      submitError.value = 'Failed to create transaction.'
+      submitError.value = translate('errors.transactions.create')
     }
   } finally {
     isSubmitting.value = false
@@ -498,7 +525,9 @@ async function submitTransaction(): Promise<void> {
 async function deleteTransaction(txn: LedgerTxn): Promise<void> {
   deleteError.value = ''
 
-  const confirmed = window.confirm(`Delete transaction "${txn.description}"?`)
+  const confirmed = window.confirm(
+    translate('views.transactions.confirmDelete', { description: txn.description }),
+  )
   if (!confirmed) return
 
   deletingTxnId.value = txn.id
@@ -509,9 +538,9 @@ async function deleteTransaction(txn: LedgerTxn): Promise<void> {
   } catch (error: unknown) {
     if (error instanceof HTTPError) {
       const payload = await error.response.json<{ message?: string }>().catch(() => null)
-      deleteError.value = payload?.message?.trim() || 'Failed to delete transaction.'
+      deleteError.value = payload?.message?.trim() || translate('errors.transactions.delete')
     } else {
-      deleteError.value = 'Failed to delete transaction.'
+      deleteError.value = translate('errors.transactions.delete')
     }
   } finally {
     deletingTxnId.value = null
@@ -522,46 +551,54 @@ async function deleteTransaction(txn: LedgerTxn): Promise<void> {
 <template>
   <section class="flex flex-col gap-4">
     <Card>
-      <AppCardHeader title="Transactions" title-class="text-2xl">
+      <AppCardHeader :title="$t('views.transactions.title')" title-class="text-2xl">
         <Dialog v-model:open="dialogOpen">
           <DialogTrigger as-child>
             <Button size="sm" @click="resetForms">
               <Plus class="mr-1 size-4" />
-              New Transaction
+              {{ $t('views.transactions.actions.new') }}
             </Button>
           </DialogTrigger>
           <AppDialogContent
-            title="Create Transaction"
-            description="Record an expense, income, transfer, or debt payment."
+            :title="$t('views.transactions.create.title')"
+            :description="$t('views.transactions.create.description')"
             class="max-w-lg"
           >
             <Tabs v-model="activeTab" class="w-full">
               <TabsList>
                 <TabsTrigger value="expense">
                   <Minus class="size-4 shrink-0" />
-                  <span class="text-center leading-tight">Expense</span>
+                  <span class="text-center leading-tight">{{
+                    $t('views.transactions.create.tabs.expense')
+                  }}</span>
                 </TabsTrigger>
                 <TabsTrigger value="income">
                   <Plus class="size-4 shrink-0" />
-                  <span class="text-center leading-tight">Income</span>
+                  <span class="text-center leading-tight">{{
+                    $t('views.transactions.create.tabs.income')
+                  }}</span>
                 </TabsTrigger>
                 <TabsTrigger value="transfer">
                   <ArrowLeftRight class="size-4 shrink-0" />
-                  <span class="text-center leading-tight">Transfer</span>
+                  <span class="text-center leading-tight">{{
+                    $t('views.transactions.create.tabs.transfer')
+                  }}</span>
                 </TabsTrigger>
                 <TabsTrigger value="debt-payment">
                   <TrendingDown class="size-4 shrink-0" />
-                  <span class="text-center leading-tight">Debt Payment</span>
+                  <span class="text-center leading-tight">{{
+                    $t('views.transactions.create.tabs.debtPayment')
+                  }}</span>
                 </TabsTrigger>
               </TabsList>
 
               <!-- Expense Tab -->
               <TabsContent value="expense" class="space-y-4 pt-4">
                 <div class="grid grid-cols-2 gap-4">
-                  <AppFormField label="Date" control-id="expense-date">
+                  <AppFormField :label="$t('common.fields.date')" control-id="expense-date">
                     <Input id="expense-date" v-model="expenseDate" type="date" />
                   </AppFormField>
-                  <AppFormField label="Amount">
+                  <AppFormField :label="$t('common.fields.amount')">
                     <CurrencyAmountInput
                       v-model="expenseAmount"
                       :minor-unit="expenseMinorUnit"
@@ -569,28 +606,28 @@ async function deleteTransaction(txn: LedgerTxn): Promise<void> {
                     />
                   </AppFormField>
                 </div>
-                <AppFormField label="Pay from (Asset/Liability)">
+                <AppFormField :label="$t('views.transactions.fields.payFromAssetOrLiability')">
                   <AccountSelector
                     v-model="expensePayFrom"
                     :allowed-types="['ASSET', 'LIABILITY']"
-                    placeholder="Select pay-from account"
+                    :placeholder="$t('views.transactions.placeholders.selectPayFromAccount')"
                   />
                 </AppFormField>
-                <AppFormField label="Expense account">
+                <AppFormField :label="$t('views.transactions.fields.expenseAccount')">
                   <AccountSelector
                     v-model="expenseAccount"
                     :allowed-types="['EXPENSE']"
-                    placeholder="Select expense account"
+                    :placeholder="$t('views.transactions.placeholders.selectExpenseAccount')"
                   />
                 </AppFormField>
-                <AppFormField label="Category">
+                <AppFormField :label="$t('common.fields.category')">
                   <CategoryTagSelector v-model="expenseCategory" />
                 </AppFormField>
-                <AppFormField label="Description" control-id="expense-desc">
+                <AppFormField :label="$t('common.fields.description')" control-id="expense-desc">
                   <Input
                     id="expense-desc"
                     v-model="expenseDescription"
-                    placeholder="What was this for?"
+                    :placeholder="$t('views.transactions.placeholders.whatWasThisFor')"
                   />
                 </AppFormField>
               </TabsContent>
@@ -598,10 +635,10 @@ async function deleteTransaction(txn: LedgerTxn): Promise<void> {
               <!-- Income Tab -->
               <TabsContent value="income" class="space-y-4 pt-4">
                 <div class="grid grid-cols-2 gap-4">
-                  <AppFormField label="Date" control-id="income-date">
+                  <AppFormField :label="$t('common.fields.date')" control-id="income-date">
                     <Input id="income-date" v-model="incomeDate" type="date" />
                   </AppFormField>
-                  <AppFormField label="Amount">
+                  <AppFormField :label="$t('common.fields.amount')">
                     <CurrencyAmountInput
                       v-model="incomeAmount"
                       :minor-unit="incomeMinorUnit"
@@ -609,36 +646,39 @@ async function deleteTransaction(txn: LedgerTxn): Promise<void> {
                     />
                   </AppFormField>
                 </div>
-                <AppFormField label="Deposit to (Asset)">
+                <AppFormField :label="$t('views.transactions.fields.depositTo')">
                   <AccountSelector
                     v-model="incomeDeposit"
                     :allowed-types="['ASSET']"
-                    placeholder="Select deposit account"
+                    :placeholder="$t('views.transactions.placeholders.selectDepositAccount')"
                   />
                 </AppFormField>
-                <AppFormField label="Income account">
+                <AppFormField :label="$t('views.transactions.fields.incomeAccount')">
                   <AccountSelector
                     v-model="incomeAccount"
                     :allowed-types="['INCOME']"
-                    placeholder="Select income account"
+                    :placeholder="$t('views.transactions.placeholders.selectIncomeAccount')"
                   />
                 </AppFormField>
-                <AppFormField label="Description" control-id="income-desc">
-                  <Input id="income-desc" v-model="incomeDescription" placeholder="Income source" />
+                <AppFormField :label="$t('common.fields.description')" control-id="income-desc">
+                  <Input
+                    id="income-desc"
+                    v-model="incomeDescription"
+                    :placeholder="$t('views.transactions.placeholders.incomeSource')"
+                  />
                 </AppFormField>
               </TabsContent>
 
               <!-- Transfer Tab -->
               <TabsContent value="transfer" class="space-y-4 pt-4">
                 <AppNotice v-if="modeStore.isHousehold">
-                  Transfers between household accounts are allowed. You cannot post expenses to
-                  other users' accounts.
+                  {{ $t('views.transactions.notices.householdTransfers') }}
                 </AppNotice>
                 <div class="grid grid-cols-2 gap-4">
-                  <AppFormField label="Date" control-id="transfer-date">
+                  <AppFormField :label="$t('common.fields.date')" control-id="transfer-date">
                     <Input id="transfer-date" v-model="transferDate" type="date" />
                   </AppFormField>
-                  <AppFormField label="Amount">
+                  <AppFormField :label="$t('common.fields.amount')">
                     <CurrencyAmountInput
                       v-model="transferAmount"
                       :minor-unit="transferMinorUnit"
@@ -646,40 +686,40 @@ async function deleteTransaction(txn: LedgerTxn): Promise<void> {
                     />
                   </AppFormField>
                 </div>
-                <AppFormField label="From account (Asset)">
+                <AppFormField :label="$t('views.transactions.fields.fromAccount')">
                   <AccountSelector
                     v-model="transferFrom"
                     :allowed-types="['ASSET']"
-                    placeholder="Select source account"
+                    :placeholder="$t('views.transactions.placeholders.selectSourceAccount')"
                   />
                 </AppFormField>
-                <AppFormField label="To account (Asset)">
+                <AppFormField :label="$t('views.transactions.fields.toAccount')">
                   <AccountSelector
                     v-model="transferTo"
                     :allowed-types="['ASSET']"
                     :currency="transferCurrency || undefined"
-                    placeholder="Select destination account"
+                    :placeholder="$t('views.transactions.placeholders.selectDestinationAccount')"
                   />
                 </AppFormField>
-                <AppFormField label="Description" control-id="transfer-desc">
+                <AppFormField :label="$t('common.fields.description')" control-id="transfer-desc">
                   <Input
                     id="transfer-desc"
                     v-model="transferDescription"
-                    placeholder="Transfer reason"
+                    :placeholder="$t('views.transactions.placeholders.transferReason')"
                   />
                 </AppFormField>
                 <AppNotice v-if="isCrossUserTransfer" variant="warning">
-                  This is a cross-user transfer between household members.
+                  {{ $t('views.transactions.notices.crossUserTransfer') }}
                 </AppNotice>
               </TabsContent>
 
               <!-- Debt Payment Tab -->
               <TabsContent value="debt-payment" class="space-y-4 pt-4">
                 <div class="grid grid-cols-2 gap-4">
-                  <AppFormField label="Date" control-id="debt-payment-date">
+                  <AppFormField :label="$t('common.fields.date')" control-id="debt-payment-date">
                     <Input id="debt-payment-date" v-model="debtPaymentDate" type="date" />
                   </AppFormField>
-                  <AppFormField label="Amount">
+                  <AppFormField :label="$t('common.fields.amount')">
                     <CurrencyAmountInput
                       v-model="debtPaymentAmount"
                       :minor-unit="debtPaymentMinorUnit"
@@ -687,26 +727,29 @@ async function deleteTransaction(txn: LedgerTxn): Promise<void> {
                     />
                   </AppFormField>
                 </div>
-                <AppFormField label="Pay from (Asset)">
+                <AppFormField :label="$t('views.transactions.fields.payFromAsset')">
                   <AccountSelector
                     v-model="debtPaymentPayFrom"
                     :allowed-types="['ASSET']"
-                    placeholder="Select asset account"
+                    :placeholder="$t('views.transactions.placeholders.selectAssetAccount')"
                   />
                 </AppFormField>
-                <AppFormField label="Liability account">
+                <AppFormField :label="$t('views.transactions.fields.debtPaymentLiabilityAccount')">
                   <AccountSelector
                     v-model="debtPaymentLiabilityAccount"
                     :allowed-types="['LIABILITY']"
                     :currency="debtPaymentCurrency || undefined"
-                    placeholder="Select liability account"
+                    :placeholder="$t('views.transactions.placeholders.selectLiabilityAccount')"
                   />
                 </AppFormField>
-                <AppFormField label="Description" control-id="debt-payment-desc">
+                <AppFormField
+                  :label="$t('common.fields.description')"
+                  control-id="debt-payment-desc"
+                >
                   <Input
                     id="debt-payment-desc"
                     v-model="debtPaymentDescription"
-                    placeholder="Debt payment note"
+                    :placeholder="$t('views.transactions.placeholders.debtPaymentNote')"
                   />
                 </AppFormField>
               </TabsContent>
@@ -716,7 +759,11 @@ async function deleteTransaction(txn: LedgerTxn): Promise<void> {
 
             <template #footer>
               <Button :disabled="isSubmitting || !isFormValid" @click="submitTransaction">
-                {{ isSubmitting ? 'Creating...' : 'Create Transaction' }}
+                {{
+                  isSubmitting
+                    ? $t('common.feedback.creating')
+                    : $t('views.transactions.create.title')
+                }}
               </Button>
             </template>
           </AppDialogContent>
@@ -726,7 +773,7 @@ async function deleteTransaction(txn: LedgerTxn): Promise<void> {
       <CardContent class="flex flex-col pb-6">
         <!-- Filters -->
         <AppFilterBar>
-          <AppFormField label="Date range" class="gap-1" label-class="text-xs">
+          <AppFormField :label="$t('common.fields.dateRange')" class="gap-1" label-class="text-xs">
             <DateRangePicker
               :from="filterDateFrom"
               :to="filterDateTo"
@@ -734,21 +781,24 @@ async function deleteTransaction(txn: LedgerTxn): Promise<void> {
               @update:to="filterDateTo = $event"
             />
           </AppFormField>
-          <AppFormField label="Account" class="gap-1" label-class="text-xs">
+          <AppFormField :label="$t('common.fields.account')" class="gap-1" label-class="text-xs">
             <div class="w-48">
-              <AccountSelector v-model="filterAccountId" placeholder="All accounts" />
+              <AccountSelector
+                v-model="filterAccountId"
+                :placeholder="$t('views.transactions.placeholders.allAccounts')"
+              />
             </div>
           </AppFormField>
-          <AppFormField label="Category" class="gap-1" label-class="text-xs">
+          <AppFormField :label="$t('common.fields.category')" class="gap-1" label-class="text-xs">
             <div class="w-48">
               <CategoryTagSelector v-model="filterCategoryId" />
             </div>
           </AppFormField>
-          <AppFormField label="Search" class="gap-1" label-class="text-xs">
+          <AppFormField :label="$t('common.fields.search')" class="gap-1" label-class="text-xs">
             <Input
               v-model="filterSearch"
               type="text"
-              placeholder="Search descriptions..."
+              :placeholder="$t('views.transactions.placeholders.searchDescriptions')"
               class="h-8 w-48 text-xs"
             />
           </AppFormField>
@@ -756,12 +806,12 @@ async function deleteTransaction(txn: LedgerTxn): Promise<void> {
 
         <!-- Loading state -->
         <AppStateMessage v-if="ledgerStore.isLoading" center>
-          Loading transactions...
+          {{ $t('views.transactions.loading') }}
         </AppStateMessage>
 
         <!-- Empty state -->
         <AppStateMessage v-else-if="filteredTransactions.length === 0" center>
-          No transactions found. Create your first transaction to get started.
+          {{ $t('views.transactions.empty') }}
         </AppStateMessage>
 
         <!-- Error state (only reached when transactions exist but a reload failed) -->
@@ -775,7 +825,7 @@ async function deleteTransaction(txn: LedgerTxn): Promise<void> {
           :table="table"
           sticky-header
           clickable
-          empty-text="No transactions found. Create your first transaction to get started."
+          :empty-text="$t('views.transactions.empty')"
           :pagination="{
             page: ledgerStore.currentPage,
             pageSize: ledgerStore.pageSize,
@@ -794,7 +844,9 @@ async function deleteTransaction(txn: LedgerTxn): Promise<void> {
                 class="flex items-center justify-between text-xs"
               >
                 <div class="flex items-center gap-2">
-                  <Badge variant="outline" class="text-[10px]">{{ split.side }}</Badge>
+                  <Badge variant="outline" class="text-[10px]">{{
+                    $t(`display.splitSides.${split.side}`)
+                  }}</Badge>
                   <span>{{ splitLabel(split) }}</span>
                 </div>
                 <span class="font-mono">{{ splitAmount(split, row.original.currency) }}</span>

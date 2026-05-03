@@ -47,11 +47,36 @@ import { useModeStore } from '@/stores/mode'
 import { api } from '@/api/http'
 
 const routes = [
-  { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard, enabled: true },
-  { name: 'Transactions', path: '/transactions', icon: ArrowUpDown, enabled: true },
-  { name: 'Accounts', path: '/accounts', icon: WalletMinimal, enabled: true },
-  { name: 'Categories', path: '/categories', icon: Shapes, enabled: true },
-  { name: 'Subscriptions', path: '/subscriptions', icon: RotateCw, enabled: false },
+  {
+    nameKey: 'components.sidebar.routes.dashboard',
+    path: '/dashboard',
+    icon: LayoutDashboard,
+    enabled: true,
+  },
+  {
+    nameKey: 'components.sidebar.routes.transactions',
+    path: '/transactions',
+    icon: ArrowUpDown,
+    enabled: true,
+  },
+  {
+    nameKey: 'components.sidebar.routes.accounts',
+    path: '/accounts',
+    icon: WalletMinimal,
+    enabled: true,
+  },
+  {
+    nameKey: 'components.sidebar.routes.categories',
+    path: '/categories',
+    icon: Shapes,
+    enabled: true,
+  },
+  {
+    nameKey: 'components.sidebar.routes.subscriptions',
+    path: '/subscriptions',
+    icon: RotateCw,
+    enabled: false,
+  },
 ]
 
 const householdStore = useHouseholdStore()
@@ -91,10 +116,8 @@ async function logout(): Promise<void> {
           <SidebarMenuButton as-child class="app-sidebar-brand-button h-auto">
             <RouterLink class="flex w-full items-start" to="/dashboard">
               <div class="grid flex-1 text-left text-sm leading-tight">
-                <span class="truncate font-semibold">Pocketr</span>
-                <span class="app-sidebar-subtitle truncate text-xs"
-                  >Your path to financial zen</span
-                >
+                <span class="truncate font-semibold">{{ $t('app.name') }}</span>
+                <span class="app-sidebar-subtitle truncate text-xs">{{ $t('app.tagline') }}</span>
               </div>
             </RouterLink>
           </SidebarMenuButton>
@@ -120,7 +143,7 @@ async function logout(): Promise<void> {
                   <span class="app-sidebar-nav-icon">
                     <component :is="route.icon" class="size-4" />
                   </span>
-                  <span>{{ route.name }}</span>
+                  <span>{{ $t(route.nameKey) }}</span>
                 </RouterLink>
               </SidebarMenuButton>
             </SidebarMenuItem>
@@ -130,7 +153,7 @@ async function logout(): Promise<void> {
                   <span class="app-sidebar-nav-icon">
                     <Users class="size-4" />
                   </span>
-                  <span>Household</span>
+                  <span>{{ $t('components.sidebar.household') }}</span>
                 </RouterLink>
               </SidebarMenuButton>
             </SidebarMenuItem>
@@ -167,18 +190,18 @@ async function logout(): Promise<void> {
                   @click="logout"
                 >
                   <LogOut class="text-[var(--app-sidebar-danger-fg)]" />
-                  Log out
+                  {{ $t('common.actions.logOut') }}
                 </DropdownMenuItem>
                 <DropdownMenuItem @click="router.push('/settings')">
                   <User />
-                  Settings
+                  {{ $t('common.actions.settings') }}
                 </DropdownMenuItem>
               </DropdownMenuGroup>
               <DropdownMenuSeparator />
               <DropdownMenuSub>
                 <DropdownMenuSubTrigger class="flex items-center gap-2">
                   <Palette class="size-4" />
-                  Theme
+                  {{ $t('components.theme.label') }}
                 </DropdownMenuSubTrigger>
                 <DropdownMenuSubContent>
                   <ThemeMenu />

@@ -20,6 +20,7 @@ import type {
   InviteMemberRequest,
 } from '@/types/household'
 import { useModeStore } from '@/stores/mode'
+import { translate } from '@/i18n/translate'
 
 export const useHouseholdStore = defineStore('household', () => {
   const households = ref<HouseholdSummary[]>([])
@@ -67,7 +68,7 @@ export const useHouseholdStore = defineStore('household', () => {
       }
       modeValidated.value = true
     } catch (nextError: unknown) {
-      error.value = await resolveErrorMessage(nextError, 'Failed to load households.')
+      error.value = await resolveErrorMessage(nextError, translate('errors.households.load'))
     } finally {
       isLoading.value = false
     }
@@ -94,7 +95,7 @@ export const useHouseholdStore = defineStore('household', () => {
     try {
       currentHousehold.value = await apiGetHousehold(id)
     } catch (nextError: unknown) {
-      error.value = await resolveErrorMessage(nextError, 'Failed to load household details.')
+      error.value = await resolveErrorMessage(nextError, translate('errors.households.loadDetails'))
     } finally {
       isLoading.value = false
     }
@@ -110,7 +111,7 @@ export const useHouseholdStore = defineStore('household', () => {
       await loadHouseholds()
       return household
     } catch (nextError: unknown) {
-      error.value = await resolveErrorMessage(nextError, 'Failed to create household.')
+      error.value = await resolveErrorMessage(nextError, translate('errors.households.create'))
       return null
     } finally {
       isLoading.value = false
@@ -125,7 +126,10 @@ export const useHouseholdStore = defineStore('household', () => {
       await loadHousehold(householdId)
       return true
     } catch (nextError: unknown) {
-      error.value = await resolveErrorMessage(nextError, 'Failed to invite member.')
+      error.value = await resolveErrorMessage(
+        nextError,
+        translate('errors.households.inviteMember'),
+      )
       return false
     }
   }
@@ -138,7 +142,10 @@ export const useHouseholdStore = defineStore('household', () => {
       await loadHouseholds()
       return true
     } catch (nextError: unknown) {
-      error.value = await resolveErrorMessage(nextError, 'Failed to accept invite.')
+      error.value = await resolveErrorMessage(
+        nextError,
+        translate('errors.households.acceptInvite'),
+      )
       return false
     }
   }
@@ -153,7 +160,7 @@ export const useHouseholdStore = defineStore('household', () => {
       await loadHouseholds()
       return true
     } catch (nextError: unknown) {
-      error.value = await resolveErrorMessage(nextError, 'Failed to leave household.')
+      error.value = await resolveErrorMessage(nextError, translate('errors.households.leave'))
       return false
     }
   }
@@ -164,7 +171,10 @@ export const useHouseholdStore = defineStore('household', () => {
     try {
       sharedAccounts.value = await apiListSharedAccounts(householdId)
     } catch (nextError: unknown) {
-      error.value = await resolveErrorMessage(nextError, 'Failed to load shared accounts.')
+      error.value = await resolveErrorMessage(
+        nextError,
+        translate('errors.households.loadSharedAccounts'),
+      )
     }
   }
 
@@ -176,7 +186,10 @@ export const useHouseholdStore = defineStore('household', () => {
       await loadSharedAccounts(householdId)
       return true
     } catch (nextError: unknown) {
-      error.value = await resolveErrorMessage(nextError, 'Failed to share account.')
+      error.value = await resolveErrorMessage(
+        nextError,
+        translate('errors.households.shareAccount'),
+      )
       return false
     }
   }
@@ -189,7 +202,10 @@ export const useHouseholdStore = defineStore('household', () => {
       await loadSharedAccounts(householdId)
       return true
     } catch (nextError: unknown) {
-      error.value = await resolveErrorMessage(nextError, 'Failed to unshare account.')
+      error.value = await resolveErrorMessage(
+        nextError,
+        translate('errors.households.unshareAccount'),
+      )
       return false
     }
   }

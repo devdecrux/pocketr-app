@@ -34,6 +34,7 @@ import {
 } from '@/components/app'
 import CurrencyAmountInput from '@/components/CurrencyAmountInput.vue'
 import DataTable from '@/components/DataTable.vue'
+import { translate } from '@/i18n/translate'
 
 const accountStore = useAccountStore()
 const currencyStore = useCurrencyStore()
@@ -93,34 +94,32 @@ const columns = computed<ColumnDef<Account>[]>(() => {
   const cols: ColumnDef<Account>[] = [
     {
       accessorKey: 'name',
-      header: 'Name',
+      header: translate('common.table.name'),
       cell: ({ row }) => row.original.name,
     },
     {
       accessorKey: 'type',
-      header: 'Type',
+      header: translate('common.table.type'),
       cell: ({ row }) => {
         const badges: Record<AccountType, string> = {
           ASSET: 'default',
           LIABILITY: 'destructive',
           INCOME: 'secondary',
-          EXPENSE: 'outline',
+          EXPENSE: 'destructive',
           EQUITY: 'secondary',
         }
-        return h(
-          Badge,
-          { variant: badges[row.original.type] as 'default' },
-          () => row.original.type,
+        return h(Badge, { variant: badges[row.original.type] as 'default' }, () =>
+          translate(`display.accountTypes.${row.original.type}`),
         )
       },
     },
     {
       accessorKey: 'currency',
-      header: 'Currency',
+      header: translate('common.table.currency'),
     },
     {
       id: 'balance',
-      header: 'Balance',
+      header: translate('common.table.balance'),
       cell: ({ row }) => {
         const bal = balances.value.get(row.original.id)
         if (bal === undefined) return '...'
@@ -133,10 +132,10 @@ const columns = computed<ColumnDef<Account>[]>(() => {
   if (modeStore.isHousehold) {
     cols.push({
       id: 'shared',
-      header: 'Shared',
+      header: translate('common.table.shared'),
       cell: ({ row }) => {
         if (sharedAccountIds.value.has(row.original.id)) {
-          return h(Badge, { variant: 'secondary' }, () => 'Shared')
+          return h(Badge, { variant: 'secondary' }, () => translate('common.table.shared'))
         }
         return ''
       },
@@ -219,7 +218,9 @@ watch(
 const renameDialog = ref(false)
 const renameTarget = ref<Account | null>(null)
 const renameName = ref('')
-const renameDescription = computed(() => `Enter a new name for "${renameTarget.value?.name}".`)
+const renameDescription = computed(() =>
+  translate('views.accounts.rename.description', { name: renameTarget.value?.name ?? '' }),
+)
 
 function startRename(account: Account): void {
   renameTarget.value = account
@@ -236,7 +237,7 @@ async function submitRename(): Promise<void> {
     renameDialog.value = false
     await accountStore.load()
   } catch {
-    renameError.value = 'Failed to rename account.'
+    renameError.value = translate('errors.accounts.rename')
   }
 }
 
@@ -261,7 +262,7 @@ async function submitCreate(): Promise<void> {
     openingBalanceDate.value = todayString()
     await loadAll()
   } catch {
-    createError.value = 'Failed to create account.'
+    createError.value = translate('errors.accounts.create')
   } finally {
     isCreating.value = false
   }
@@ -275,49 +276,57 @@ function todayString(): string {
 <template>
   <section class="flex flex-col gap-4">
     <Card>
-      <AppCardHeader title="Accounts" title-class="text-2xl">
+      <AppCardHeader :title="$t('views.accounts.title')" title-class="text-2xl">
         <Dialog v-model:open="createDialogOpen">
           <DialogTrigger as-child>
             <Button size="sm">
               <Plus class="size-4" />
-              New Account
+              {{ $t('views.accounts.actions.new') }}
             </Button>
           </DialogTrigger>
           <AppDialogContent
-            title="Create Account"
-            description="Add a new account to your ledger."
+            :title="$t('views.accounts.create.title')"
+            :description="$t('views.accounts.create.descriptions.main')"
             class="max-w-lg"
           >
             <Tabs v-model="newAccount.type" class="w-full">
               <TabsList>
                 <TabsTrigger value="ASSET">
                   <Wallet class="size-4 shrink-0" />
-                  <span class="text-center leading-tight">Asset</span>
+                  <span class="text-center leading-tight">{{
+                    $t('display.accountTypes.ASSET')
+                  }}</span>
                 </TabsTrigger>
                 <TabsTrigger value="EXPENSE">
                   <ShoppingCart class="size-4 shrink-0" />
-                  <span class="text-center leading-tight">Expense</span>
+                  <span class="text-center leading-tight">{{
+                    $t('display.accountTypes.EXPENSE')
+                  }}</span>
                 </TabsTrigger>
                 <TabsTrigger value="INCOME">
                   <TrendingUp class="size-4 shrink-0" />
-                  <span class="text-center leading-tight">Income</span>
+                  <span class="text-center leading-tight">{{
+                    $t('display.accountTypes.INCOME')
+                  }}</span>
                 </TabsTrigger>
                 <TabsTrigger value="LIABILITY">
                   <CreditCard class="size-4 shrink-0" />
-                  <span class="text-center leading-tight">Liability</span>
+                  <span class="text-center leading-tight">{{
+                    $t('display.accountTypes.LIABILITY')
+                  }}</span>
                 </TabsTrigger>
               </TabsList>
 
               <!-- Asset tab -->
               <TabsContent value="ASSET" class="space-y-4 pt-4">
-                <AppFormField label="Name" control-id="asset-name">
+                <AppFormField :label="$t('common.fields.name')" control-id="asset-name">
                   <Input
                     id="asset-name"
                     v-model="newAccount.name"
-                    placeholder="e.g. Checking, Savings"
+                    :placeholder="$t('views.accounts.create.placeholders.assetName')"
                   />
                 </AppFormField>
-                <AppFormField label="Currency">
+                <AppFormField :label="$t('common.fields.currency')">
                   <Select v-model="newAccount.currency">
                     <SelectTrigger class="w-full">
                       <SelectValue />
@@ -334,7 +343,10 @@ function todayString(): string {
                   </Select>
                 </AppFormField>
                 <div class="grid grid-cols-2 gap-4">
-                  <AppFormField label="Opening date" control-id="asset-opening-date">
+                  <AppFormField
+                    :label="$t('views.accounts.create.fields.openingDate')"
+                    control-id="asset-opening-date"
+                  >
                     <Input
                       id="asset-opening-date"
                       v-model="openingBalanceDate"
@@ -342,32 +354,31 @@ function todayString(): string {
                       :disabled="openingBalanceMinor === 0"
                     />
                   </AppFormField>
-                  <AppFormField label="Initial balance">
+                  <AppFormField :label="$t('views.accounts.create.fields.initialBalance')">
                     <CurrencyAmountInput
                       v-model="openingBalanceMinor"
                       :minor-unit="openingBalanceMinorUnit"
                       :currency-code="newAccount.currency"
                       :allow-negative="true"
-                      placeholder="0.00"
+                      :placeholder="$t('common.placeholders.money')"
                     />
                   </AppFormField>
                 </div>
                 <p class="text-xs text-muted-foreground">
-                  Posted as an opening balance journal entry against Opening Equity. Opening balance
-                  date is used only when initial balance is non-zero.
+                  {{ $t('views.accounts.create.descriptions.assetOpeningBalance') }}
                 </p>
               </TabsContent>
 
               <!-- Expense tab -->
               <TabsContent value="EXPENSE" class="space-y-4 pt-4">
-                <AppFormField label="Name" control-id="expense-name">
+                <AppFormField :label="$t('common.fields.name')" control-id="expense-name">
                   <Input
                     id="expense-name"
                     v-model="newAccount.name"
-                    placeholder="e.g. Groceries, Utilities"
+                    :placeholder="$t('views.accounts.create.placeholders.expenseName')"
                   />
                 </AppFormField>
-                <AppFormField label="Currency">
+                <AppFormField :label="$t('common.fields.currency')">
                   <Select v-model="newAccount.currency">
                     <SelectTrigger class="w-full">
                       <SelectValue />
@@ -387,14 +398,14 @@ function todayString(): string {
 
               <!-- Income tab -->
               <TabsContent value="INCOME" class="space-y-4 pt-4">
-                <AppFormField label="Name" control-id="income-name">
+                <AppFormField :label="$t('common.fields.name')" control-id="income-name">
                   <Input
                     id="income-name"
                     v-model="newAccount.name"
-                    placeholder="e.g. Salary, Freelance"
+                    :placeholder="$t('views.accounts.create.placeholders.incomeName')"
                   />
                 </AppFormField>
-                <AppFormField label="Currency">
+                <AppFormField :label="$t('common.fields.currency')">
                   <Select v-model="newAccount.currency">
                     <SelectTrigger class="w-full">
                       <SelectValue />
@@ -414,14 +425,14 @@ function todayString(): string {
 
               <!-- Liability tab -->
               <TabsContent value="LIABILITY" class="space-y-4 pt-4">
-                <AppFormField label="Name" control-id="liability-name">
+                <AppFormField :label="$t('common.fields.name')" control-id="liability-name">
                   <Input
                     id="liability-name"
                     v-model="newAccount.name"
-                    placeholder="e.g. Mortgage, Car Loan"
+                    :placeholder="$t('views.accounts.create.placeholders.liabilityName')"
                   />
                 </AppFormField>
-                <AppFormField label="Currency">
+                <AppFormField :label="$t('common.fields.currency')">
                   <Select v-model="newAccount.currency">
                     <SelectTrigger class="w-full">
                       <SelectValue />
@@ -438,7 +449,10 @@ function todayString(): string {
                   </Select>
                 </AppFormField>
                 <div class="grid grid-cols-2 gap-4">
-                  <AppFormField label="Opening date" control-id="liability-opening-date">
+                  <AppFormField
+                    :label="$t('views.accounts.create.fields.openingDate')"
+                    control-id="liability-opening-date"
+                  >
                     <Input
                       id="liability-opening-date"
                       v-model="openingBalanceDate"
@@ -446,19 +460,18 @@ function todayString(): string {
                       :disabled="openingBalanceMinor === 0"
                     />
                   </AppFormField>
-                  <AppFormField label="Initial balance">
+                  <AppFormField :label="$t('views.accounts.create.fields.initialBalance')">
                     <CurrencyAmountInput
                       v-model="openingBalanceMinor"
                       :minor-unit="openingBalanceMinorUnit"
                       :currency-code="newAccount.currency"
                       :allow-negative="false"
-                      placeholder="0.00"
+                      :placeholder="$t('common.placeholders.money')"
                     />
                   </AppFormField>
                 </div>
                 <p class="text-xs text-muted-foreground">
-                  Posted as opening debt against Opening Equity. Liability opening amounts must be
-                  positive.
+                  {{ $t('views.accounts.create.descriptions.liabilityOpeningBalance') }}
                 </p>
               </TabsContent>
             </Tabs>
@@ -467,7 +480,7 @@ function todayString(): string {
 
             <template #footer>
               <Button :disabled="isCreating || !newAccount.name.trim()" @click="submitCreate">
-                {{ isCreating ? 'Creating...' : 'Create' }}
+                {{ isCreating ? $t('common.feedback.creating') : $t('common.actions.create') }}
               </Button>
             </template>
           </AppDialogContent>
@@ -477,21 +490,21 @@ function todayString(): string {
         <AppFilterBar align="center">
           <Select v-model="typeFilter">
             <SelectTrigger class="w-36">
-              <SelectValue placeholder="Filter type" />
+              <SelectValue :placeholder="$t('common.placeholders.filterType')" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="ALL">All types</SelectItem>
+              <SelectItem value="ALL">{{ $t('views.accounts.filters.allTypes') }}</SelectItem>
               <SelectItem v-for="t in accountTypes" :key="t" :value="t">
-                {{ t }}
+                {{ $t(`display.accountTypes.${t}`) }}
               </SelectItem>
             </SelectContent>
           </Select>
           <Select v-model="currencyFilter">
             <SelectTrigger class="w-36">
-              <SelectValue placeholder="Filter currency" />
+              <SelectValue :placeholder="$t('common.placeholders.filterCurrency')" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="ALL">All currencies</SelectItem>
+              <SelectItem value="ALL">{{ $t('views.accounts.filters.allCurrencies') }}</SelectItem>
               <SelectItem v-for="code in availableCurrencies" :key="code" :value="code">
                 {{ code }}
               </SelectItem>
@@ -500,7 +513,7 @@ function todayString(): string {
         </AppFilterBar>
 
         <AppStateMessage v-if="accountStore.isLoading" center>
-          Loading accounts...
+          {{ $t('views.accounts.loading') }}
         </AppStateMessage>
 
         <AppStateMessage v-else-if="accountStore.error" variant="error" center>
@@ -508,21 +521,23 @@ function todayString(): string {
         </AppStateMessage>
 
         <AppStateMessage v-else-if="filteredAccounts.length === 0" center>
-          No accounts found.
+          {{ $t('views.accounts.empty') }}
         </AppStateMessage>
 
-        <DataTable v-else :table="table" sticky-header empty-text="No accounts found." />
+        <DataTable v-else :table="table" sticky-header :empty-text="$t('views.accounts.empty')" />
       </CardContent>
     </Card>
 
     <Dialog v-model:open="renameDialog">
-      <AppDialogContent title="Rename Account" :description="renameDescription">
+      <AppDialogContent :title="$t('views.accounts.rename.title')" :description="renameDescription">
         <AppDialogBody gap="2">
-          <Input v-model="renameName" placeholder="Account name" />
+          <Input v-model="renameName" :placeholder="$t('common.placeholders.accountName')" />
           <AppStatusText v-if="renameError">{{ renameError }}</AppStatusText>
         </AppDialogBody>
         <template #footer>
-          <Button :disabled="!renameName.trim()" @click="submitRename"> Save </Button>
+          <Button :disabled="!renameName.trim()" @click="submitRename">
+            {{ $t('common.actions.save') }}
+          </Button>
         </template>
       </AppDialogContent>
     </Dialog>

@@ -24,7 +24,7 @@ const emit = defineEmits<{
       type="button"
       class="flex h-6 w-6 items-center justify-center rounded-full border-2 border-dashed text-[10px] text-muted-foreground transition-colors hover:border-foreground"
       :class="props.modelValue === null ? 'border-foreground' : 'border-muted-foreground'"
-      title="No color"
+      :title="$t('components.categoryColorPicker.noColor')"
       @click="emit('update:modelValue', null)"
     >
       ✕

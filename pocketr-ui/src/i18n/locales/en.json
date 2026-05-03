@@ -58,7 +58,7 @@
     "placeholders": {
       "accountName": "Account name",
       "categoryExamples": "e.g. Groceries, Utilities",
-      "email": "email@example.com",
+      "email": "email{'@'}example.com",
       "filterCurrency": "Filter currency",
       "filterType": "Filter type",
       "householdName": "My Household name (min. 3 characters)",
@@ -152,7 +152,8 @@
           "main": "Add a new account to your ledger."
         },
         "fields": {
-          "initialBalance": "Initial balance"
+          "initialBalance": "Initial balance",
+          "openingDate": "Opening date"
         },
         "placeholders": {
           "assetName": "e.g. Checking, Savings",
@@ -253,7 +254,8 @@
       },
       "invite": {
         "description": "Send an invitation to join this household by email.",
-        "placeholder": "name@example.com",
+        "placeholder": "name{'@'}example.com",
+        "sendAction": "Send Invitation",
         "success": "Invitation sent to {email}.",
         "title": "Invite Member"
       },
@@ -272,6 +274,7 @@
     "settings": {
       "household": {
         "acceptInviteBlocked": "Leave your current household before accepting another invitation.",
+        "createAction": "Create Household",
         "createDescription": "You are not part of any household yet. Create one to start sharing accounts with family or roommates.",
         "description": "Create or manage a household to share accounts and track expenses together.",
         "invitedBadge": "Invited",
@@ -400,6 +403,9 @@
       "delete": "Failed to delete category.",
       "load": "Failed to load categories.",
       "rename": "Failed to rename category."
+    },
+    "currencies": {
+      "load": "Failed to load currencies."
     },
     "households": {
       "acceptInvite": "Failed to accept invitation.",
