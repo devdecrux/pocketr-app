@@ -144,6 +144,7 @@ class UserAvatarService(
             email = user.email,
             firstName = user.firstName,
             lastName = user.lastName,
+            language = user.language,
             avatar = resolveAvatarDataUrl(user.avatarPath),
         )
 

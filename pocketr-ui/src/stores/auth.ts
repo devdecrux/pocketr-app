@@ -4,6 +4,7 @@ import { api } from '@/api/http'
 import { primeCsrfToken } from '@/api/csrf'
 import type { AuthUser } from '@/types/auth'
 import router from '@/router'
+import { setLocale } from '@/i18n'
 
 export const useAuthStore = defineStore('auth', () => {
   const user = ref<AuthUser | null>(null)
@@ -24,6 +25,7 @@ export const useAuthStore = defineStore('auth', () => {
 
   function setUser(nextUser: AuthUser): void {
     user.value = nextUser
+    setLocale(nextUser.language)
   }
 
   function clearUser(): void {

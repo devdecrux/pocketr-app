@@ -2,11 +2,14 @@ package com.decrux.pocketr.api.controllers
 
 import com.decrux.pocketr.api.entities.db.auth.User
 import com.decrux.pocketr.api.entities.dtos.RegisterUserDto
+import com.decrux.pocketr.api.entities.dtos.UpdateUserLanguageDto
 import com.decrux.pocketr.api.entities.dtos.UserDto
 import com.decrux.pocketr.api.services.user_avatar.UserAvatarService
+import com.decrux.pocketr.api.services.user_preferences.ManageUserPreferences
 import com.decrux.pocketr.api.services.user_registration.RegisterUser
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.PatchMapping
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
@@ -19,6 +22,7 @@ import org.springframework.web.multipart.MultipartFile
 class UsersController(
     private val registerUser: RegisterUser,
     private val userAvatarService: UserAvatarService,
+    private val manageUserPreferences: ManageUserPreferences,
 ) {
     @GetMapping
     fun retrieveUserData(
@@ -37,4 +41,10 @@ class UsersController(
         @RequestParam("avatar") avatar: MultipartFile,
         @AuthenticationPrincipal user: User,
     ): UserDto = userAvatarService.uploadAvatar(user, avatar)
+
+    @PatchMapping("/language")
+    fun updateLanguage(
+        @RequestBody updateUserLanguageDto: UpdateUserLanguageDto,
+        @AuthenticationPrincipal user: User,
+    ): UserDto = manageUserPreferences.updateLanguage(user, updateUserLanguageDto)
 }

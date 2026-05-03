@@ -1,0 +1,29 @@
+---
+sidebar_position: 2
+---
+
+# Getting Started
+
+Pocketr is designed to be easy to run whether you want a stable home setup or a local development environment. The app can be used in three main modes: two production-oriented options and one local development option.
+
+## Production With Docker
+
+Docker is the simplest production path for most users. It packages the app and its required services into containers, making the setup easier to repeat, update, and move between machines.
+
+This mode is a good fit if you want a predictable self-hosted installation without manually configuring every runtime component on the host system.
+
+## Production In An LXC Container
+
+Pocketr can also be deployed inside an LXC container, for example on a Proxmox host. This gives you a lightweight, isolated environment while still keeping the deployment close to a traditional Linux server setup.
+
+This mode is useful if you already manage home lab or server infrastructure with Proxmox and prefer to keep each service in its own container.
+
+## Local Development
+
+For development, Pocketr is intended to be quick to run locally. The local setup uses Docker-based infrastructure, including Traefik and the database, so contributors can start the required services with only a few clicks.
+
+This makes it easier to review the code, test changes, and contribute without spending a lot of time preparing a custom environment.
+
+## Next Steps
+
+The exact setup guides for each mode will be improved over time. For now, this page gives a high-level view of the supported ways to run Pocketr and where each option fits best.

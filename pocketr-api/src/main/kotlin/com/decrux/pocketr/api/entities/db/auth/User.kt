@@ -26,6 +26,8 @@ class User(
     @Column(nullable = false, unique = true)
     var email: String = "",
     var firstName: String? = null,
+    @Column(nullable = false)
+    var language: String = "en",
     var lastName: String? = null,
     @Column(name = "avatar_path")
     var avatarPath: String? = null,

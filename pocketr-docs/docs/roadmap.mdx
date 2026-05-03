@@ -1,0 +1,93 @@
+---
+sidebar_position: 4
+sidebar_label: Roadmap
+---
+
+import {CircleQuestionMark, Square, SquareCheckBig} from 'lucide-react';
+
+export const DoneStatus = () => <SquareCheckBig className="roadmap-status roadmap-status--done" aria-label="Done" role="img" />;
+export const PlannedStatus = () => <Square className="roadmap-status roadmap-status--planned" aria-label="Planned" role="img" />;
+export const ExploringStatus = () => <CircleQuestionMark className="roadmap-status roadmap-status--exploring" aria-label="Exploring" role="img" />;
+
+# Roadmap
+
+Pocketr is built around a simple idea: make personal and household budgeting clear, trustworthy, and easy to run yourself. This Roadmap gives an example structure for the areas planned for future work.
+
+The Roadmap will change as the project evolves. Items listed here are direction-setting, not fixed release promises.
+
+## Legend
+
+<div className="roadmap-legend">
+  <span className="roadmap-legend-item"><DoneStatus />Done</span>
+  <span className="roadmap-legend-item"><PlannedStatus />Planned</span>
+  <span className="roadmap-legend-item"><ExploringStatus />Exploring</span>
+</div>
+
+## Core Budgeting
+
+<ul className="roadmap-list">
+  <li><DoneStatus />Account management with clear account types and balances</li>
+  <li><DoneStatus />Income, expense, and transfer workflows</li>
+  <li><PlannedStatus />Category and budget planning improvements</li>
+  <li><PlannedStatus />Recurring transaction support</li>
+  <li><ExploringStatus />Better transaction search, filtering, and review flows</li>
+</ul>
+
+## Household Collaboration
+
+<ul className="roadmap-list">
+  <li><DoneStatus />Member invitations and household access management</li>
+  <li><DoneStatus />Shared budget visibility for families and partners</li>
+  <li><PlannedStatus />Clear ownership and permission rules</li>
+  <li><PlannedStatus />Activity history for important household changes</li>
+  <li><ExploringStatus />Better flows for coordinating shared income and expenses</li>
+</ul>
+
+## Accounting Foundation
+
+<ul className="roadmap-list">
+  <li><DoneStatus />Double-entry bookkeeping support</li>
+  <li><PlannedStatus />Stronger validation for transaction integrity</li>
+  <li><PlannedStatus />Better reporting built on balanced ledger data</li>
+  <li><ExploringStatus />Account relationship improvements for more advanced financial views</li>
+  <li><PlannedStatus />Clearer explanations of how Pocketr models money movement</li>
+</ul>
+
+## Currency And Localization
+
+<ul className="roadmap-list">
+  <li><DoneStatus />Account-level currency support</li>
+  <li><PlannedStatus />Better currency display and formatting</li>
+  <li><ExploringStatus />Exchange-rate-aware reporting options</li>
+  <li><PlannedStatus />Localization-ready UI and documentation structure</li>
+</ul>
+
+## Self-Hosting And Operations
+
+<ul className="roadmap-list">
+  <li><PlannedStatus />Production Docker deployment guide</li>
+  <li><PlannedStatus />LXC and Proxmox deployment guide</li>
+  <li><PlannedStatus />Backup and restore documentation</li>
+  <li><PlannedStatus />Upgrade and maintenance instructions</li>
+  <li><ExploringStatus />Health checks and operational troubleshooting</li>
+</ul>
+
+## Developer Experience
+
+<ul className="roadmap-list">
+  <li><DoneStatus />Docker-based local infrastructure for contributors</li>
+  <li><PlannedStatus />Clearer architecture documentation</li>
+  <li><PlannedStatus />More focused tests around budgeting, permissions, and ledger behavior</li>
+  <li><PlannedStatus />Contribution guides for frontend, backend, and documentation changes</li>
+  <li><ExploringStatus />Better examples for reviewing and extending the codebase</li>
+</ul>
+
+## Documentation
+
+<ul className="roadmap-list">
+  <li><PlannedStatus />User guides for common budgeting workflows</li>
+  <li><PlannedStatus />Household setup guides</li>
+  <li><PlannedStatus />Deployment guides for supported run modes</li>
+  <li><DoneStatus />Introduction to Pocketr's accounting model</li>
+  <li><ExploringStatus />Practical examples for contributors and self-hosters</li>
+</ul>

@@ -6,14 +6,17 @@ import { api } from '@/api/http'
 import { useAuthStore } from '@/stores/auth'
 import { useHouseholdStore } from '@/stores/household'
 import { useModeStore } from '@/stores/mode'
-import type { AuthUser } from '@/types/auth'
+import type { AuthUser, SupportedUserLanguage } from '@/types/auth'
 import { initialsFromName } from '@/utils/initials'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { AppFormField, AppListItem, AppStatusText } from '@/components/app'
+import { supportedLocaleLabels, supportedLocales } from '@/i18n'
+import { updateUserLanguage } from '@/api/user'
 
 const authStore = useAuthStore()
 const householdStore = useHouseholdStore()
@@ -25,6 +28,10 @@ const selectedFile = ref<File | null>(null)
 const isUploading = ref(false)
 const uploadError = ref('')
 const uploadSuccess = ref('')
+const selectedLanguage = ref<SupportedUserLanguage>(authStore.user?.language ?? 'en')
+const isSavingLanguage = ref(false)
+const languageError = ref('')
+const languageSuccess = ref('')
 
 const householdName = ref('')
 const isCreatingHousehold = ref(false)
@@ -39,6 +46,8 @@ const activeHouseholds = computed(() => householdStore.activeHouseholds)
 const pendingInvites = computed(() => householdStore.pendingInvites)
 
 const selectedFilename = computed(() => selectedFile.value?.name ?? 'No file selected')
+
+const hasLanguageChanged = computed(() => selectedLanguage.value !== authStore.user?.language)
 
 onMounted(async () => {
   await householdStore.loadHouseholds()
@@ -94,6 +103,28 @@ async function resolveUploadError(error: unknown): Promise<string> {
   }
 
   return 'Failed to upload avatar. Please try again.'
+}
+
+async function saveLanguage(): Promise<void> {
+  languageError.value = ''
+  languageSuccess.value = ''
+  isSavingLanguage.value = true
+
+  try {
+    const updatedUser = await updateUserLanguage(selectedLanguage.value)
+    authStore.setUser(updatedUser)
+    selectedLanguage.value = updatedUser.language
+    languageSuccess.value = 'Language updated.'
+  } catch (error: unknown) {
+    if (error instanceof HTTPError) {
+      const payload = await error.response.json<{ message?: string }>().catch(() => null)
+      languageError.value = payload?.message?.trim() || 'Failed to update language.'
+    } else {
+      languageError.value = 'Failed to update language.'
+    }
+  } finally {
+    isSavingLanguage.value = false
+  }
 }
 
 async function createHousehold(): Promise<void> {
@@ -229,6 +260,33 @@ async function handleLeaveHousehold(householdId: string): Promise<void> {
 
           <AppStatusText v-if="uploadSuccess" variant="success">{{ uploadSuccess }}</AppStatusText>
           <AppStatusText v-if="uploadError">{{ uploadError }}</AppStatusText>
+        </div>
+
+        <div class="grid gap-3 border-t border-border pt-4">
+          <AppFormField label="Language">
+            <Select v-model="selectedLanguage">
+              <SelectTrigger class="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem v-for="locale in supportedLocales" :key="locale" :value="locale">
+                  {{ supportedLocaleLabels[locale] }}
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </AppFormField>
+          <Button
+            size="sm"
+            class="w-fit"
+            :disabled="isSavingLanguage || !hasLanguageChanged"
+            @click="saveLanguage"
+          >
+            {{ isSavingLanguage ? 'Saving...' : 'Save language' }}
+          </Button>
+          <AppStatusText v-if="languageSuccess" variant="success">{{
+            languageSuccess
+          }}</AppStatusText>
+          <AppStatusText v-if="languageError">{{ languageError }}</AppStatusText>
         </div>
       </CardContent>
     </Card>

@@ -1,0 +1,552 @@
+{
+  "app": {
+    "name": "Pocketr",
+    "tagline": "Your path to financial zen"
+  },
+  "common": {
+    "actions": {
+      "accept": "Accept",
+      "backToDashboard": "Back to dashboard",
+      "browse": "Browse",
+      "cancel": "Cancel",
+      "clear": "Clear",
+      "close": "Close",
+      "create": "Create",
+      "delete": "Delete",
+      "leave": "Leave",
+      "logOut": "Log out",
+      "manage": "Manage",
+      "rename": "Rename",
+      "save": "Save",
+      "settings": "Settings",
+      "share": "Share",
+      "signIn": "Sign in",
+      "signUp": "Sign up",
+      "unshare": "Unshare",
+      "upload": "Upload"
+    },
+    "feedback": {
+      "creating": "Creating...",
+      "creatingAccount": "Creating account...",
+      "leaving": "Leaving...",
+      "loading": "Loading...",
+      "loggingIn": "Logging in...",
+      "saving": "Saving...",
+      "sending": "Sending...",
+      "uploading": "Uploading..."
+    },
+    "fields": {
+      "account": "Account",
+      "amount": "Amount",
+      "category": "Category",
+      "color": "Color",
+      "confirmPassword": "Confirm password",
+      "currency": "Currency",
+      "date": "Date",
+      "dateRange": "Date range",
+      "description": "Description",
+      "email": "Email",
+      "firstName": "First name",
+      "householdName": "Household name",
+      "lastName": "Last name",
+      "name": "Name",
+      "openingDate": "Opening date",
+      "password": "Password",
+      "search": "Search",
+      "type": "Type"
+    },
+    "placeholders": {
+      "accountName": "Account name",
+      "categoryExamples": "e.g. Groceries, Utilities",
+      "email": "email@example.com",
+      "filterCurrency": "Filter currency",
+      "filterType": "Filter type",
+      "householdName": "My Household name (min. 3 characters)",
+      "money": "0.00",
+      "personFirstName": "John",
+      "personLastName": "Doe",
+      "selectAccount": "Select account",
+      "selectCategory": "Select category...",
+      "selectMode": "Select mode"
+    },
+    "states": {
+      "noData": "No data.",
+      "unknownUser": "Unknown user"
+    },
+    "table": {
+      "amount": "Amount",
+      "balance": "Balance",
+      "category": "Category",
+      "created": "Created",
+      "currency": "Currency",
+      "date": "Date",
+      "description": "Description",
+      "member": "Member",
+      "name": "Name",
+      "pageOf": "Page {page} of {totalPages}",
+      "rowsPerPage": "Rows per page",
+      "shared": "Shared",
+      "total": "{totalElements} total",
+      "type": "Type"
+    }
+  },
+  "components": {
+    "accountSelector": {
+      "ownerGroup": "Owner: {ownerId}"
+    },
+    "categoryColorPicker": {
+      "noColor": "No color"
+    },
+    "categoryTagSelector": {
+      "empty": "No categories found.",
+      "searchPlaceholder": "Search categories..."
+    },
+    "dateRangePicker": {
+      "clearAriaLabel": "Clear date range"
+    },
+    "sidebar": {
+      "household": "Household",
+      "routes": {
+        "accounts": "Accounts",
+        "categories": "Categories",
+        "dashboard": "Dashboard",
+        "subscriptions": "Subscriptions",
+        "transactions": "Transactions"
+      }
+    },
+    "theme": {
+      "label": "Theme",
+      "modes": {
+        "auto": "System",
+        "dark": "Dark",
+        "light": "Light"
+      },
+      "presets": {
+        "pocketr": "Pocketr"
+      }
+    },
+    "ui": {
+      "commandPalette": {
+        "description": "Search for a command to run...",
+        "title": "Command Palette"
+      },
+      "sidebar": {
+        "description": "Displays the mobile sidebar.",
+        "title": "Sidebar",
+        "toggle": "Toggle Sidebar"
+      }
+    },
+    "viewMode": {
+      "individual": "Individual"
+    }
+  },
+  "views": {
+    "accounts": {
+      "actions": {
+        "new": "New Account"
+      },
+      "create": {
+        "descriptions": {
+          "assetOpeningBalance": "Posted as an opening balance journal entry against Opening Equity. Opening balance date is used only when initial balance is non-zero.",
+          "liabilityOpeningBalance": "Posted as opening debt against Opening Equity. Liability opening amounts must be positive.",
+          "main": "Add a new account to your ledger."
+        },
+        "fields": {
+          "initialBalance": "Initial balance"
+        },
+        "placeholders": {
+          "assetName": "e.g. Checking, Savings",
+          "expenseName": "e.g. Groceries, Utilities",
+          "incomeName": "e.g. Salary, Freelance",
+          "liabilityName": "e.g. Mortgage, Car Loan"
+        },
+        "title": "Create Account"
+      },
+      "empty": "No accounts found.",
+      "filters": {
+        "allCurrencies": "All currencies",
+        "allTypes": "All types"
+      },
+      "loading": "Loading accounts...",
+      "rename": {
+        "description": "Enter a new name for \"{name}\".",
+        "title": "Rename Account"
+      },
+      "title": "Accounts"
+    },
+    "auth": {
+      "login": {
+        "description": "Enter your email below to login to your account",
+        "errors": {
+          "invalidCredentials": "Invalid email or password. Please try again.",
+          "sessionExpired": "Your session has expired. Please log in again."
+        },
+        "links": {
+          "registerPrompt": "Don't have an account?"
+        },
+        "submit": "Login",
+        "title": "Login"
+      },
+      "registration": {
+        "description": "Enter your information to create an account",
+        "errors": {
+          "passwordsMismatch": "Passwords do not match",
+          "unableToRegister": "Unable to register user"
+        },
+        "links": {
+          "loginPrompt": "Already have an account?"
+        },
+        "submit": "Create an account",
+        "title": "Sign Up"
+      }
+    },
+    "categories": {
+      "actions": {
+        "new": "New Category"
+      },
+      "confirmDelete": "Delete category \"{name}\"?",
+      "create": {
+        "description": "Add a category for transaction tagging.",
+        "title": "Create Category"
+      },
+      "empty": "No categories yet. Create your first category to get started.",
+      "loading": "Loading categories...",
+      "rename": {
+        "description": "Update the category name.",
+        "title": "Rename Category"
+      },
+      "title": "Categories"
+    },
+    "dashboard": {
+      "cards": {
+        "accountBalances": "Account Balances",
+        "recentTransactions": "Recent Transactions",
+        "spendingByAccount": "Spending by Account",
+        "spendingByCategory": "Spending by Category"
+      },
+      "empty": {
+        "accounts": "No accounts yet.",
+        "monthlySpending": "No spending data for this month.",
+        "transactions": "No transactions yet."
+      },
+      "subtitle": {
+        "household": "Household overview",
+        "individual": "Your personal overview"
+      },
+      "title": "Dashboard",
+      "uncategorized": "Uncategorized"
+    },
+    "householdSettings": {
+      "accounts": {
+        "emptyMine": "You have no accounts to share. Create accounts first.",
+        "sharedAt": "Shared {date}",
+        "sharedBadge": "Shared",
+        "sharedBy": "Shared by {name}",
+        "sharedDescription": "Accounts currently shared in this household.",
+        "sharedEmpty": "No accounts are shared yet.",
+        "sharedTitle": "Shared Accounts",
+        "yoursDescription": "Toggle sharing for your own accounts in this household.",
+        "yoursTitle": "Your Accounts"
+      },
+      "header": {
+        "created": "Created {date}"
+      },
+      "invite": {
+        "description": "Send an invitation to join this household by email.",
+        "placeholder": "name@example.com",
+        "success": "Invitation sent to {email}.",
+        "title": "Invite Member"
+      },
+      "members": {
+        "description": "Manage household members and their roles.",
+        "empty": "No members found.",
+        "joined": "Joined {date}",
+        "loading": "Loading members...",
+        "title": "Members"
+      }
+    },
+    "notFound": {
+      "description": "The page you requested does not exist.",
+      "title": "Page not found"
+    },
+    "settings": {
+      "household": {
+        "acceptInviteBlocked": "Leave your current household before accepting another invitation.",
+        "createDescription": "You are not part of any household yet. Create one to start sharing accounts with family or roommates.",
+        "description": "Create or manage a household to share accounts and track expenses together.",
+        "invitedBadge": "Invited",
+        "pendingInvitations": "Pending Invitations",
+        "title": "Household Budgeting"
+      },
+      "profile": {
+        "acceptedFormats": "Accepted formats: JPEG, PNG, GIF, WEBP. Maximum size: 5MB.",
+        "description": "Upload your avatar and personalize your profile.",
+        "language": "Language",
+        "languageUpdated": "Language updated.",
+        "noFileSelected": "No file selected",
+        "saveLanguage": "Save language",
+        "title": "Profile Settings"
+      }
+    },
+    "transactions": {
+      "actions": {
+        "new": "New Transaction"
+      },
+      "confirmDelete": "Delete transaction \"{description}\"?",
+      "create": {
+        "description": "Record an expense, income, transfer, or debt payment.",
+        "tabs": {
+          "debtPayment": "Debt Payment",
+          "expense": "Expense",
+          "income": "Income",
+          "transfer": "Transfer"
+        },
+        "title": "Create Transaction"
+      },
+      "empty": "No transactions found. Create your first transaction to get started.",
+      "fields": {
+        "debtPaymentLiabilityAccount": "Liability account",
+        "depositTo": "Deposit to (Asset)",
+        "expenseAccount": "Expense account",
+        "fromAccount": "From account (Asset)",
+        "incomeAccount": "Income account",
+        "payFromAsset": "Pay from (Asset)",
+        "payFromAssetOrLiability": "Pay from (Asset/Liability)",
+        "toAccount": "To account (Asset)"
+      },
+      "loading": "Loading transactions...",
+      "notices": {
+        "crossUserTransfer": "This is a cross-user transfer between household members.",
+        "householdTransfers": "Transfers between household accounts are allowed. You cannot post expenses to other users' accounts."
+      },
+      "placeholders": {
+        "allAccounts": "All accounts",
+        "debtPaymentNote": "Debt payment note",
+        "incomeSource": "Income source",
+        "searchDescriptions": "Search descriptions...",
+        "selectAssetAccount": "Select asset account",
+        "selectDepositAccount": "Select deposit account",
+        "selectDestinationAccount": "Select destination account",
+        "selectExpenseAccount": "Select expense account",
+        "selectIncomeAccount": "Select income account",
+        "selectLiabilityAccount": "Select liability account",
+        "selectPayFromAccount": "Select pay-from account",
+        "selectSourceAccount": "Select source account",
+        "transferReason": "Transfer reason",
+        "whatWasThisFor": "What was this for?"
+      },
+      "title": "Transactions"
+    }
+  },
+  "display": {
+    "accountTypes": {
+      "ASSET": "Asset",
+      "EQUITY": "Equity",
+      "EXPENSE": "Expense",
+      "INCOME": "Income",
+      "LIABILITY": "Liability"
+    },
+    "householdRoles": {
+      "ADMIN": "Admin",
+      "MEMBER": "Member",
+      "OWNER": "Owner"
+    },
+    "memberStatuses": {
+      "ACTIVE": "Active",
+      "INVITED": "Invited"
+    },
+    "splitSides": {
+      "CREDIT": "Credit",
+      "DEBIT": "Debit"
+    },
+    "transactionKinds": {
+      "DEBT_PAYMENT": "Debt Payment",
+      "EXPENSE": "Expense",
+      "INCOME": "Income",
+      "OPENING_BALANCE": "Opening Balance",
+      "OPENING_DEBT": "Opening Debt",
+      "TRANSFER": "Transfer"
+    }
+  },
+  "validation": {
+    "category": {
+      "duplicate": "Category '{name}' already exists.",
+      "nameRequired": "Category name is required."
+    },
+    "household": {
+      "emailRequired": "Email is required.",
+      "nameMinLength": "Household name must be at least 3 characters."
+    },
+    "transactions": {
+      "requiredPositiveAmount": "Please fill in all required fields and enter a positive amount.",
+      "unknownTab": "Unknown tab."
+    }
+  },
+  "errors": {
+    "accounts": {
+      "create": "Failed to create account.",
+      "load": "Failed to load accounts.",
+      "rename": "Failed to rename account."
+    },
+    "avatar": {
+      "chooseImage": "Please choose an image before uploading.",
+      "upload": "Failed to upload avatar. Please try again."
+    },
+    "language": {
+      "update": "Failed to update language."
+    },
+    "categories": {
+      "create": "Failed to create category.",
+      "delete": "Failed to delete category.",
+      "load": "Failed to load categories.",
+      "rename": "Failed to rename category."
+    },
+    "households": {
+      "acceptInvite": "Failed to accept invitation.",
+      "create": "Failed to create household.",
+      "inviteMember": "Failed to invite member.",
+      "leave": "Failed to leave household.",
+      "load": "Failed to load households.",
+      "loadDetails": "Failed to load household details.",
+      "loadSharedAccounts": "Failed to load shared accounts.",
+      "sendInvitation": "Failed to send invitation.",
+      "shareAccount": "Failed to share account.",
+      "unshareAccount": "Failed to unshare account."
+    },
+    "transactions": {
+      "create": "Failed to create transaction.",
+      "delete": "Failed to delete transaction.",
+      "load": "Failed to load transactions."
+    }
+  },
+  "success": {
+    "avatar": {
+      "updated": "Avatar updated."
+    }
+  },
+  "api": {
+    "auth": {
+      "authenticatedUserIdMissing": "Authenticated user id is missing",
+      "authenticatedUserIdRequired": "Authenticated user id is required",
+      "userNotFound": "User not found",
+      "userWithEmailNotFound": "User with email {email} not found"
+    },
+    "accounts": {
+      "equitySystemManaged": "EQUITY accounts are system-managed and cannot be created manually",
+      "invalidAccountType": "Invalid account type: {type}",
+      "invalidCurrency": "Invalid currency: {currency}",
+      "notFound": "Account not found",
+      "notOwner": "Not the owner of this account",
+      "openingBalanceDateRequiresAmount": "openingBalanceDate requires non-zero openingBalanceMinor",
+      "openingBalanceOnlyAssetLiability": "openingBalanceMinor is supported only for ASSET and LIABILITY accounts",
+      "openingBalanceOutOfRange": "openingBalanceMinor is out of supported range",
+      "openingBalanceRequired": "openingBalanceMinor must not be zero",
+      "openingBalanceUnsupportedType": "Unsupported account type for opening balance",
+      "openingBalanceValidation": "Opening balance is supported only for ASSET and LIABILITY accounts",
+      "openingDebtPositive": "Opening debt must be positive for LIABILITY accounts",
+      "systemOpeningEquityName": "Opening Equity"
+    },
+    "avatar": {
+      "contentTypeRequired": "Avatar content type is required",
+      "fileRequired": "Avatar file is required",
+      "fileTooLarge": "Avatar file is too large. Maximum size is 5MB",
+      "invalidPath": "Invalid avatar path",
+      "invalidRequest": "Invalid avatar upload request",
+      "storeFailed": "Failed to store avatar",
+      "unsupportedFormat": "Unsupported avatar format",
+      "unsupportedFormatAllowed": "Unsupported avatar format. Allowed formats: JPEG, PNG, GIF, WEBP"
+    },
+    "categories": {
+      "duplicate": "Category '{name}' already exists",
+      "inUse": "Category is in use and cannot be deleted",
+      "notFound": "Category not found",
+      "notOwner": "Not the owner of this category",
+      "tagNotOwned": "Category tag '{name}' is not owned by current user",
+      "tagsNotFound": "Category tags not found: {ids}"
+    },
+    "households": {
+      "accountAlreadyShared": "Account is already shared into this household",
+      "accountNotShared": "Account is not shared into this household",
+      "cannotCreateWhileMember": "Cannot create a household while already an active member of another household",
+      "inviteeAlreadyMember": "User is already a member or has a pending invite",
+      "inviteeInAnotherHousehold": "User is already an active member of another household",
+      "leaveBeforeAcceptingInvite": "Leave your current household before accepting another invite",
+      "membershipNotActive": "Membership is not active",
+      "noInviteFound": "No invite found for this household",
+      "noPendingInvite": "No pending invite to accept",
+      "notActiveMember": "Not an active member of this household",
+      "notMember": "Not a member of this household",
+      "notFound": "Household not found",
+      "onlyAccountOwnerCanShare": "Only the account owner can share an account",
+      "onlyAccountOwnerCanUnshare": "Only the account owner can unshare an account",
+      "onlyActiveMembersCanLeave": "Only active members can leave a household",
+      "onlyOwnerOrAdminCanInvite": "Only OWNER or ADMIN can invite members",
+      "userNotFoundWithEmail": "User not found with email: {email}"
+    },
+    "internal": {
+      "accountIdNull": "Account ID must not be null",
+      "accountNameNull": "Account name must not be null",
+      "accountNull": "Account must not be null",
+      "accountTypeNull": "Account type must not be null",
+      "categoryIdNull": "Category ID must not be null",
+      "currencyNull": "Currency must not be null",
+      "householdIdNull": "Household ID must not be null",
+      "householdNull": "Household must not be null",
+      "openingEquityAccountIdNull": "Opening equity account ID must not be null",
+      "ownerEmailNull": "Owner email must not be null",
+      "ownerUserIdNull": "Owner user ID must not be null",
+      "splitAccountIdNull": "Split account ID must not be null",
+      "splitAccountNull": "Split account must not be null",
+      "splitIdNull": "Split ID must not be null",
+      "transactionIdNull": "Transaction ID must not be null",
+      "userEmailNull": "User email must not be null",
+      "userIdNull": "User ID must not be null"
+    },
+    "ledger": {
+      "accountCurrencyMismatch": "Account '{accountName}' has currency {accountCurrency} but transaction currency is {transactionCurrency}",
+      "accountNotSharedIntoHousehold": "Account '{accountName}' is not shared into household",
+      "accountsNotFound": "Accounts not found: {ids}",
+      "allSplitAmountsPositive": "All split amounts must be greater than 0",
+      "crossUserPostingsRestricted": "Cross-user household postings only allow ASSET accounts, except repaying a shared LIABILITY from your own ASSET account",
+      "dateFromBeforeDateTo": "dateFrom must be before or equal to dateTo",
+      "doubleEntryViolation": "Double-entry violation: sum of debits ({debits}) must equal sum of credits ({credits})",
+      "householdIdRequired": "householdId is required for household mode",
+      "householdIdRequiredUppercase": "householdId is required for HOUSEHOLD mode",
+      "invalidMode": "Invalid mode: {mode}",
+      "invalidModeAllowed": "Invalid mode: {mode}. Must be INDIVIDUAL or HOUSEHOLD",
+      "invalidSplitSide": "Invalid split side: {side}",
+      "notOwnerOfTransaction": "Not the owner of this transaction",
+      "notOwnedIndividualMode": "Cannot post to accounts not owned by current user in individual mode",
+      "transactionNotFound": "Transaction not found",
+      "twoSplitsRequired": "Transaction must have at least 2 splits"
+    },
+    "reports": {
+      "debtPaymentCategory": "Debt Payment"
+    }
+  },
+  "generatedData": {
+    "openingDescriptions": {
+      "balance": "Opening balance",
+      "balanceForAccount": "Opening balance - {accountName}",
+      "debt": "Opening debt",
+      "debtForAccount": "Opening debt - {accountName}"
+    }
+  },
+  "currencies": {
+    "AUD": "Australian Dollar",
+    "BHD": "Bahraini Dinar",
+    "CAD": "Canadian Dollar",
+    "CHF": "Swiss Franc",
+    "CZK": "Czech Koruna",
+    "DKK": "Danish Krone",
+    "EUR": "Euro",
+    "GBP": "British Pound",
+    "HUF": "Hungarian Forint",
+    "JPY": "Japanese Yen",
+    "NOK": "Norwegian Krone",
+    "PLN": "Polish Zloty",
+    "RON": "Romanian Leu",
+    "SEK": "Swedish Krona",
+    "USD": "US Dollar"
+  }
+}

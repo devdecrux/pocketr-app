@@ -1,0 +1,14 @@
+pocketr:
+  label: Pocketr
+  permalink: /pocketr
+  description: Updates about the Pocketr project
+
+open-source:
+  label: Open Source
+  permalink: /open-source
+  description: Posts about Pocketr as an open source project
+
+budgeting:
+  label: Budgeting
+  permalink: /budgeting
+  description: Posts about budgeting and household finance
