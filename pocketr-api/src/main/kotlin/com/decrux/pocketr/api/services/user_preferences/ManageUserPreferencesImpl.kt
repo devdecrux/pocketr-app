@@ -1,6 +1,7 @@
 package com.decrux.pocketr.api.services.user_preferences
 
 import com.decrux.pocketr.api.entities.db.auth.User
+import com.decrux.pocketr.api.entities.dtos.UpdateRolloverDayDto
 import com.decrux.pocketr.api.entities.dtos.UpdateUserLanguageDto
 import com.decrux.pocketr.api.entities.dtos.UserDto
 import com.decrux.pocketr.api.repositories.UserRepository
@@ -28,6 +29,25 @@ class ManageUserPreferencesImpl(
                 .orElseThrow { ResponseStatusException(HttpStatus.NOT_FOUND, "User not found") }
 
         persistedUser.language = language
+        return userAvatarService.toUserDto(userRepository.save(persistedUser))
+    }
+
+    @Transactional
+    override fun updateRolloverDay(
+        user: User,
+        dto: UpdateRolloverDayDto,
+    ): UserDto {
+        if (dto.rolloverDay !in 1..31) {
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "rolloverDay must be between 1 and 31")
+        }
+
+        val userId = user.userId ?: throw ResponseStatusException(HttpStatus.UNAUTHORIZED, "Authenticated user id is missing")
+        val persistedUser =
+            userRepository
+                .findById(userId)
+                .orElseThrow { ResponseStatusException(HttpStatus.NOT_FOUND, "User not found") }
+
+        persistedUser.rolloverDay = dto.rolloverDay
         return userAvatarService.toUserDto(userRepository.save(persistedUser))
     }
 }

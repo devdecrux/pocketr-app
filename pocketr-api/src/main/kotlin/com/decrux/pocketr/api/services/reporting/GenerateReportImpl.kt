@@ -7,6 +7,7 @@ import com.decrux.pocketr.api.entities.dtos.AccountBalanceSummaryDto
 import com.decrux.pocketr.api.entities.dtos.AccountBalanceTimeseriesDto
 import com.decrux.pocketr.api.entities.dtos.BalanceTimeseriesPointDto
 import com.decrux.pocketr.api.entities.dtos.MonthlyExpenseDto
+import com.decrux.pocketr.api.entities.dtos.RolloverExpenseReportDto
 import com.decrux.pocketr.api.exceptions.BadRequestException
 import com.decrux.pocketr.api.exceptions.ForbiddenException
 import com.decrux.pocketr.api.exceptions.NotFoundException
@@ -15,6 +16,7 @@ import com.decrux.pocketr.api.repositories.LedgerSplitRepository
 import com.decrux.pocketr.api.repositories.projections.LiabilityPaymentProjection
 import com.decrux.pocketr.api.repositories.projections.MonthlyExpenseProjection
 import com.decrux.pocketr.api.services.household.ManageHousehold
+import com.decrux.pocketr.api.services.rollover.RolloverPeriod
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.LocalDate
@@ -33,29 +35,37 @@ class GenerateReportImpl(
         period: YearMonth,
         mode: String,
         householdId: UUID?,
-    ): List<MonthlyExpenseDto> {
-        val monthStart = period.atDay(1)
-        val monthEnd = period.plusMonths(1).atDay(1)
+    ): List<MonthlyExpenseDto> = getRolloverExpenses(user, period, mode, householdId).entries
 
+    @Transactional(readOnly = true)
+    override fun getRolloverExpenses(
+        user: User,
+        period: YearMonth,
+        mode: String,
+        householdId: UUID?,
+    ): RolloverExpenseReportDto {
         val expenseRows: List<MonthlyExpenseProjection>
         val liabilityPaymentRows: List<LiabilityPaymentProjection>
+        val rolloverDay: Int
 
         when (mode.uppercase()) {
             MODE_INDIVIDUAL -> {
                 val userId = requireNotNull(user.userId) { "User ID must not be null" }
+                rolloverDay = user.rolloverDay
+                val rolloverPeriod = RolloverPeriod.startingIn(period, rolloverDay)
                 expenseRows =
                     ledgerSplitRepository.monthlyExpensesByUser(
                         userId,
-                        monthStart,
-                        monthEnd,
+                        rolloverPeriod.startInclusive,
+                        rolloverPeriod.endExclusive,
                         SplitSide.DEBIT,
                         SplitSide.CREDIT,
                     )
                 liabilityPaymentRows =
                     ledgerSplitRepository.monthlyLiabilityPaymentsByUser(
                         userId,
-                        monthStart,
-                        monthEnd,
+                        rolloverPeriod.startInclusive,
+                        rolloverPeriod.endExclusive,
                         SplitSide.DEBIT,
                         SplitSide.CREDIT,
                     )
@@ -69,19 +79,21 @@ class GenerateReportImpl(
                 if (!manageHousehold.isActiveMember(hId, userId)) {
                     throw ForbiddenException("Not an active member of this household")
                 }
+                rolloverDay = manageHousehold.getRolloverDay(hId)
+                val rolloverPeriod = RolloverPeriod.startingIn(period, rolloverDay)
                 expenseRows =
                     ledgerSplitRepository.monthlyExpensesByHousehold(
                         hId,
-                        monthStart,
-                        monthEnd,
+                        rolloverPeriod.startInclusive,
+                        rolloverPeriod.endExclusive,
                         SplitSide.DEBIT,
                         SplitSide.CREDIT,
                     )
                 liabilityPaymentRows =
                     ledgerSplitRepository.monthlyLiabilityPaymentsByHousehold(
                         hId,
-                        monthStart,
-                        monthEnd,
+                        rolloverPeriod.startInclusive,
+                        rolloverPeriod.endExclusive,
                         SplitSide.DEBIT,
                         SplitSide.CREDIT,
                     )
@@ -92,10 +104,16 @@ class GenerateReportImpl(
             }
         }
 
-        return buildList {
-            addAll(expenseRows.map { it.toDto() })
-            addAll(liabilityPaymentRows.map { it.toDebtPaymentDto() })
-        }
+        val rolloverPeriod = RolloverPeriod.startingIn(period, rolloverDay)
+        return RolloverExpenseReportDto(
+            periodStart = rolloverPeriod.startInclusive,
+            periodEnd = rolloverPeriod.endExclusive.minusDays(1),
+            entries =
+                buildList {
+                    addAll(expenseRows.map { it.toDto() })
+                    addAll(liabilityPaymentRows.map { it.toDebtPaymentDto() })
+                },
+        )
     }
 
     @Transactional(readOnly = true)
@@ -110,8 +128,22 @@ class GenerateReportImpl(
             val accountId = requireNotNull(account.id)
             val isDebitNormal = account.type in DEBIT_NORMAL_TYPES
             val balanceMinor =
-                if (isDebitNormal) {
-                    ledgerSplitRepository.computeBalance(accountId, asOf, SplitSide.DEBIT, SplitSide.CREDIT)
+                if (account.type == AccountType.EXPENSE) {
+                    val rolloverPeriod = RolloverPeriod.containing(asOf, user.rolloverDay)
+                    ledgerSplitRepository.computeBalanceBetween(
+                        accountId,
+                        rolloverPeriod.startInclusive,
+                        asOf,
+                        SplitSide.DEBIT,
+                        SplitSide.CREDIT,
+                    )
+                } else if (isDebitNormal) {
+                    ledgerSplitRepository.computeBalance(
+                        accountId,
+                        asOf,
+                        SplitSide.DEBIT,
+                        SplitSide.CREDIT,
+                    )
                 } else {
                     ledgerSplitRepository.computeBalance(accountId, asOf, SplitSide.CREDIT, SplitSide.DEBIT)
                 }

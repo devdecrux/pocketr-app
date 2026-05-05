@@ -26,6 +26,7 @@ const { t } = useI18n()
 const balances = ref<Map<string, number>>(new Map())
 const balancesLoading = ref(false)
 const monthlyReport = ref<MonthlyReportEntry[]>([])
+const reportPeriod = ref<{ start: string; end: string } | null>(null)
 const reportLoading = ref(false)
 
 const currentPeriod = computed(() => {
@@ -117,13 +118,16 @@ async function loadBalances(): Promise<void> {
 async function loadReport(): Promise<void> {
   reportLoading.value = true
   try {
-    monthlyReport.value = await getMonthlyReport({
+    const report = await getMonthlyReport({
       mode: modeStore.modeParam,
       householdId: modeStore.householdId ?? undefined,
       period: currentPeriod.value,
     })
+    monthlyReport.value = report.entries
+    reportPeriod.value = { start: report.periodStart, end: report.periodEnd }
   } catch {
     monthlyReport.value = []
+    reportPeriod.value = null
   } finally {
     reportLoading.value = false
   }
@@ -163,6 +167,17 @@ function txnAmount(txn: (typeof recentTransactions.value)[number]): string {
     .reduce((sum, s) => sum + s.amountMinor, 0)
   const minorUnit = currencyStore.getMinorUnit(txn.currency)
   return formatMinor(totalMinor, txn.currency, minorUnit)
+}
+
+function formatReportPeriod(): string {
+  if (!reportPeriod.value) return currentPeriod.value
+
+  return `${formatIsoDate(reportPeriod.value.start)} - ${formatIsoDate(reportPeriod.value.end)}`
+}
+
+function formatIsoDate(value: string): string {
+  const [year, month, day] = value.split('-')
+  return `${day}-${month}-${year}`
 }
 </script>
 
@@ -259,7 +274,7 @@ function txnAmount(txn: (typeof recentTransactions.value)[number]): string {
           </template>
         </AppCardHeader>
         <CardContent>
-          <p class="mb-2 text-xs text-muted-foreground">{{ currentPeriod }}</p>
+          <p class="mb-2 text-xs text-muted-foreground">{{ formatReportPeriod() }}</p>
           <div v-if="reportLoading" class="space-y-3">
             <Skeleton class="h-6 w-full" />
             <Skeleton class="h-6 w-full" />
@@ -291,7 +306,7 @@ function txnAmount(txn: (typeof recentTransactions.value)[number]): string {
           </template>
         </AppCardHeader>
         <CardContent>
-          <p class="mb-2 text-xs text-muted-foreground">{{ currentPeriod }}</p>
+          <p class="mb-2 text-xs text-muted-foreground">{{ formatReportPeriod() }}</p>
           <div v-if="reportLoading" class="space-y-3">
             <Skeleton class="h-6 w-full" />
             <Skeleton class="h-6 w-full" />

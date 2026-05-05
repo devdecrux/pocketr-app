@@ -10,7 +10,7 @@ import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.Query
 import org.springframework.stereotype.Repository
 import java.time.LocalDate
-import java.util.*
+import java.util.UUID
 
 @Repository
 interface LedgerSplitRepository : JpaRepository<LedgerSplit, UUID> {
@@ -32,6 +32,24 @@ interface LedgerSplitRepository : JpaRepository<LedgerSplit, UUID> {
 
     @Query(
         """
+        SELECT COALESCE(SUM(CASE WHEN ls.side = :debit THEN ls.amountMinor ELSE 0 END), 0)
+             - COALESCE(SUM(CASE WHEN ls.side = :credit THEN ls.amountMinor ELSE 0 END), 0)
+        FROM LedgerSplit ls
+        WHERE ls.account.id = :accountId
+          AND ls.transaction.txnDate >= :dateFrom
+          AND ls.transaction.txnDate <= :asOf
+        """,
+    )
+    fun computeBalanceBetween(
+        accountId: UUID,
+        dateFrom: LocalDate,
+        asOf: LocalDate,
+        debit: SplitSide,
+        credit: SplitSide,
+    ): Long
+
+    @Query(
+        """
         SELECT NEW com.decrux.pocketr.api.repositories.projections.AccountRawBalanceProjection(
             ls.account.id,
             COALESCE(SUM(CASE WHEN ls.side = :debit THEN ls.amountMinor ELSE 0 END), 0)
@@ -45,6 +63,28 @@ interface LedgerSplitRepository : JpaRepository<LedgerSplit, UUID> {
     )
     fun computeRawBalancesByAccountIds(
         accountIds: Collection<UUID>,
+        asOf: LocalDate,
+        debit: SplitSide,
+        credit: SplitSide,
+    ): List<AccountRawBalanceProjection>
+
+    @Query(
+        """
+        SELECT NEW com.decrux.pocketr.api.repositories.projections.AccountRawBalanceProjection(
+            ls.account.id,
+            COALESCE(SUM(CASE WHEN ls.side = :debit THEN ls.amountMinor ELSE 0 END), 0)
+          - COALESCE(SUM(CASE WHEN ls.side = :credit THEN ls.amountMinor ELSE 0 END), 0)
+        )
+        FROM LedgerSplit ls
+        WHERE ls.account.id IN :accountIds
+          AND ls.transaction.txnDate >= :dateFrom
+          AND ls.transaction.txnDate <= :asOf
+        GROUP BY ls.account.id
+        """,
+    )
+    fun computeRawBalancesByAccountIdsBetween(
+        accountIds: Collection<UUID>,
+        dateFrom: LocalDate,
         asOf: LocalDate,
         debit: SplitSide,
         credit: SplitSide,

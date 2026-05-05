@@ -145,6 +145,7 @@ class UserAvatarService(
             firstName = user.firstName,
             lastName = user.lastName,
             language = user.language,
+            rolloverDay = user.rolloverDay,
             avatar = resolveAvatarDataUrl(user.avatarPath),
         )
 

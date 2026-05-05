@@ -120,7 +120,11 @@ describe('batch balances page wiring', () => {
 
     currencyStore.getMinorUnit.mockReturnValue(2)
     getAccountBalances.mockResolvedValue([])
-    getMonthlyReport.mockResolvedValue([])
+    getMonthlyReport.mockResolvedValue({
+      periodStart: '2026-02-01',
+      periodEnd: '2026-02-28',
+      entries: [],
+    })
   })
 
   it('AccountsPage calls batch balances once per load with all active account ids', async () => {

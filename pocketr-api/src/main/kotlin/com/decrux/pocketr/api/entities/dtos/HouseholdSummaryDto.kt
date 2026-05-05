@@ -8,5 +8,6 @@ data class HouseholdSummaryDto(
     val name: String,
     val role: String,
     val status: String,
+    val rolloverDay: Int,
     val createdAt: Instant,
 )

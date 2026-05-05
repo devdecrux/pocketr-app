@@ -9,6 +9,7 @@ import com.decrux.pocketr.api.entities.dtos.HouseholdMemberDto
 import com.decrux.pocketr.api.entities.dtos.HouseholdSummaryDto
 import com.decrux.pocketr.api.entities.dtos.InviteMemberDto
 import com.decrux.pocketr.api.entities.dtos.ShareAccountDto
+import com.decrux.pocketr.api.entities.dtos.UpdateRolloverDayDto
 import java.util.UUID
 
 interface ManageHousehold {
@@ -39,6 +40,12 @@ interface ManageHousehold {
         householdId: UUID,
         user: User,
     )
+
+    fun updateRolloverDay(
+        householdId: UUID,
+        dto: UpdateRolloverDayDto,
+        user: User,
+    ): HouseholdDto
 
     fun shareAccount(
         householdId: UUID,
@@ -73,4 +80,6 @@ interface ManageHousehold {
     ): Boolean
 
     fun getSharedAccountIds(householdId: UUID): Set<UUID>
+
+    fun getRolloverDay(householdId: UUID): Int
 }

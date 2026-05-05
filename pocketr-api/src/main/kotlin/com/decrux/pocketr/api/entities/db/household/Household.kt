@@ -14,7 +14,7 @@ import jakarta.persistence.ManyToOne
 import jakarta.persistence.OneToMany
 import jakarta.persistence.Table
 import java.time.Instant
-import java.util.*
+import java.util.UUID
 
 @Entity
 @Table(name = "household")
@@ -24,6 +24,8 @@ class Household(
     var id: UUID? = null,
     @Column(nullable = false)
     var name: String = "",
+    @Column(name = "rollover_day", nullable = false)
+    var rolloverDay: Int = 1,
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "created_by", nullable = false, foreignKey = ForeignKey(name = "fk_household_created_by"))
     var createdBy: User? = null,

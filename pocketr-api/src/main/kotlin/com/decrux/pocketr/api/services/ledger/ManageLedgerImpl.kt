@@ -1,6 +1,7 @@
 package com.decrux.pocketr.api.services.ledger
 
 import com.decrux.pocketr.api.entities.db.auth.User
+import com.decrux.pocketr.api.entities.db.ledger.Account
 import com.decrux.pocketr.api.entities.db.ledger.AccountType
 import com.decrux.pocketr.api.entities.db.ledger.CategoryTag
 import com.decrux.pocketr.api.entities.db.ledger.LedgerSplit
@@ -33,6 +34,7 @@ import com.decrux.pocketr.api.services.ledger.validations.MinimumSplitCountValid
 import com.decrux.pocketr.api.services.ledger.validations.PositiveSplitAmountValidator
 import com.decrux.pocketr.api.services.ledger.validations.SplitSideValueValidator
 import com.decrux.pocketr.api.services.ledger.validations.TransactionAccountCurrencyValidator
+import com.decrux.pocketr.api.services.rollover.RolloverPeriod
 import com.decrux.pocketr.api.services.user_avatar.UserAvatarService
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
@@ -264,9 +266,13 @@ class ManageLedgerImpl(
             throw ForbiddenException("Not the owner of this account")
         }
 
-        val rawBalancesByAccountId = resolveRawBalances(uniqueAccountIds, asOf)
-
         val accountById = accounts.associateBy { requireNotNull(it.id) }
+        val rawBalancesByAccountId =
+            resolveRawBalances(
+                accountById = accountById,
+                asOf = asOf,
+                rolloverDay = resolveRolloverDay(user, householdId),
+            )
         return uniqueAccountIds.map { accountId ->
             val account = accountById.getValue(accountId)
             val rawBalance = rawBalancesByAccountId[accountId] ?: 0L
@@ -309,7 +315,13 @@ class ManageLedgerImpl(
             throw ForbiddenException("Not the owner of this account")
         }
 
-        val rawBalance = resolveRawBalance(accountId, asOf)
+        val rawBalance =
+            resolveRawBalance(
+                accountId = accountId,
+                accountType = account.type,
+                asOf = asOf,
+                rolloverDay = resolveRolloverDay(user, householdId),
+            )
         val balanceMinor = if (account.type in DEBIT_NORMAL_TYPES) rawBalance else -rawBalance
 
         return BalanceDto(
@@ -434,56 +446,82 @@ class ManageLedgerImpl(
     }
 
     private fun resolveRawBalances(
-        accountIds: Collection<UUID>,
+        accountById: Map<UUID, Account>,
         asOf: LocalDate,
+        rolloverDay: Int,
     ): Map<UUID, Long> {
         val startedAt = System.nanoTime()
-        if (!isSnapshotFeatureEligible(asOf)) {
-            return computeRawBalancesFromLedger(
-                accountIds = accountIds,
-                asOf = asOf,
-                reason = "snapshot balances are only available for today",
+        val expenseAccountIds = accountById.filterValues { it.type == AccountType.EXPENSE }.keys
+        val lifetimeAccountIds = accountById.keys.filterNot { it in expenseAccountIds }
+        val balancesByAccountId = mutableMapOf<UUID, Long>()
+
+        if (expenseAccountIds.isNotEmpty()) {
+            val period = RolloverPeriod.containing(asOf, rolloverDay)
+            balancesByAccountId.putAll(
+                computeRawBalancesFromLedgerBetween(
+                    accountIds = expenseAccountIds,
+                    dateFrom = period.startInclusive,
+                    asOf = asOf,
+                ),
             )
         }
 
+        if (lifetimeAccountIds.isEmpty()) {
+            return balancesByAccountId
+        }
+
+        if (!isSnapshotFeatureEligible(asOf)) {
+            balancesByAccountId.putAll(
+                computeRawBalancesFromLedger(
+                    accountIds = lifetimeAccountIds,
+                    asOf = asOf,
+                    reason = "snapshot balances are only available for today",
+                ),
+            )
+            return balancesByAccountId
+        }
+
         val snapshotEligibleAccountIds =
-            accountIds
+            lifetimeAccountIds
                 .asSequence()
                 .filter { accountId -> currentBalanceSnapshotReadiness.isSnapshotAllowed(accountId) }
                 .toList()
         if (snapshotEligibleAccountIds.isEmpty()) {
-            return computeRawBalancesFromLedger(
-                accountIds = accountIds,
-                asOf = asOf,
-                reason = "snapshots are not allowed for the requested accounts",
+            balancesByAccountId.putAll(
+                computeRawBalancesFromLedger(
+                    accountIds = lifetimeAccountIds,
+                    asOf = asOf,
+                    reason = "snapshots are not allowed for the requested accounts",
+                ),
             )
+            return balancesByAccountId
         }
 
         val snapshotEligibleAccountId = snapshotEligibleAccountIds.toSet()
-        val notSnapshotEligibleAccountId = accountIds.filterNot { it in snapshotEligibleAccountId }
+        val notSnapshotEligibleAccountId = lifetimeAccountIds.filterNot { it in snapshotEligibleAccountId }
 
         return try {
-            val balancesByAccountId =
+            balancesByAccountId.putAll(
                 accountCurrentBalanceRepository
                     .findAllByAccountIdIn(snapshotEligibleAccountIds)
-                    .associate { requireNotNull(it.accountId) to it.rawBalanceMinor }
-                    .toMutableMap()
+                    .associate { requireNotNull(it.accountId) to it.rawBalanceMinor },
+            )
 
             if (notSnapshotEligibleAccountId.isNotEmpty()) {
                 balancesByAccountId.putAll(computeRawBalancesFromLedger(notSnapshotEligibleAccountId, asOf))
                 logger.debug(
                     "Resolved balances for {} account(s) as of {} using {} snapshot balance(s) and {} computed " +
                         "ledger balance(s). Took {} ms.",
-                    accountIds.size,
+                    accountById.size,
                     asOf,
                     snapshotEligibleAccountIds.size,
-                    notSnapshotEligibleAccountId.size,
+                    notSnapshotEligibleAccountId.size + expenseAccountIds.size,
                     elapsedMillis(startedAt),
                 )
             } else {
                 logger.debug(
                     "Resolved balances for {} account(s) as of {} using current balance snapshots. Took {} ms.",
-                    accountIds.size,
+                    accountById.size,
                     asOf,
                     elapsedMillis(startedAt),
                 )
@@ -493,19 +531,31 @@ class ManageLedgerImpl(
         } catch (ex: DataAccessException) {
             logger.warn(
                 "Failed to read current balance snapshots for {} account(s) as of {}; falling back to computed ledger totals. Took {} ms.",
-                accountIds.size,
+                accountById.size,
                 asOf,
                 elapsedMillis(startedAt),
                 ex,
             )
-            computeRawBalancesFromLedger(accountIds, asOf)
+            balancesByAccountId.putAll(computeRawBalancesFromLedger(lifetimeAccountIds, asOf))
+            balancesByAccountId
         }
     }
 
     private fun resolveRawBalance(
         accountId: UUID,
+        accountType: AccountType,
         asOf: LocalDate,
+        rolloverDay: Int,
     ): Long {
+        if (accountType == AccountType.EXPENSE) {
+            val period = RolloverPeriod.containing(asOf, rolloverDay)
+            return computeRawBalanceFromLedgerBetween(
+                accountId = accountId,
+                dateFrom = period.startInclusive,
+                asOf = asOf,
+            )
+        }
+
         val startedAt = System.nanoTime()
         if (!shouldUseSnapshotBalance(accountId, asOf)) {
             return computeRawBalanceFromLedger(
@@ -586,6 +636,38 @@ class ManageLedgerImpl(
 
         return rawBalance
     }
+
+    private fun computeRawBalancesFromLedgerBetween(
+        accountIds: Collection<UUID>,
+        dateFrom: LocalDate,
+        asOf: LocalDate,
+    ): Map<UUID, Long> =
+        ledgerSplitRepository
+            .computeRawBalancesByAccountIdsBetween(
+                accountIds,
+                dateFrom,
+                asOf,
+                SplitSide.DEBIT,
+                SplitSide.CREDIT,
+            ).associate { it.accountId to it.rawBalance }
+
+    private fun computeRawBalanceFromLedgerBetween(
+        accountId: UUID,
+        dateFrom: LocalDate,
+        asOf: LocalDate,
+    ): Long =
+        ledgerSplitRepository.computeBalanceBetween(
+            accountId,
+            dateFrom,
+            asOf,
+            SplitSide.DEBIT,
+            SplitSide.CREDIT,
+        )
+
+    private fun resolveRolloverDay(
+        user: User,
+        householdId: UUID?,
+    ): Int = householdId?.let { manageHousehold.getRolloverDay(it) } ?: user.rolloverDay
 
     private fun shouldUseSnapshotBalance(
         accountId: UUID,

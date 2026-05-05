@@ -22,7 +22,7 @@ import {
 } from '@/components/ui/select'
 import { AppFormField, AppListItem, AppStatusText } from '@/components/app'
 import { supportedLocaleLabels, supportedLocales } from '@/i18n'
-import { updateUserLanguage } from '@/api/user'
+import { updateUserLanguage, updateUserRolloverDay } from '@/api/user'
 import { translate } from '@/i18n/translate'
 
 const authStore = useAuthStore()
@@ -39,6 +39,10 @@ const selectedLanguage = ref<SupportedUserLanguage>(authStore.user?.language ?? 
 const isSavingLanguage = ref(false)
 const languageError = ref('')
 const languageSuccess = ref('')
+const selectedRolloverDay = ref(authStore.user?.rolloverDay ?? 1)
+const isSavingRollover = ref(false)
+const rolloverError = ref('')
+const rolloverSuccess = ref('')
 
 const householdName = ref('')
 const isCreatingHousehold = ref(false)
@@ -57,6 +61,7 @@ const selectedFilename = computed(
 )
 
 const hasLanguageChanged = computed(() => selectedLanguage.value !== authStore.user?.language)
+const hasRolloverChanged = computed(() => selectedRolloverDay.value !== authStore.user?.rolloverDay)
 
 onMounted(async () => {
   await householdStore.loadHouseholds()
@@ -133,6 +138,34 @@ async function saveLanguage(): Promise<void> {
     }
   } finally {
     isSavingLanguage.value = false
+  }
+}
+
+async function saveRolloverDay(): Promise<void> {
+  rolloverError.value = ''
+  rolloverSuccess.value = ''
+
+  if (selectedRolloverDay.value < 1 || selectedRolloverDay.value > 31) {
+    rolloverError.value = translate('validation.rollover.dayRange')
+    return
+  }
+
+  isSavingRollover.value = true
+
+  try {
+    const updatedUser = await updateUserRolloverDay(selectedRolloverDay.value)
+    authStore.setUser(updatedUser)
+    selectedRolloverDay.value = updatedUser.rolloverDay
+    rolloverSuccess.value = translate('views.settings.profile.rolloverUpdated')
+  } catch (error: unknown) {
+    if (error instanceof HTTPError) {
+      const payload = await error.response.json<{ message?: string }>().catch(() => null)
+      rolloverError.value = payload?.message?.trim() || translate('errors.rollover.update')
+    } else {
+      rolloverError.value = translate('errors.rollover.update')
+    }
+  } finally {
+    isSavingRollover.value = false
   }
 }
 
@@ -298,6 +331,35 @@ async function handleLeaveHousehold(householdId: string): Promise<void> {
             languageSuccess
           }}</AppStatusText>
           <AppStatusText v-if="languageError">{{ languageError }}</AppStatusText>
+        </div>
+
+        <div class="grid gap-3 border-t border-border pt-4">
+          <div class="flex flex-col gap-3 sm:flex-row sm:items-end">
+            <AppFormField :label="$t('views.settings.profile.rolloverDay')" class="sm:flex-1">
+              <Input
+                v-model.number="selectedRolloverDay"
+                type="number"
+                min="1"
+                max="31"
+                inputmode="numeric"
+              />
+            </AppFormField>
+            <Button
+              size="sm"
+              class="w-fit sm:h-9"
+              :disabled="isSavingRollover || !hasRolloverChanged"
+              @click="saveRolloverDay"
+            >
+              {{ isSavingRollover ? $t('common.feedback.saving') : $t('common.actions.save') }}
+            </Button>
+          </div>
+          <p class="text-xs text-muted-foreground">
+            {{ $t('views.settings.profile.rolloverHelp') }}
+          </p>
+          <AppStatusText v-if="rolloverSuccess" variant="success">{{
+            rolloverSuccess
+          }}</AppStatusText>
+          <AppStatusText v-if="rolloverError">{{ rolloverError }}</AppStatusText>
         </div>
       </CardContent>
     </Card>

@@ -129,4 +129,10 @@ export interface MonthlyReportEntry {
   netMinor: number
 }
 
+export interface RolloverExpenseReport {
+  periodStart: string
+  periodEnd: string
+  entries: MonthlyReportEntry[]
+}
+
 export type ViewMode = { kind: 'INDIVIDUAL' } | { kind: 'HOUSEHOLD'; householdId: string }

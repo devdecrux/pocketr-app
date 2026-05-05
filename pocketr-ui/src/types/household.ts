@@ -4,6 +4,7 @@ export type MembershipStatus = 'INVITED' | 'ACTIVE'
 export interface Household {
   id: string
   name: string
+  rolloverDay: number
   createdAt: string
   members: HouseholdMember[]
 }
@@ -13,6 +14,7 @@ export interface HouseholdSummary {
   name: string
   role: HouseholdRole
   status: MembershipStatus
+  rolloverDay: number
   createdAt: string
 }
 
@@ -45,4 +47,8 @@ export interface InviteMemberRequest {
 
 export interface ShareAccountRequest {
   accountId: string
+}
+
+export interface UpdateRolloverDayRequest {
+  rolloverDay: number
 }

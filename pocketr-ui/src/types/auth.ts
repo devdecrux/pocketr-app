@@ -6,5 +6,6 @@ export interface AuthUser {
   firstName: string | null
   lastName: string | null
   language: SupportedUserLanguage
+  rolloverDay: number
   avatar?: string | null
 }

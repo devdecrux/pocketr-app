@@ -7,6 +7,7 @@ import type {
   HouseholdSummary,
   InviteMemberRequest,
   ShareAccountRequest,
+  UpdateRolloverDayRequest,
 } from '@/types/household'
 
 const BASE = '/api/v1/households'
@@ -36,6 +37,13 @@ export function acceptInvite(householdId: string): Promise<HouseholdMember> {
 
 export function leaveHousehold(householdId: string): Promise<void> {
   return api.post(`${BASE}/${householdId}/leave`).then(() => undefined)
+}
+
+export function updateHouseholdRolloverDay(
+  householdId: string,
+  req: UpdateRolloverDayRequest,
+): Promise<Household> {
+  return api.patch(`${BASE}/${householdId}/rollover`, { json: req }).json<Household>()
 }
 
 export function shareAccount(

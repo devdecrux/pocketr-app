@@ -26,7 +26,8 @@ import org.mockito.Mockito.mock
 import org.mockito.Mockito.`when`
 import java.time.LocalDate
 import java.time.YearMonth
-import java.util.*
+import java.util.Optional
+import java.util.UUID
 
 /**
  * Unit tests for GenerateReportImpl (Section 12.3).
@@ -87,8 +88,24 @@ class ReportingTest {
             `when`(ledgerSplitRepository.computeBalance(checkingId, asOf, SplitSide.DEBIT, SplitSide.CREDIT)).thenReturn(190000L)
             `when`(ledgerSplitRepository.computeBalance(savingsId, asOf, SplitSide.DEBIT, SplitSide.CREDIT)).thenReturn(50000L)
             // EXPENSE (debit-normal)
-            `when`(ledgerSplitRepository.computeBalance(groceriesId, asOf, SplitSide.DEBIT, SplitSide.CREDIT)).thenReturn(8500L)
-            `when`(ledgerSplitRepository.computeBalance(utilitiesId, asOf, SplitSide.DEBIT, SplitSide.CREDIT)).thenReturn(4500L)
+            `when`(
+                ledgerSplitRepository.computeBalanceBetween(
+                    groceriesId,
+                    LocalDate.of(2026, 2, 1),
+                    asOf,
+                    SplitSide.DEBIT,
+                    SplitSide.CREDIT,
+                ),
+            ).thenReturn(8500L)
+            `when`(
+                ledgerSplitRepository.computeBalanceBetween(
+                    utilitiesId,
+                    LocalDate.of(2026, 2, 1),
+                    asOf,
+                    SplitSide.DEBIT,
+                    SplitSide.CREDIT,
+                ),
+            ).thenReturn(4500L)
             // INCOME (credit-normal): balance = CREDIT - DEBIT
             `when`(ledgerSplitRepository.computeBalance(salaryId, asOf, SplitSide.CREDIT, SplitSide.DEBIT)).thenReturn(400000L)
             // LIABILITY (credit-normal)
@@ -194,6 +211,7 @@ class ReportingTest {
         fun expenseTotalsHouseholdMode() {
             val householdId = UUID.randomUUID()
             `when`(manageHousehold.isActiveMember(householdId, 1L)).thenReturn(true)
+            `when`(manageHousehold.getRolloverDay(householdId)).thenReturn(1)
             `when`(
                 ledgerSplitRepository.monthlyExpensesByHousehold(householdId, janStart, janEnd, SplitSide.DEBIT, SplitSide.CREDIT),
             ).thenReturn(
@@ -241,6 +259,7 @@ class ReportingTest {
         fun householdModeSucceedsForActiveMember() {
             val householdId = UUID.randomUUID()
             `when`(manageHousehold.isActiveMember(householdId, 1L)).thenReturn(true)
+            `when`(manageHousehold.getRolloverDay(householdId)).thenReturn(1)
             `when`(
                 ledgerSplitRepository.monthlyExpensesByHousehold(householdId, janStart, janEnd, SplitSide.DEBIT, SplitSide.CREDIT),
             ).thenReturn(

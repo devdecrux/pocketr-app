@@ -28,6 +28,8 @@ class User(
     var firstName: String? = null,
     @Column(nullable = false)
     var language: String = "en",
+    @Column(name = "rollover_day", nullable = false)
+    var rolloverDay: Int = 1,
     var lastName: String? = null,
     @Column(name = "avatar_path")
     var avatarPath: String? = null,

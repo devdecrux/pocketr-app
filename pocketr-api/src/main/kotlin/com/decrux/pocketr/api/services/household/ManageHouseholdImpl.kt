@@ -14,6 +14,7 @@ import com.decrux.pocketr.api.entities.dtos.HouseholdMemberDto
 import com.decrux.pocketr.api.entities.dtos.HouseholdSummaryDto
 import com.decrux.pocketr.api.entities.dtos.InviteMemberDto
 import com.decrux.pocketr.api.entities.dtos.ShareAccountDto
+import com.decrux.pocketr.api.entities.dtos.UpdateRolloverDayDto
 import com.decrux.pocketr.api.repositories.AccountRepository
 import com.decrux.pocketr.api.repositories.HouseholdAccountShareRepository
 import com.decrux.pocketr.api.repositories.HouseholdMemberRepository
@@ -83,6 +84,7 @@ class ManageHouseholdImpl(
                     name = household.name,
                     role = member.role.name,
                     status = member.status.name,
+                    rolloverDay = household.rolloverDay,
                     createdAt = household.createdAt,
                 )
             }
@@ -219,6 +221,27 @@ class ManageHouseholdImpl(
     }
 
     @Transactional
+    override fun updateRolloverDay(
+        householdId: UUID,
+        dto: UpdateRolloverDayDto,
+        user: User,
+    ): HouseholdDto {
+        if (dto.rolloverDay !in 1..31) {
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "rolloverDay must be between 1 and 31")
+        }
+
+        val userId = requireNotNull(user.userId) { "User ID must not be null" }
+        val member = requireActiveMembership(householdId, userId)
+        if (member.role !in setOf(HouseholdRole.OWNER, HouseholdRole.ADMIN)) {
+            throw ResponseStatusException(HttpStatus.FORBIDDEN, "Only OWNER or ADMIN can update household rollover")
+        }
+
+        val household = requireNotNull(member.household) { "Household must not be null" }
+        household.rolloverDay = dto.rolloverDay
+        return householdRepository.save(household).toDto()
+    }
+
+    @Transactional
     override fun shareAccount(
         householdId: UUID,
         dto: ShareAccountDto,
@@ -321,6 +344,13 @@ class ManageHouseholdImpl(
     @Transactional(readOnly = true)
     override fun getSharedAccountIds(householdId: UUID): Set<UUID> = shareRepository.findSharedAccountIdsByHouseholdId(householdId)
 
+    @Transactional(readOnly = true)
+    override fun getRolloverDay(householdId: UUID): Int =
+        householdRepository
+            .findById(householdId)
+            .orElseThrow { ResponseStatusException(HttpStatus.NOT_FOUND, "Household not found") }
+            .rolloverDay
+
     private fun requireActiveMembership(
         householdId: UUID,
         userId: Long,
@@ -361,6 +391,7 @@ class ManageHouseholdImpl(
             HouseholdDto(
                 id = requireNotNull(id) { "Household ID must not be null" },
                 name = name,
+                rolloverDay = rolloverDay,
                 createdAt = createdAt,
                 members = members.map { it.toDto() },
             )
