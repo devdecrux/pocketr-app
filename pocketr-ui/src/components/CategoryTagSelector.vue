@@ -39,7 +39,7 @@ function onSelect(id: string): void {
         :aria-expanded="open"
         class="w-full justify-between"
       >
-        {{ selectedLabel || $t('common.placeholders.selectCategory') }}
+        {{ selectedLabel || $t('common.formHints.selectCategory') }}
         <ChevronsUpDown class="ml-2 size-4 shrink-0 opacity-50" />
       </Button>
     </PopoverTrigger>

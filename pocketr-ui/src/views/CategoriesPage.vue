@@ -218,7 +218,7 @@ const table = useVueTable({
                 <Input
                   id="create-category-name"
                   v-model="createName"
-                  :placeholder="$t('common.placeholders.categoryExamples')"
+                  :placeholder="$t('common.formHints.categoryExamples')"
                 />
               </AppFormField>
               <AppFormField :label="$t('common.fields.color')">

@@ -55,7 +55,7 @@
       "search": "Search",
       "type": "Type"
     },
-    "placeholders": {
+    "formHints": {
       "accountName": "Account name",
       "categoryExamples": "e.g. Groceries, Utilities",
       "email": "email{'@'}example.com",
@@ -155,7 +155,7 @@
           "initialBalance": "Initial balance",
           "openingDate": "Opening date"
         },
-        "placeholders": {
+        "formHints": {
           "assetName": "e.g. Checking, Savings",
           "expenseName": "e.g. Groceries, Utilities",
           "incomeName": "e.g. Salary, Freelance",
@@ -287,7 +287,6 @@
         "language": "Language",
         "languageUpdated": "Language updated.",
         "noFileSelected": "No file selected",
-        "saveLanguage": "Save language",
         "title": "Profile Settings"
       }
     },
@@ -322,7 +321,7 @@
         "crossUserTransfer": "This is a cross-user transfer between household members.",
         "householdTransfers": "Transfers between household accounts are allowed. You cannot post expenses to other users' accounts."
       },
-      "placeholders": {
+      "formHints": {
         "allAccounts": "All accounts",
         "debtPaymentNote": "Debt payment note",
         "incomeSource": "Income source",

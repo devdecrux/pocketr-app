@@ -19,9 +19,9 @@ export type SupportedLocale = keyof typeof messages
 export const supportedLocales = Object.keys(messages) as SupportedLocale[]
 
 export const supportedLocaleLabels: Record<SupportedLocale, string> = {
+  en: 'English',
   bg: 'Български',
   de: 'Deutsch',
-  en: 'English',
 }
 
 function isSupportedLocale(locale: string): locale is SupportedLocale {

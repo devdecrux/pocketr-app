@@ -323,7 +323,7 @@ function todayString(): string {
                   <Input
                     id="asset-name"
                     v-model="newAccount.name"
-                    :placeholder="$t('views.accounts.create.placeholders.assetName')"
+                    :placeholder="$t('views.accounts.create.formHints.assetName')"
                   />
                 </AppFormField>
                 <AppFormField :label="$t('common.fields.currency')">
@@ -360,7 +360,7 @@ function todayString(): string {
                       :minor-unit="openingBalanceMinorUnit"
                       :currency-code="newAccount.currency"
                       :allow-negative="true"
-                      :placeholder="$t('common.placeholders.money')"
+                      :placeholder="$t('common.formHints.money')"
                     />
                   </AppFormField>
                 </div>
@@ -375,7 +375,7 @@ function todayString(): string {
                   <Input
                     id="expense-name"
                     v-model="newAccount.name"
-                    :placeholder="$t('views.accounts.create.placeholders.expenseName')"
+                    :placeholder="$t('views.accounts.create.formHints.expenseName')"
                   />
                 </AppFormField>
                 <AppFormField :label="$t('common.fields.currency')">
@@ -402,7 +402,7 @@ function todayString(): string {
                   <Input
                     id="income-name"
                     v-model="newAccount.name"
-                    :placeholder="$t('views.accounts.create.placeholders.incomeName')"
+                    :placeholder="$t('views.accounts.create.formHints.incomeName')"
                   />
                 </AppFormField>
                 <AppFormField :label="$t('common.fields.currency')">
@@ -429,7 +429,7 @@ function todayString(): string {
                   <Input
                     id="liability-name"
                     v-model="newAccount.name"
-                    :placeholder="$t('views.accounts.create.placeholders.liabilityName')"
+                    :placeholder="$t('views.accounts.create.formHints.liabilityName')"
                   />
                 </AppFormField>
                 <AppFormField :label="$t('common.fields.currency')">
@@ -466,7 +466,7 @@ function todayString(): string {
                       :minor-unit="openingBalanceMinorUnit"
                       :currency-code="newAccount.currency"
                       :allow-negative="false"
-                      :placeholder="$t('common.placeholders.money')"
+                      :placeholder="$t('common.formHints.money')"
                     />
                   </AppFormField>
                 </div>
@@ -490,7 +490,7 @@ function todayString(): string {
         <AppFilterBar align="center">
           <Select v-model="typeFilter">
             <SelectTrigger class="w-36">
-              <SelectValue :placeholder="$t('common.placeholders.filterType')" />
+              <SelectValue :placeholder="$t('common.formHints.filterType')" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="ALL">{{ $t('views.accounts.filters.allTypes') }}</SelectItem>
@@ -501,7 +501,7 @@ function todayString(): string {
           </Select>
           <Select v-model="currencyFilter">
             <SelectTrigger class="w-36">
-              <SelectValue :placeholder="$t('common.placeholders.filterCurrency')" />
+              <SelectValue :placeholder="$t('common.formHints.filterCurrency')" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="ALL">{{ $t('views.accounts.filters.allCurrencies') }}</SelectItem>
@@ -531,7 +531,7 @@ function todayString(): string {
     <Dialog v-model:open="renameDialog">
       <AppDialogContent :title="$t('views.accounts.rename.title')" :description="renameDescription">
         <AppDialogBody gap="2">
-          <Input v-model="renameName" :placeholder="$t('common.placeholders.accountName')" />
+          <Input v-model="renameName" :placeholder="$t('common.formHints.accountName')" />
           <AppStatusText v-if="renameError">{{ renameError }}</AppStatusText>
         </AppDialogBody>
         <template #footer>

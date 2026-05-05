@@ -610,14 +610,14 @@ async function deleteTransaction(txn: LedgerTxn): Promise<void> {
                   <AccountSelector
                     v-model="expensePayFrom"
                     :allowed-types="['ASSET', 'LIABILITY']"
-                    :placeholder="$t('views.transactions.placeholders.selectPayFromAccount')"
+                    :placeholder="$t('views.transactions.formHints.selectPayFromAccount')"
                   />
                 </AppFormField>
                 <AppFormField :label="$t('views.transactions.fields.expenseAccount')">
                   <AccountSelector
                     v-model="expenseAccount"
                     :allowed-types="['EXPENSE']"
-                    :placeholder="$t('views.transactions.placeholders.selectExpenseAccount')"
+                    :placeholder="$t('views.transactions.formHints.selectExpenseAccount')"
                   />
                 </AppFormField>
                 <AppFormField :label="$t('common.fields.category')">
@@ -627,7 +627,7 @@ async function deleteTransaction(txn: LedgerTxn): Promise<void> {
                   <Input
                     id="expense-desc"
                     v-model="expenseDescription"
-                    :placeholder="$t('views.transactions.placeholders.whatWasThisFor')"
+                    :placeholder="$t('views.transactions.formHints.whatWasThisFor')"
                   />
                 </AppFormField>
               </TabsContent>
@@ -650,21 +650,21 @@ async function deleteTransaction(txn: LedgerTxn): Promise<void> {
                   <AccountSelector
                     v-model="incomeDeposit"
                     :allowed-types="['ASSET']"
-                    :placeholder="$t('views.transactions.placeholders.selectDepositAccount')"
+                    :placeholder="$t('views.transactions.formHints.selectDepositAccount')"
                   />
                 </AppFormField>
                 <AppFormField :label="$t('views.transactions.fields.incomeAccount')">
                   <AccountSelector
                     v-model="incomeAccount"
                     :allowed-types="['INCOME']"
-                    :placeholder="$t('views.transactions.placeholders.selectIncomeAccount')"
+                    :placeholder="$t('views.transactions.formHints.selectIncomeAccount')"
                   />
                 </AppFormField>
                 <AppFormField :label="$t('common.fields.description')" control-id="income-desc">
                   <Input
                     id="income-desc"
                     v-model="incomeDescription"
-                    :placeholder="$t('views.transactions.placeholders.incomeSource')"
+                    :placeholder="$t('views.transactions.formHints.incomeSource')"
                   />
                 </AppFormField>
               </TabsContent>
@@ -690,7 +690,7 @@ async function deleteTransaction(txn: LedgerTxn): Promise<void> {
                   <AccountSelector
                     v-model="transferFrom"
                     :allowed-types="['ASSET']"
-                    :placeholder="$t('views.transactions.placeholders.selectSourceAccount')"
+                    :placeholder="$t('views.transactions.formHints.selectSourceAccount')"
                   />
                 </AppFormField>
                 <AppFormField :label="$t('views.transactions.fields.toAccount')">
@@ -698,14 +698,14 @@ async function deleteTransaction(txn: LedgerTxn): Promise<void> {
                     v-model="transferTo"
                     :allowed-types="['ASSET']"
                     :currency="transferCurrency || undefined"
-                    :placeholder="$t('views.transactions.placeholders.selectDestinationAccount')"
+                    :placeholder="$t('views.transactions.formHints.selectDestinationAccount')"
                   />
                 </AppFormField>
                 <AppFormField :label="$t('common.fields.description')" control-id="transfer-desc">
                   <Input
                     id="transfer-desc"
                     v-model="transferDescription"
-                    :placeholder="$t('views.transactions.placeholders.transferReason')"
+                    :placeholder="$t('views.transactions.formHints.transferReason')"
                   />
                 </AppFormField>
                 <AppNotice v-if="isCrossUserTransfer" variant="warning">
@@ -731,7 +731,7 @@ async function deleteTransaction(txn: LedgerTxn): Promise<void> {
                   <AccountSelector
                     v-model="debtPaymentPayFrom"
                     :allowed-types="['ASSET']"
-                    :placeholder="$t('views.transactions.placeholders.selectAssetAccount')"
+                    :placeholder="$t('views.transactions.formHints.selectAssetAccount')"
                   />
                 </AppFormField>
                 <AppFormField :label="$t('views.transactions.fields.debtPaymentLiabilityAccount')">
@@ -739,7 +739,7 @@ async function deleteTransaction(txn: LedgerTxn): Promise<void> {
                     v-model="debtPaymentLiabilityAccount"
                     :allowed-types="['LIABILITY']"
                     :currency="debtPaymentCurrency || undefined"
-                    :placeholder="$t('views.transactions.placeholders.selectLiabilityAccount')"
+                    :placeholder="$t('views.transactions.formHints.selectLiabilityAccount')"
                   />
                 </AppFormField>
                 <AppFormField
@@ -749,7 +749,7 @@ async function deleteTransaction(txn: LedgerTxn): Promise<void> {
                   <Input
                     id="debt-payment-desc"
                     v-model="debtPaymentDescription"
-                    :placeholder="$t('views.transactions.placeholders.debtPaymentNote')"
+                    :placeholder="$t('views.transactions.formHints.debtPaymentNote')"
                   />
                 </AppFormField>
               </TabsContent>
@@ -785,7 +785,7 @@ async function deleteTransaction(txn: LedgerTxn): Promise<void> {
             <div class="w-48">
               <AccountSelector
                 v-model="filterAccountId"
-                :placeholder="$t('views.transactions.placeholders.allAccounts')"
+                :placeholder="$t('views.transactions.formHints.allAccounts')"
               />
             </div>
           </AppFormField>
@@ -798,7 +798,7 @@ async function deleteTransaction(txn: LedgerTxn): Promise<void> {
             <Input
               v-model="filterSearch"
               type="text"
-              :placeholder="$t('views.transactions.placeholders.searchDescriptions')"
+              :placeholder="$t('views.transactions.formHints.searchDescriptions')"
               class="h-8 w-48 text-xs"
             />
           </AppFormField>

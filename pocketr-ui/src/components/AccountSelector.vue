@@ -86,7 +86,7 @@ const groupedAccounts = computed(() => {
     "
   >
     <SelectTrigger class="w-full">
-      <SelectValue :placeholder="placeholder ?? $t('common.placeholders.selectAccount')" />
+      <SelectValue :placeholder="placeholder ?? $t('common.formHints.selectAccount')" />
     </SelectTrigger>
     <SelectContent>
       <SelectGroup v-for="group in groupedAccounts" :key="group.label">

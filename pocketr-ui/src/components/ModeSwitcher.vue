@@ -46,7 +46,7 @@ async function onSelect(
 <template>
   <Select :model-value="currentValue" @update:model-value="onSelect">
     <SelectTrigger class="app-sidebar-select-trigger w-full">
-      <SelectValue :placeholder="$t('common.placeholders.selectMode')" />
+      <SelectValue :placeholder="$t('common.formHints.selectMode')" />
     </SelectTrigger>
     <SelectContent>
       <SelectItem value="individual">

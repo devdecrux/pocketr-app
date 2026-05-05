@@ -64,7 +64,7 @@ function onBlur(): void {
       type="text"
       inputmode="decimal"
       :value="displayValue"
-      :placeholder="placeholder ?? $t('common.placeholders.money')"
+      :placeholder="placeholder ?? $t('common.formHints.money')"
       :class="suffix ? 'pr-14' : ''"
       @input="onInput"
       @blur="onBlur"

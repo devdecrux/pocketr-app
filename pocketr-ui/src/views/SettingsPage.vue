@@ -272,30 +272,28 @@ async function handleLeaveHousehold(householdId: string): Promise<void> {
         </div>
 
         <div class="grid gap-3 border-t border-border pt-4">
-          <AppFormField :label="$t('views.settings.profile.language')">
-            <Select v-model="selectedLanguage">
-              <SelectTrigger class="w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem v-for="locale in supportedLocales" :key="locale" :value="locale">
-                  {{ supportedLocaleLabels[locale] }}
-                </SelectItem>
-              </SelectContent>
-            </Select>
-          </AppFormField>
-          <Button
-            size="sm"
-            class="w-fit"
-            :disabled="isSavingLanguage || !hasLanguageChanged"
-            @click="saveLanguage"
-          >
-            {{
-              isSavingLanguage
-                ? $t('common.feedback.saving')
-                : $t('views.settings.profile.saveLanguage')
-            }}
-          </Button>
+          <div class="flex flex-col gap-3 sm:flex-row sm:items-end">
+            <AppFormField :label="$t('views.settings.profile.language')" class="sm:flex-1">
+              <Select v-model="selectedLanguage">
+                <SelectTrigger class="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem v-for="locale in supportedLocales" :key="locale" :value="locale">
+                    {{ supportedLocaleLabels[locale] }}
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </AppFormField>
+            <Button
+              size="sm"
+              class="w-fit sm:h-9"
+              :disabled="isSavingLanguage || !hasLanguageChanged"
+              @click="saveLanguage"
+            >
+              {{ isSavingLanguage ? $t('common.feedback.saving') : $t('common.actions.save') }}
+            </Button>
+          </div>
           <AppStatusText v-if="languageSuccess" variant="success">{{
             languageSuccess
           }}</AppStatusText>
@@ -386,7 +384,7 @@ async function handleLeaveHousehold(householdId: string): Promise<void> {
                 id="household-name"
                 v-model="householdName"
                 type="text"
-                :placeholder="$t('common.placeholders.householdName')"
+                :placeholder="$t('common.formHints.householdName')"
                 :class="{ 'border-[color:var(--app-field-invalid-border)]': householdNameError }"
               />
               <AppStatusText v-if="householdNameError" size="xs">

@@ -65,7 +65,7 @@ async function register(): Promise<void> {
                 <Input
                   id="first-name"
                   v-model="firstName"
-                  :placeholder="$t('common.placeholders.personFirstName')"
+                  :placeholder="$t('common.formHints.personFirstName')"
                   required
                 />
               </AppFormField>
@@ -73,7 +73,7 @@ async function register(): Promise<void> {
                 <Input
                   id="last-name"
                   v-model="lastName"
-                  :placeholder="$t('common.placeholders.personLastName')"
+                  :placeholder="$t('common.formHints.personLastName')"
                   required
                 />
               </AppFormField>
@@ -83,7 +83,7 @@ async function register(): Promise<void> {
                 id="email"
                 v-model="email"
                 type="email"
-                :placeholder="$t('common.placeholders.email')"
+                :placeholder="$t('common.formHints.email')"
                 required
               />
             </AppFormField>

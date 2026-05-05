@@ -73,7 +73,7 @@ async function login(): Promise<void> {
                 id="email"
                 v-model="email"
                 type="email"
-                :placeholder="$t('common.placeholders.email')"
+                :placeholder="$t('common.formHints.email')"
                 required
               />
             </AppFormField>
