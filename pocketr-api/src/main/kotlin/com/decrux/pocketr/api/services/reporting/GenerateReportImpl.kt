@@ -81,9 +81,17 @@ class GenerateReportImpl(
                 }
                 rolloverDay = manageHousehold.getRolloverDay(hId)
                 val rolloverPeriod = RolloverPeriod.startingIn(period, rolloverDay)
+                val sharedAccountIds = manageHousehold.getSharedAccountIds(hId)
+                if (sharedAccountIds.isEmpty()) {
+                    return RolloverExpenseReportDto(
+                        periodStart = rolloverPeriod.startInclusive,
+                        periodEnd = rolloverPeriod.endExclusive.minusDays(1),
+                        entries = emptyList(),
+                    )
+                }
                 expenseRows =
                     ledgerSplitRepository.monthlyExpensesByHousehold(
-                        hId,
+                        sharedAccountIds,
                         rolloverPeriod.startInclusive,
                         rolloverPeriod.endExclusive,
                         SplitSide.DEBIT,
@@ -91,7 +99,7 @@ class GenerateReportImpl(
                     )
                 liabilityPaymentRows =
                     ledgerSplitRepository.monthlyLiabilityPaymentsByHousehold(
-                        hId,
+                        sharedAccountIds,
                         rolloverPeriod.startInclusive,
                         rolloverPeriod.endExclusive,
                         SplitSide.DEBIT,
@@ -150,15 +158,19 @@ class GenerateReportImpl(
                 if (!manageHousehold.isActiveMember(hId, userId)) {
                     throw ForbiddenException("Not an active member of this household")
                 }
+                val sharedAccountIds = manageHousehold.getSharedAccountIds(hId)
+                if (sharedAccountIds.isEmpty()) {
+                    return emptyList()
+                }
                 expenseRows =
                     ledgerSplitRepository.lifetimeExpensesByHousehold(
-                        hId,
+                        sharedAccountIds,
                         SplitSide.DEBIT,
                         SplitSide.CREDIT,
                     )
                 liabilityPaymentRows =
                     ledgerSplitRepository.lifetimeLiabilityPaymentsByHousehold(
-                        hId,
+                        sharedAccountIds,
                         SplitSide.DEBIT,
                         SplitSide.CREDIT,
                     )
