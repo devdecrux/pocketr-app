@@ -1,7 +1,13 @@
 <script setup lang="ts">
 import { computed, h, onMounted, ref } from 'vue'
 import { type ColumnDef, getCoreRowModel, useVueTable } from '@tanstack/vue-table'
-import { Pencil, Plus, Trash2 } from 'lucide-vue-next'
+import { Check, Pencil, Plus, Trash2, X } from 'lucide-vue-next'
+import {
+  ColorSwatchPickerItem,
+  ColorSwatchPickerItemIndicator,
+  ColorSwatchPickerItemSwatch,
+  ColorSwatchPickerRoot,
+} from 'reka-ui'
 import { useCategoryStore } from '@/stores/category'
 import type { CategoryTag } from '@/types/ledger'
 import { CATEGORY_PRESET_COLORS } from '@/utils/categoryColors'
@@ -17,9 +23,16 @@ import {
   AppStateMessage,
   AppStatusText,
 } from '@/components/app'
-import CategoryColorPicker from '@/components/CategoryColorPicker.vue'
 import DataTable from '@/components/DataTable.vue'
 import { translate } from '@/i18n/translate'
+
+const NO_COLOR_VALUE = '#00000000'
+const colorSwatchPickerRootClass = 'flex flex-wrap gap-2'
+const colorSwatchPickerItemClass = 'relative size-8 cursor-pointer'
+const colorSwatchPickerSwatchClass = 'size-full rounded-md'
+const colorSwatchPickerIndicatorClass =
+  'absolute inset-0 flex items-center justify-center text-white'
+const colorSwatchStyle = { backgroundColor: 'var(--reka-color-swatch-color)' }
 
 const categoryStore = useCategoryStore()
 
@@ -41,6 +54,25 @@ const deletingId = ref<string | null>(null)
 
 const sortedCategories = computed(() => {
   return [...categoryStore.categories].sort((a, b) => a.name.localeCompare(b.name))
+})
+
+function toCategoryColor(value: string | string[]): string | null {
+  const nextValue = Array.isArray(value) ? (value[0] ?? NO_COLOR_VALUE) : value
+  return nextValue === NO_COLOR_VALUE ? null : nextValue
+}
+
+const createSelectedColor = computed({
+  get: () => createColor.value ?? NO_COLOR_VALUE,
+  set: (value: string | string[]) => {
+    createColor.value = toCategoryColor(value)
+  },
+})
+
+const renameSelectedColor = computed({
+  get: () => renameColor.value ?? NO_COLOR_VALUE,
+  set: (value: string | string[]) => {
+    renameColor.value = toCategoryColor(value)
+  },
 })
 
 function hasDuplicateName(name: string, excludeId?: string): boolean {
@@ -146,7 +178,7 @@ const columns: ColumnDef<CategoryTag>[] = [
       return h('div', { class: 'flex items-center justify-end gap-2' }, [
         cat.color
           ? h('span', {
-              class: 'inline-block h-3.5 w-3.5 shrink-0 rounded-full border border-border',
+              class: 'inline-block h-4 w-5 shrink-0 rounded-sm',
               style: { backgroundColor: cat.color },
             })
           : null,
@@ -222,7 +254,40 @@ const table = useVueTable({
                 />
               </AppFormField>
               <AppFormField :label="$t('common.fields.color')">
-                <CategoryColorPicker v-model="createColor" :colors="CATEGORY_PRESET_COLORS" />
+                <ColorSwatchPickerRoot
+                  v-model="createSelectedColor"
+                  :class="colorSwatchPickerRootClass"
+                >
+                  <ColorSwatchPickerItem
+                    v-for="color in CATEGORY_PRESET_COLORS"
+                    :key="color"
+                    :value="color"
+                    :class="colorSwatchPickerItemClass"
+                  >
+                    <ColorSwatchPickerItemSwatch
+                      :class="colorSwatchPickerSwatchClass"
+                      :style="colorSwatchStyle"
+                    />
+                    <ColorSwatchPickerItemIndicator :class="colorSwatchPickerIndicatorClass">
+                      <Check class="size-3.5 drop-shadow-[0_1px_1px_rgba(0,0,0,0.75)]" />
+                    </ColorSwatchPickerItemIndicator>
+                  </ColorSwatchPickerItem>
+
+                  <ColorSwatchPickerItem
+                    :value="NO_COLOR_VALUE"
+                    :class="colorSwatchPickerItemClass"
+                    :title="$t('components.categoryColorPicker.noColor')"
+                  >
+                    <ColorSwatchPickerItemSwatch
+                      :class="colorSwatchPickerSwatchClass"
+                      :style="colorSwatchStyle"
+                    />
+                    <X class="absolute inset-0 m-auto size-3.5 text-muted-foreground" />
+                    <ColorSwatchPickerItemIndicator class="sr-only">
+                      {{ $t('components.categoryColorPicker.noColor') }}
+                    </ColorSwatchPickerItemIndicator>
+                  </ColorSwatchPickerItem>
+                </ColorSwatchPickerRoot>
               </AppFormField>
               <AppStatusText v-if="createError">{{ createError }}</AppStatusText>
             </AppDialogBody>
@@ -261,7 +326,40 @@ const table = useVueTable({
             <Input id="rename-category-name" v-model="renameName" />
           </AppFormField>
           <AppFormField :label="$t('common.fields.color')">
-            <CategoryColorPicker v-model="renameColor" :colors="CATEGORY_PRESET_COLORS" />
+            <ColorSwatchPickerRoot
+              v-model="renameSelectedColor"
+              :class="colorSwatchPickerRootClass"
+            >
+              <ColorSwatchPickerItem
+                v-for="color in CATEGORY_PRESET_COLORS"
+                :key="color"
+                :value="color"
+                :class="colorSwatchPickerItemClass"
+              >
+                <ColorSwatchPickerItemSwatch
+                  :class="colorSwatchPickerSwatchClass"
+                  :style="colorSwatchStyle"
+                />
+                <ColorSwatchPickerItemIndicator :class="colorSwatchPickerIndicatorClass">
+                  <Check class="size-3.5 drop-shadow-[0_1px_1px_rgba(0,0,0,0.75)]" />
+                </ColorSwatchPickerItemIndicator>
+              </ColorSwatchPickerItem>
+
+              <ColorSwatchPickerItem
+                :value="NO_COLOR_VALUE"
+                :class="colorSwatchPickerItemClass"
+                :title="$t('components.categoryColorPicker.noColor')"
+              >
+                <ColorSwatchPickerItemSwatch
+                  :class="colorSwatchPickerSwatchClass"
+                  :style="colorSwatchStyle"
+                />
+                <X class="absolute inset-0 m-auto size-3.5 text-muted-foreground" />
+                <ColorSwatchPickerItemIndicator class="sr-only">
+                  {{ $t('components.categoryColorPicker.noColor') }}
+                </ColorSwatchPickerItemIndicator>
+              </ColorSwatchPickerItem>
+            </ColorSwatchPickerRoot>
           </AppFormField>
           <AppStatusText v-if="renameError">{{ renameError }}</AppStatusText>
         </AppDialogBody>

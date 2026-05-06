@@ -210,10 +210,12 @@ class ReportingTest {
         @DisplayName("expense totals in household mode use household query")
         fun expenseTotalsHouseholdMode() {
             val householdId = UUID.randomUUID()
+            val sharedAccountIds = setOf(checkingId)
             `when`(manageHousehold.isActiveMember(householdId, 1L)).thenReturn(true)
             `when`(manageHousehold.getRolloverDay(householdId)).thenReturn(1)
+            `when`(manageHousehold.getSharedAccountIds(householdId)).thenReturn(sharedAccountIds)
             `when`(
-                ledgerSplitRepository.monthlyExpensesByHousehold(householdId, janStart, janEnd, SplitSide.DEBIT, SplitSide.CREDIT),
+                ledgerSplitRepository.monthlyExpensesByHousehold(sharedAccountIds, janStart, janEnd, SplitSide.DEBIT, SplitSide.CREDIT),
             ).thenReturn(
                 listOf(
                     MonthlyExpenseProjection(groceriesId, "Groceries", foodTagId, "Food", "EUR", 5000L),
@@ -221,7 +223,7 @@ class ReportingTest {
                 ),
             )
             `when`(
-                ledgerSplitRepository.monthlyLiabilityPaymentsByHousehold(householdId, janStart, janEnd, SplitSide.DEBIT, SplitSide.CREDIT),
+                ledgerSplitRepository.monthlyLiabilityPaymentsByHousehold(sharedAccountIds, janStart, janEnd, SplitSide.DEBIT, SplitSide.CREDIT),
             ).thenReturn(emptyList())
 
             val result = service.getMonthlyExpenses(userA, jan2026, "HOUSEHOLD", householdId)
@@ -258,15 +260,17 @@ class ReportingTest {
         @DisplayName("household mode succeeds for active member")
         fun householdModeSucceedsForActiveMember() {
             val householdId = UUID.randomUUID()
+            val sharedAccountIds = setOf(checkingId)
             `when`(manageHousehold.isActiveMember(householdId, 1L)).thenReturn(true)
             `when`(manageHousehold.getRolloverDay(householdId)).thenReturn(1)
+            `when`(manageHousehold.getSharedAccountIds(householdId)).thenReturn(sharedAccountIds)
             `when`(
-                ledgerSplitRepository.monthlyExpensesByHousehold(householdId, janStart, janEnd, SplitSide.DEBIT, SplitSide.CREDIT),
+                ledgerSplitRepository.monthlyExpensesByHousehold(sharedAccountIds, janStart, janEnd, SplitSide.DEBIT, SplitSide.CREDIT),
             ).thenReturn(
                 listOf(MonthlyExpenseProjection(groceriesId, "Groceries", foodTagId, "Food", "EUR", 7000L)),
             )
             `when`(
-                ledgerSplitRepository.monthlyLiabilityPaymentsByHousehold(householdId, janStart, janEnd, SplitSide.DEBIT, SplitSide.CREDIT),
+                ledgerSplitRepository.monthlyLiabilityPaymentsByHousehold(sharedAccountIds, janStart, janEnd, SplitSide.DEBIT, SplitSide.CREDIT),
             ).thenReturn(emptyList())
 
             val result = service.getMonthlyExpenses(userA, jan2026, "HOUSEHOLD", householdId)

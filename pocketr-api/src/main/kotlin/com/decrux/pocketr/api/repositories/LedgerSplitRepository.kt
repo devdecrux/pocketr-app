@@ -232,13 +232,19 @@ interface LedgerSplitRepository : JpaRepository<LedgerSplit, UUID> {
         WHERE a.type = com.decrux.pocketr.api.entities.db.ledger.AccountType.EXPENSE
           AND ls.transaction.txnDate >= :monthStart
           AND ls.transaction.txnDate < :monthEnd
-          AND ls.transaction.householdId = :householdId
+          AND EXISTS (
+              SELECT 1
+              FROM LedgerSplit visibleSplit
+              JOIN visibleSplit.account visibleAccount
+              WHERE visibleSplit.transaction = ls.transaction
+                AND visibleAccount.id IN :sharedAccountIds
+          )
         GROUP BY a.id, a.name, ct.id, ct.name, ct.color, a.currency.code
         ORDER BY a.name, ct.name
         """,
     )
     fun monthlyExpensesByHousehold(
-        householdId: UUID,
+        sharedAccountIds: Set<UUID>,
         monthStart: LocalDate,
         monthEnd: LocalDate,
         debit: SplitSide,
@@ -259,7 +265,13 @@ interface LedgerSplitRepository : JpaRepository<LedgerSplit, UUID> {
           AND ls.side = :liabilityDebit
           AND ls.transaction.txnDate >= :monthStart
           AND ls.transaction.txnDate < :monthEnd
-          AND ls.transaction.householdId = :householdId
+          AND EXISTS (
+              SELECT 1
+              FROM LedgerSplit visibleSplit
+              JOIN visibleSplit.account visibleAccount
+              WHERE visibleSplit.transaction = ls.transaction
+                AND visibleAccount.id IN :sharedAccountIds
+          )
           AND EXISTS (
               SELECT 1
               FROM LedgerSplit counterSplit
@@ -273,7 +285,7 @@ interface LedgerSplitRepository : JpaRepository<LedgerSplit, UUID> {
         """,
     )
     fun monthlyLiabilityPaymentsByHousehold(
-        householdId: UUID,
+        sharedAccountIds: Set<UUID>,
         monthStart: LocalDate,
         monthEnd: LocalDate,
         liabilityDebit: SplitSide,
@@ -296,13 +308,19 @@ interface LedgerSplitRepository : JpaRepository<LedgerSplit, UUID> {
         JOIN ls.account a
         LEFT JOIN ls.categoryTag ct
         WHERE a.type = com.decrux.pocketr.api.entities.db.ledger.AccountType.EXPENSE
-          AND ls.transaction.householdId = :householdId
+          AND EXISTS (
+              SELECT 1
+              FROM LedgerSplit visibleSplit
+              JOIN visibleSplit.account visibleAccount
+              WHERE visibleSplit.transaction = ls.transaction
+                AND visibleAccount.id IN :sharedAccountIds
+          )
         GROUP BY a.id, a.name, ct.id, ct.name, ct.color, a.currency.code
         ORDER BY a.name, ct.name
         """,
     )
     fun lifetimeExpensesByHousehold(
-        householdId: UUID,
+        sharedAccountIds: Set<UUID>,
         debit: SplitSide,
         credit: SplitSide,
     ): List<MonthlyExpenseProjection>
@@ -319,7 +337,13 @@ interface LedgerSplitRepository : JpaRepository<LedgerSplit, UUID> {
         JOIN ls.account a
         WHERE a.type = com.decrux.pocketr.api.entities.db.ledger.AccountType.LIABILITY
           AND ls.side = :liabilityDebit
-          AND ls.transaction.householdId = :householdId
+          AND EXISTS (
+              SELECT 1
+              FROM LedgerSplit visibleSplit
+              JOIN visibleSplit.account visibleAccount
+              WHERE visibleSplit.transaction = ls.transaction
+                AND visibleAccount.id IN :sharedAccountIds
+          )
           AND EXISTS (
               SELECT 1
               FROM LedgerSplit counterSplit
@@ -333,7 +357,7 @@ interface LedgerSplitRepository : JpaRepository<LedgerSplit, UUID> {
         """,
     )
     fun lifetimeLiabilityPaymentsByHousehold(
-        householdId: UUID,
+        sharedAccountIds: Set<UUID>,
         liabilityDebit: SplitSide,
         assetCredit: SplitSide,
     ): List<LiabilityPaymentProjection>

@@ -181,6 +181,16 @@ const topCategoryChartEntries = computed(() => {
   return categoryChartView.value === 'lifetime' ? lifetimeReport.value : currentEntries.value
 })
 
+const topCategoryChartCurrency = computed(() => {
+  const currencies = new Set(
+    topCategoryChartEntries.value
+      .filter((entry) => entry.netMinor > 0)
+      .map((entry) => entry.currency),
+  )
+  if (currencies.has(DASHBOARD_CURRENCY)) return DASHBOARD_CURRENCY
+  return [...currencies].sort()[0] ?? DASHBOARD_CURRENCY
+})
+
 const hasTopCategoryChartData = computed(() => {
   return topCategoryChartItems.value.length > 0
 })
@@ -190,9 +200,10 @@ const categoryChartLoading = computed(() => {
 })
 
 const topCategoryChartItems = computed(() => {
+  const chartCurrency = topCategoryChartCurrency.value
   const categories = new Map<string, { name: string; amountMinor: number; color: string }>()
   for (const entry of topCategoryChartEntries.value) {
-    if (entry.currency !== DASHBOARD_CURRENCY) continue
+    if (entry.currency !== chartCurrency) continue
 
     const name = entry.categoryTagName ?? t('views.dashboard.uncategorized')
     const key = entry.categoryTagId ?? name
@@ -212,7 +223,8 @@ const topCategoryChartItems = computed(() => {
 })
 
 const topCategoryChartOptions = computed(() => {
-  const minorUnit = currencyStore.getMinorUnit(DASHBOARD_CURRENCY)
+  const chartCurrency = topCategoryChartCurrency.value
+  const minorUnit = currencyStore.getMinorUnit(chartCurrency)
   const items = topCategoryChartItems.value
   return {
     grid: { left: 8, right: 40, top: 8, bottom: 12, containLabel: true },
@@ -220,12 +232,12 @@ const topCategoryChartOptions = computed(() => {
       trigger: 'axis',
       axisPointer: { type: 'shadow' },
       valueFormatter: (value: number) =>
-        formatMinor(Math.round(value * 10 ** minorUnit), DASHBOARD_CURRENCY, minorUnit),
+        formatMinor(Math.round(value * 10 ** minorUnit), chartCurrency, minorUnit),
     },
     xAxis: {
       type: 'value',
       axisLabel: {
-        formatter: (value: number) => formatCompactMajor(value, DASHBOARD_CURRENCY),
+        formatter: (value: number) => formatCompactMajor(value, chartCurrency),
       },
     },
     yAxis: {
@@ -243,7 +255,7 @@ const topCategoryChartOptions = computed(() => {
           show: true,
           position: 'right',
           formatter: ({ value }: { value: number }) =>
-            formatMinor(Math.round(value * 10 ** minorUnit), DASHBOARD_CURRENCY, minorUnit),
+            formatMinor(Math.round(value * 10 ** minorUnit), chartCurrency, minorUnit),
         },
         animationDuration: 300,
         animationDurationUpdate: 600,
