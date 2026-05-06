@@ -35,9 +35,11 @@ class LedgerController(
         @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) dateTo: LocalDate?,
         @RequestParam accountId: UUID?,
         @RequestParam categoryId: UUID?,
+        @RequestParam(defaultValue = "false") spendingOnly: Boolean,
         @RequestParam(defaultValue = "0") page: Int,
         @RequestParam(defaultValue = "15") size: Int,
-    ): PagedTransactionsDto = manageLedger.listTransactions(user, mode, householdId, dateFrom, dateTo, accountId, categoryId, page, size)
+    ): PagedTransactionsDto =
+        manageLedger.listTransactions(user, mode, householdId, dateFrom, dateTo, accountId, categoryId, spendingOnly, page, size)
 
     @PostMapping("/transactions")
     @ResponseStatus(HttpStatus.CREATED)

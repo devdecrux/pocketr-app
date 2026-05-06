@@ -81,9 +81,17 @@ class GenerateReportImpl(
                 }
                 rolloverDay = manageHousehold.getRolloverDay(hId)
                 val rolloverPeriod = RolloverPeriod.startingIn(period, rolloverDay)
+                val sharedAccountIds = manageHousehold.getSharedAccountIds(hId)
+                if (sharedAccountIds.isEmpty()) {
+                    return RolloverExpenseReportDto(
+                        periodStart = rolloverPeriod.startInclusive,
+                        periodEnd = rolloverPeriod.endExclusive.minusDays(1),
+                        entries = emptyList(),
+                    )
+                }
                 expenseRows =
                     ledgerSplitRepository.monthlyExpensesByHousehold(
-                        hId,
+                        sharedAccountIds,
                         rolloverPeriod.startInclusive,
                         rolloverPeriod.endExclusive,
                         SplitSide.DEBIT,
@@ -91,7 +99,7 @@ class GenerateReportImpl(
                     )
                 liabilityPaymentRows =
                     ledgerSplitRepository.monthlyLiabilityPaymentsByHousehold(
-                        hId,
+                        sharedAccountIds,
                         rolloverPeriod.startInclusive,
                         rolloverPeriod.endExclusive,
                         SplitSide.DEBIT,
@@ -114,6 +122,69 @@ class GenerateReportImpl(
                     addAll(liabilityPaymentRows.map { it.toDebtPaymentDto() })
                 },
         )
+    }
+
+    @Transactional(readOnly = true)
+    override fun getLifetimeExpenses(
+        user: User,
+        mode: String,
+        householdId: UUID?,
+    ): List<MonthlyExpenseDto> {
+        val expenseRows: List<MonthlyExpenseProjection>
+        val liabilityPaymentRows: List<LiabilityPaymentProjection>
+
+        when (mode.uppercase()) {
+            MODE_INDIVIDUAL -> {
+                val userId = requireNotNull(user.userId) { "User ID must not be null" }
+                expenseRows =
+                    ledgerSplitRepository.lifetimeExpensesByUser(
+                        userId,
+                        SplitSide.DEBIT,
+                        SplitSide.CREDIT,
+                    )
+                liabilityPaymentRows =
+                    ledgerSplitRepository.lifetimeLiabilityPaymentsByUser(
+                        userId,
+                        SplitSide.DEBIT,
+                        SplitSide.CREDIT,
+                    )
+            }
+
+            MODE_HOUSEHOLD -> {
+                val hId =
+                    householdId
+                        ?: throw BadRequestException("householdId is required for household mode")
+                val userId = requireNotNull(user.userId) { "User ID must not be null" }
+                if (!manageHousehold.isActiveMember(hId, userId)) {
+                    throw ForbiddenException("Not an active member of this household")
+                }
+                val sharedAccountIds = manageHousehold.getSharedAccountIds(hId)
+                if (sharedAccountIds.isEmpty()) {
+                    return emptyList()
+                }
+                expenseRows =
+                    ledgerSplitRepository.lifetimeExpensesByHousehold(
+                        sharedAccountIds,
+                        SplitSide.DEBIT,
+                        SplitSide.CREDIT,
+                    )
+                liabilityPaymentRows =
+                    ledgerSplitRepository.lifetimeLiabilityPaymentsByHousehold(
+                        sharedAccountIds,
+                        SplitSide.DEBIT,
+                        SplitSide.CREDIT,
+                    )
+            }
+
+            else -> {
+                throw BadRequestException("Invalid mode: $mode. Must be INDIVIDUAL or HOUSEHOLD")
+            }
+        }
+
+        return buildList {
+            addAll(expenseRows.map { it.toDto() })
+            addAll(liabilityPaymentRows.map { it.toDebtPaymentDto() })
+        }
     }
 
     @Transactional(readOnly = true)
@@ -235,6 +306,7 @@ class GenerateReportImpl(
                 expenseAccountName = expenseAccountName,
                 categoryTagId = categoryTagId,
                 categoryTagName = categoryTagName,
+                categoryTagColor = categoryTagColor,
                 currency = currency,
                 netMinor = netMinor,
             )
@@ -245,6 +317,7 @@ class GenerateReportImpl(
                 expenseAccountName = liabilityAccountName,
                 categoryTagId = null,
                 categoryTagName = DEBT_PAYMENT_CATEGORY_NAME,
+                categoryTagColor = null,
                 currency = currency,
                 netMinor = netMinor,
             )

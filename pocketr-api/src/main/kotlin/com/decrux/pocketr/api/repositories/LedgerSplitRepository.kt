@@ -99,7 +99,8 @@ interface LedgerSplitRepository : JpaRepository<LedgerSplit, UUID> {
             ct.name,
             a.currency.code,
             COALESCE(SUM(CASE WHEN ls.side = :debit THEN ls.amountMinor ELSE 0 END), 0)
-          - COALESCE(SUM(CASE WHEN ls.side = :credit THEN ls.amountMinor ELSE 0 END), 0)
+          - COALESCE(SUM(CASE WHEN ls.side = :credit THEN ls.amountMinor ELSE 0 END), 0),
+            ct.color
         )
         FROM LedgerSplit ls
         JOIN ls.account a
@@ -108,7 +109,7 @@ interface LedgerSplitRepository : JpaRepository<LedgerSplit, UUID> {
           AND ls.transaction.txnDate >= :monthStart
           AND ls.transaction.txnDate < :monthEnd
           AND a.owner.userId = :userId
-        GROUP BY a.id, a.name, ct.id, ct.name, a.currency.code
+        GROUP BY a.id, a.name, ct.id, ct.name, ct.color, a.currency.code
         ORDER BY a.name, ct.name
         """,
     )
@@ -164,7 +165,66 @@ interface LedgerSplitRepository : JpaRepository<LedgerSplit, UUID> {
             ct.name,
             a.currency.code,
             COALESCE(SUM(CASE WHEN ls.side = :debit THEN ls.amountMinor ELSE 0 END), 0)
-          - COALESCE(SUM(CASE WHEN ls.side = :credit THEN ls.amountMinor ELSE 0 END), 0)
+          - COALESCE(SUM(CASE WHEN ls.side = :credit THEN ls.amountMinor ELSE 0 END), 0),
+            ct.color
+        )
+        FROM LedgerSplit ls
+        JOIN ls.account a
+        LEFT JOIN ls.categoryTag ct
+        WHERE a.type = com.decrux.pocketr.api.entities.db.ledger.AccountType.EXPENSE
+          AND a.owner.userId = :userId
+        GROUP BY a.id, a.name, ct.id, ct.name, ct.color, a.currency.code
+        ORDER BY a.name, ct.name
+        """,
+    )
+    fun lifetimeExpensesByUser(
+        userId: Long,
+        debit: SplitSide,
+        credit: SplitSide,
+    ): List<MonthlyExpenseProjection>
+
+    @Query(
+        """
+        SELECT NEW com.decrux.pocketr.api.repositories.projections.LiabilityPaymentProjection(
+            a.id,
+            a.name,
+            a.currency.code,
+            COALESCE(SUM(ls.amountMinor), 0)
+        )
+        FROM LedgerSplit ls
+        JOIN ls.account a
+        WHERE a.type = com.decrux.pocketr.api.entities.db.ledger.AccountType.LIABILITY
+          AND ls.side = :liabilityDebit
+          AND a.owner.userId = :userId
+          AND EXISTS (
+              SELECT 1
+              FROM LedgerSplit counterSplit
+              JOIN counterSplit.account counterAccount
+              WHERE counterSplit.transaction = ls.transaction
+                AND counterSplit.side = :assetCredit
+                AND counterAccount.type = com.decrux.pocketr.api.entities.db.ledger.AccountType.ASSET
+          )
+        GROUP BY a.id, a.name, a.currency.code
+        ORDER BY a.name
+        """,
+    )
+    fun lifetimeLiabilityPaymentsByUser(
+        userId: Long,
+        liabilityDebit: SplitSide,
+        assetCredit: SplitSide,
+    ): List<LiabilityPaymentProjection>
+
+    @Query(
+        """
+        SELECT NEW com.decrux.pocketr.api.repositories.projections.MonthlyExpenseProjection(
+            a.id,
+            a.name,
+            ct.id,
+            ct.name,
+            a.currency.code,
+            COALESCE(SUM(CASE WHEN ls.side = :debit THEN ls.amountMinor ELSE 0 END), 0)
+          - COALESCE(SUM(CASE WHEN ls.side = :credit THEN ls.amountMinor ELSE 0 END), 0),
+            ct.color
         )
         FROM LedgerSplit ls
         JOIN ls.account a
@@ -172,13 +232,19 @@ interface LedgerSplitRepository : JpaRepository<LedgerSplit, UUID> {
         WHERE a.type = com.decrux.pocketr.api.entities.db.ledger.AccountType.EXPENSE
           AND ls.transaction.txnDate >= :monthStart
           AND ls.transaction.txnDate < :monthEnd
-          AND ls.transaction.householdId = :householdId
-        GROUP BY a.id, a.name, ct.id, ct.name, a.currency.code
+          AND EXISTS (
+              SELECT 1
+              FROM LedgerSplit visibleSplit
+              JOIN visibleSplit.account visibleAccount
+              WHERE visibleSplit.transaction = ls.transaction
+                AND visibleAccount.id IN :sharedAccountIds
+          )
+        GROUP BY a.id, a.name, ct.id, ct.name, ct.color, a.currency.code
         ORDER BY a.name, ct.name
         """,
     )
     fun monthlyExpensesByHousehold(
-        householdId: UUID,
+        sharedAccountIds: Set<UUID>,
         monthStart: LocalDate,
         monthEnd: LocalDate,
         debit: SplitSide,
@@ -199,7 +265,13 @@ interface LedgerSplitRepository : JpaRepository<LedgerSplit, UUID> {
           AND ls.side = :liabilityDebit
           AND ls.transaction.txnDate >= :monthStart
           AND ls.transaction.txnDate < :monthEnd
-          AND ls.transaction.householdId = :householdId
+          AND EXISTS (
+              SELECT 1
+              FROM LedgerSplit visibleSplit
+              JOIN visibleSplit.account visibleAccount
+              WHERE visibleSplit.transaction = ls.transaction
+                AND visibleAccount.id IN :sharedAccountIds
+          )
           AND EXISTS (
               SELECT 1
               FROM LedgerSplit counterSplit
@@ -213,9 +285,79 @@ interface LedgerSplitRepository : JpaRepository<LedgerSplit, UUID> {
         """,
     )
     fun monthlyLiabilityPaymentsByHousehold(
-        householdId: UUID,
+        sharedAccountIds: Set<UUID>,
         monthStart: LocalDate,
         monthEnd: LocalDate,
+        liabilityDebit: SplitSide,
+        assetCredit: SplitSide,
+    ): List<LiabilityPaymentProjection>
+
+    @Query(
+        """
+        SELECT NEW com.decrux.pocketr.api.repositories.projections.MonthlyExpenseProjection(
+            a.id,
+            a.name,
+            ct.id,
+            ct.name,
+            a.currency.code,
+            COALESCE(SUM(CASE WHEN ls.side = :debit THEN ls.amountMinor ELSE 0 END), 0)
+          - COALESCE(SUM(CASE WHEN ls.side = :credit THEN ls.amountMinor ELSE 0 END), 0),
+            ct.color
+        )
+        FROM LedgerSplit ls
+        JOIN ls.account a
+        LEFT JOIN ls.categoryTag ct
+        WHERE a.type = com.decrux.pocketr.api.entities.db.ledger.AccountType.EXPENSE
+          AND EXISTS (
+              SELECT 1
+              FROM LedgerSplit visibleSplit
+              JOIN visibleSplit.account visibleAccount
+              WHERE visibleSplit.transaction = ls.transaction
+                AND visibleAccount.id IN :sharedAccountIds
+          )
+        GROUP BY a.id, a.name, ct.id, ct.name, ct.color, a.currency.code
+        ORDER BY a.name, ct.name
+        """,
+    )
+    fun lifetimeExpensesByHousehold(
+        sharedAccountIds: Set<UUID>,
+        debit: SplitSide,
+        credit: SplitSide,
+    ): List<MonthlyExpenseProjection>
+
+    @Query(
+        """
+        SELECT NEW com.decrux.pocketr.api.repositories.projections.LiabilityPaymentProjection(
+            a.id,
+            a.name,
+            a.currency.code,
+            COALESCE(SUM(ls.amountMinor), 0)
+        )
+        FROM LedgerSplit ls
+        JOIN ls.account a
+        WHERE a.type = com.decrux.pocketr.api.entities.db.ledger.AccountType.LIABILITY
+          AND ls.side = :liabilityDebit
+          AND EXISTS (
+              SELECT 1
+              FROM LedgerSplit visibleSplit
+              JOIN visibleSplit.account visibleAccount
+              WHERE visibleSplit.transaction = ls.transaction
+                AND visibleAccount.id IN :sharedAccountIds
+          )
+          AND EXISTS (
+              SELECT 1
+              FROM LedgerSplit counterSplit
+              JOIN counterSplit.account counterAccount
+              WHERE counterSplit.transaction = ls.transaction
+                AND counterSplit.side = :assetCredit
+                AND counterAccount.type = com.decrux.pocketr.api.entities.db.ledger.AccountType.ASSET
+          )
+        GROUP BY a.id, a.name, a.currency.code
+        ORDER BY a.name
+        """,
+    )
+    fun lifetimeLiabilityPaymentsByHousehold(
+        sharedAccountIds: Set<UUID>,
         liabilityDebit: SplitSide,
         assetCredit: SplitSide,
     ): List<LiabilityPaymentProjection>

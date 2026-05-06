@@ -221,14 +221,25 @@
     "dashboard": {
       "cards": {
         "accountBalances": "Account Balances",
+        "availableMoney": "Available Money",
         "recentTransactions": "Recent Transactions",
+        "recentExpenses": "Recent Expenses",
         "spendingByAccount": "Spending by Account",
-        "spendingByCategory": "Spending by Category"
+        "spendingByCategory": "Spending by Category",
+        "spendingsForMonth": "Spendings for {month} month",
+        "spendingThisPeriod": "Spending This Period",
+        "spendingTrend": "Spending Trend",
+        "topSpendingCategories": "Top Spending Categories"
       },
+      "debtPayment": "Debt Payment",
       "empty": {
         "accounts": "No accounts yet.",
         "monthlySpending": "No spending data for this month.",
         "transactions": "No transactions yet."
+      },
+      "periodViews": {
+        "lifetime": "Lifetime",
+        "rollover": "Rollover"
       },
       "subtitle": {
         "household": "Household overview",
