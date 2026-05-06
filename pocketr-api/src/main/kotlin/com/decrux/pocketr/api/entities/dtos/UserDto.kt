@@ -6,5 +6,6 @@ data class UserDto(
     val firstName: String?,
     val lastName: String?,
     val language: String,
+    val rolloverDay: Int,
     val avatar: String?,
 )

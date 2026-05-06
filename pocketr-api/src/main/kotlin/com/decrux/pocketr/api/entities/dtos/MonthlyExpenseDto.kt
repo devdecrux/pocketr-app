@@ -7,6 +7,7 @@ data class MonthlyExpenseDto(
     val expenseAccountName: String,
     val categoryTagId: UUID?,
     val categoryTagName: String?,
+    val categoryTagColor: String?,
     val currency: String,
     val netMinor: Long,
 )

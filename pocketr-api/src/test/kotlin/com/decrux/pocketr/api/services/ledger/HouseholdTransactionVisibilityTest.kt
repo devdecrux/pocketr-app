@@ -49,7 +49,7 @@ import java.time.Clock
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneOffset
-import java.util.*
+import java.util.UUID
 
 /**
  * Unit tests for household transaction visibility in listTransactions().
@@ -223,6 +223,7 @@ class HouseholdTransactionVisibilityTest {
                     dateTo = null,
                     accountId = null,
                     categoryId = null,
+                    spendingOnly = false,
                     page = 0,
                     size = 50,
                 )
@@ -262,6 +263,7 @@ class HouseholdTransactionVisibilityTest {
                     dateTo = null,
                     accountId = null,
                     categoryId = null,
+                    spendingOnly = false,
                     page = 0,
                     size = 50,
                 )
@@ -288,6 +290,7 @@ class HouseholdTransactionVisibilityTest {
                     dateTo = null,
                     accountId = null,
                     categoryId = null,
+                    spendingOnly = false,
                     page = 0,
                     size = 50,
                 )
@@ -313,6 +316,7 @@ class HouseholdTransactionVisibilityTest {
                         dateTo = null,
                         accountId = null,
                         categoryId = null,
+                        spendingOnly = false,
                         page = 0,
                         size = 50,
                     )
@@ -335,6 +339,7 @@ class HouseholdTransactionVisibilityTest {
                         dateTo = null,
                         accountId = null,
                         categoryId = null,
+                        spendingOnly = false,
                         page = 0,
                         size = 50,
                     )
@@ -361,6 +366,7 @@ class HouseholdTransactionVisibilityTest {
                     dateTo = null,
                     accountId = null,
                     categoryId = null,
+                    spendingOnly = false,
                     page = 0,
                     size = 50,
                 )
@@ -388,6 +394,7 @@ class HouseholdTransactionVisibilityTest {
                     dateTo = null,
                     accountId = null,
                     categoryId = null,
+                    spendingOnly = false,
                     page = 0,
                     size = 50,
                 )
@@ -414,6 +421,7 @@ class HouseholdTransactionVisibilityTest {
                 dateTo = LocalDate.of(2026, 2, 28),
                 accountId = null,
                 categoryId = null,
+                spendingOnly = false,
                 page = 0,
                 size = 50,
             )
@@ -438,6 +446,7 @@ class HouseholdTransactionVisibilityTest {
                 dateTo = null,
                 accountId = aliceCheckingId,
                 categoryId = null,
+                spendingOnly = false,
                 page = 0,
                 size = 50,
             )
@@ -463,6 +472,7 @@ class HouseholdTransactionVisibilityTest {
                 dateTo = null,
                 accountId = null,
                 categoryId = categoryId,
+                spendingOnly = false,
                 page = 0,
                 size = 50,
             )
@@ -487,6 +497,7 @@ class HouseholdTransactionVisibilityTest {
                 dateTo = LocalDate.of(2026, 2, 28),
                 accountId = aliceCheckingId,
                 categoryId = UUID.randomUUID(),
+                spendingOnly = false,
                 page = 0,
                 size = 50,
             )
@@ -523,6 +534,7 @@ class HouseholdTransactionVisibilityTest {
                     dateTo = null,
                     accountId = null,
                     categoryId = null,
+                    spendingOnly = false,
                     page = 0,
                     size = 50,
                 )
@@ -566,6 +578,7 @@ class HouseholdTransactionVisibilityTest {
                 dateTo = null,
                 accountId = null,
                 categoryId = null,
+                spendingOnly = false,
                 page = 0,
                 size = 50,
             )
@@ -593,6 +606,7 @@ class HouseholdTransactionVisibilityTest {
                     dateTo = null,
                     accountId = null,
                     categoryId = null,
+                    spendingOnly = false,
                     page = 0,
                     size = 50,
                 )
@@ -619,6 +633,7 @@ class HouseholdTransactionVisibilityTest {
                     dateTo = null,
                     accountId = null,
                     categoryId = null,
+                    spendingOnly = false,
                     page = 0,
                     size = 50,
                 )
@@ -641,6 +656,7 @@ class HouseholdTransactionVisibilityTest {
                 dateTo = null,
                 accountId = null,
                 categoryId = null,
+                spendingOnly = false,
                 page = 0,
                 size = 50,
             )
@@ -662,6 +678,7 @@ class HouseholdTransactionVisibilityTest {
                 dateTo = LocalDate.of(2026, 2, 28),
                 accountId = null,
                 categoryId = null,
+                spendingOnly = false,
                 page = 0,
                 size = 50,
             )
@@ -683,6 +700,7 @@ class HouseholdTransactionVisibilityTest {
                 dateTo = null,
                 accountId = aliceCheckingId,
                 categoryId = null,
+                spendingOnly = false,
                 page = 0,
                 size = 50,
             )
@@ -705,6 +723,7 @@ class HouseholdTransactionVisibilityTest {
                 dateTo = null,
                 accountId = null,
                 categoryId = categoryId,
+                spendingOnly = false,
                 page = 0,
                 size = 50,
             )
@@ -727,6 +746,7 @@ class HouseholdTransactionVisibilityTest {
                     dateTo = null,
                     accountId = null,
                     categoryId = null,
+                    spendingOnly = false,
                     page = 0,
                     size = 50,
                 )
@@ -756,6 +776,7 @@ class HouseholdTransactionVisibilityTest {
                 dateTo = null,
                 accountId = null,
                 categoryId = null,
+                spendingOnly = false,
                 page = 0,
                 size = 50,
             )
@@ -807,6 +828,7 @@ class HouseholdTransactionVisibilityTest {
                     dateTo = null,
                     accountId = null,
                     categoryId = null,
+                    spendingOnly = false,
                     page = 0,
                     size = 50,
                 )
@@ -833,6 +855,7 @@ class HouseholdTransactionVisibilityTest {
                     dateTo = null,
                     accountId = null,
                     categoryId = null,
+                    spendingOnly = false,
                     page = 0,
                     size = 50,
                 )

@@ -11,6 +11,7 @@ import {
   listSharedAccounts as apiListSharedAccounts,
   shareAccount as apiShareAccount,
   unshareAccount as apiUnshareAccount,
+  updateHouseholdRolloverDay as apiUpdateHouseholdRolloverDay,
 } from '@/api/households'
 import type {
   CreateHouseholdRequest,
@@ -165,6 +166,22 @@ export const useHouseholdStore = defineStore('household', () => {
     }
   }
 
+  async function updateRolloverDay(householdId: string, rolloverDay: number): Promise<boolean> {
+    error.value = null
+
+    try {
+      currentHousehold.value = await apiUpdateHouseholdRolloverDay(householdId, { rolloverDay })
+      await loadHouseholds()
+      return true
+    } catch (nextError: unknown) {
+      error.value = await resolveErrorMessage(
+        nextError,
+        translate('errors.households.updateRollover'),
+      )
+      return false
+    }
+  }
+
   async function loadSharedAccounts(householdId: string): Promise<void> {
     error.value = null
 
@@ -248,6 +265,7 @@ export const useHouseholdStore = defineStore('household', () => {
     inviteMember,
     acceptInvite,
     leaveHousehold,
+    updateRolloverDay,
     loadSharedAccounts,
     shareAccount,
     unshareAccount,

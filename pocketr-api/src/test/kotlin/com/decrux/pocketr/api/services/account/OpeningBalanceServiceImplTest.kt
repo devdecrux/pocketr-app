@@ -287,6 +287,7 @@ class OpeningBalanceServiceImplTest {
             dateTo: LocalDate?,
             accountId: UUID?,
             categoryId: UUID?,
+            spendingOnly: Boolean,
             page: Int,
             size: Int,
         ): PagedTransactionsDto = PagedTransactionsDto(content = emptyList(), page = 0, size = 50, totalElements = 0, totalPages = 0)

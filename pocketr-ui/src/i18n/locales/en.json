@@ -221,14 +221,25 @@
     "dashboard": {
       "cards": {
         "accountBalances": "Account Balances",
+        "availableMoney": "Available Money",
         "recentTransactions": "Recent Transactions",
+        "recentExpenses": "Recent Expenses",
         "spendingByAccount": "Spending by Account",
-        "spendingByCategory": "Spending by Category"
+        "spendingByCategory": "Spending by Category",
+        "spendingsForMonth": "Spendings for {month} month",
+        "spendingThisPeriod": "Spending This Period",
+        "spendingTrend": "Spending Trend",
+        "topSpendingCategories": "Top Spending Categories"
       },
+      "debtPayment": "Debt Payment",
       "empty": {
         "accounts": "No accounts yet.",
         "monthlySpending": "No spending data for this month.",
         "transactions": "No transactions yet."
+      },
+      "periodViews": {
+        "lifetime": "Lifetime",
+        "rollover": "Rollover"
       },
       "subtitle": {
         "household": "Household overview",
@@ -265,6 +276,11 @@
         "joined": "Joined {date}",
         "loading": "Loading members...",
         "title": "Members"
+      },
+      "rollover": {
+        "day": "Expense rollover day",
+        "help": "Household expense balances and reports use this rollover day for all members.",
+        "updated": "Household expense rollover day updated."
       }
     },
     "notFound": {
@@ -287,6 +303,9 @@
         "language": "Language",
         "languageUpdated": "Language updated.",
         "noFileSelected": "No file selected",
+        "rolloverDay": "Expense rollover day",
+        "rolloverHelp": "Expense balances and spending reports restart on this day each month. Days missing from shorter months use month end.",
+        "rolloverUpdated": "Expense rollover day updated.",
         "title": "Profile Settings"
       }
     },
@@ -379,6 +398,9 @@
       "emailRequired": "Email is required.",
       "nameMinLength": "Household name must be at least 3 characters."
     },
+    "rollover": {
+      "dayRange": "Rollover day must be between 1 and 31."
+    },
     "transactions": {
       "requiredPositiveAmount": "Please fill in all required fields and enter a positive amount.",
       "unknownTab": "Unknown tab."
@@ -396,6 +418,9 @@
     },
     "language": {
       "update": "Failed to update language."
+    },
+    "rollover": {
+      "update": "Failed to update rollover day."
     },
     "categories": {
       "create": "Failed to create category.",
@@ -416,6 +441,7 @@
       "loadSharedAccounts": "Failed to load shared accounts.",
       "sendInvitation": "Failed to send invitation.",
       "shareAccount": "Failed to share account.",
+      "updateRollover": "Failed to update household rollover day.",
       "unshareAccount": "Failed to unshare account."
     },
     "transactions": {

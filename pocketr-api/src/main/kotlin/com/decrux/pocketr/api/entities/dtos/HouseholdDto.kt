@@ -6,6 +6,7 @@ import java.util.UUID
 data class HouseholdDto(
     val id: UUID,
     val name: String,
+    val rolloverDay: Int,
     val createdAt: Instant,
     val members: List<HouseholdMemberDto>,
 )

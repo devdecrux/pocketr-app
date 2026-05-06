@@ -4,6 +4,7 @@ import com.decrux.pocketr.api.entities.db.auth.User
 import com.decrux.pocketr.api.entities.dtos.AccountBalanceSummaryDto
 import com.decrux.pocketr.api.entities.dtos.AccountBalanceTimeseriesDto
 import com.decrux.pocketr.api.entities.dtos.MonthlyExpenseDto
+import com.decrux.pocketr.api.entities.dtos.RolloverExpenseReportDto
 import com.decrux.pocketr.api.services.reporting.GenerateReport
 import org.springframework.format.annotation.DateTimeFormat
 import org.springframework.security.core.annotation.AuthenticationPrincipal
@@ -13,7 +14,7 @@ import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 import java.time.LocalDate
 import java.time.YearMonth
-import java.util.*
+import java.util.UUID
 
 @RestController
 @RequestMapping("/api/v1/ledger/reports")
@@ -33,6 +34,21 @@ class ReportingController(
         @RequestParam(required = false) householdId: UUID?,
         @AuthenticationPrincipal user: User,
     ): List<MonthlyExpenseDto> = generateReport.getMonthlyExpenses(user, period, mode, householdId)
+
+    @GetMapping("/expenses")
+    fun getRolloverExpenses(
+        @RequestParam(defaultValue = "INDIVIDUAL") mode: String,
+        @RequestParam @DateTimeFormat(pattern = "yyyy-MM") period: YearMonth,
+        @RequestParam(required = false) householdId: UUID?,
+        @AuthenticationPrincipal user: User,
+    ): RolloverExpenseReportDto = generateReport.getRolloverExpenses(user, period, mode, householdId)
+
+    @GetMapping("/expenses/lifetime")
+    fun getLifetimeExpenses(
+        @RequestParam(defaultValue = "INDIVIDUAL") mode: String,
+        @RequestParam(required = false) householdId: UUID?,
+        @AuthenticationPrincipal user: User,
+    ): List<MonthlyExpenseDto> = generateReport.getLifetimeExpenses(user, mode, householdId)
 
     @GetMapping("/timeseries")
     fun getBalanceTimeseries(

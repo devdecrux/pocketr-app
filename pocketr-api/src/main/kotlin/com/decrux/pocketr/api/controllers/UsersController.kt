@@ -2,6 +2,7 @@ package com.decrux.pocketr.api.controllers
 
 import com.decrux.pocketr.api.entities.db.auth.User
 import com.decrux.pocketr.api.entities.dtos.RegisterUserDto
+import com.decrux.pocketr.api.entities.dtos.UpdateRolloverDayDto
 import com.decrux.pocketr.api.entities.dtos.UpdateUserLanguageDto
 import com.decrux.pocketr.api.entities.dtos.UserDto
 import com.decrux.pocketr.api.services.user_avatar.UserAvatarService
@@ -47,4 +48,10 @@ class UsersController(
         @RequestBody updateUserLanguageDto: UpdateUserLanguageDto,
         @AuthenticationPrincipal user: User,
     ): UserDto = manageUserPreferences.updateLanguage(user, updateUserLanguageDto)
+
+    @PatchMapping("/rollover")
+    fun updateRolloverDay(
+        @RequestBody updateRolloverDayDto: UpdateRolloverDayDto,
+        @AuthenticationPrincipal user: User,
+    ): UserDto = manageUserPreferences.updateRolloverDay(user, updateRolloverDayDto)
 }

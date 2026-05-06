@@ -26,7 +26,8 @@ import org.mockito.Mockito.mock
 import org.mockito.Mockito.`when`
 import java.time.LocalDate
 import java.time.YearMonth
-import java.util.*
+import java.util.Optional
+import java.util.UUID
 
 /**
  * Unit tests for GenerateReportImpl (Section 12.3).
@@ -87,8 +88,24 @@ class ReportingTest {
             `when`(ledgerSplitRepository.computeBalance(checkingId, asOf, SplitSide.DEBIT, SplitSide.CREDIT)).thenReturn(190000L)
             `when`(ledgerSplitRepository.computeBalance(savingsId, asOf, SplitSide.DEBIT, SplitSide.CREDIT)).thenReturn(50000L)
             // EXPENSE (debit-normal)
-            `when`(ledgerSplitRepository.computeBalance(groceriesId, asOf, SplitSide.DEBIT, SplitSide.CREDIT)).thenReturn(8500L)
-            `when`(ledgerSplitRepository.computeBalance(utilitiesId, asOf, SplitSide.DEBIT, SplitSide.CREDIT)).thenReturn(4500L)
+            `when`(
+                ledgerSplitRepository.computeBalanceBetween(
+                    groceriesId,
+                    LocalDate.of(2026, 2, 1),
+                    asOf,
+                    SplitSide.DEBIT,
+                    SplitSide.CREDIT,
+                ),
+            ).thenReturn(8500L)
+            `when`(
+                ledgerSplitRepository.computeBalanceBetween(
+                    utilitiesId,
+                    LocalDate.of(2026, 2, 1),
+                    asOf,
+                    SplitSide.DEBIT,
+                    SplitSide.CREDIT,
+                ),
+            ).thenReturn(4500L)
             // INCOME (credit-normal): balance = CREDIT - DEBIT
             `when`(ledgerSplitRepository.computeBalance(salaryId, asOf, SplitSide.CREDIT, SplitSide.DEBIT)).thenReturn(400000L)
             // LIABILITY (credit-normal)
@@ -193,9 +210,12 @@ class ReportingTest {
         @DisplayName("expense totals in household mode use household query")
         fun expenseTotalsHouseholdMode() {
             val householdId = UUID.randomUUID()
+            val sharedAccountIds = setOf(checkingId)
             `when`(manageHousehold.isActiveMember(householdId, 1L)).thenReturn(true)
+            `when`(manageHousehold.getRolloverDay(householdId)).thenReturn(1)
+            `when`(manageHousehold.getSharedAccountIds(householdId)).thenReturn(sharedAccountIds)
             `when`(
-                ledgerSplitRepository.monthlyExpensesByHousehold(householdId, janStart, janEnd, SplitSide.DEBIT, SplitSide.CREDIT),
+                ledgerSplitRepository.monthlyExpensesByHousehold(sharedAccountIds, janStart, janEnd, SplitSide.DEBIT, SplitSide.CREDIT),
             ).thenReturn(
                 listOf(
                     MonthlyExpenseProjection(groceriesId, "Groceries", foodTagId, "Food", "EUR", 5000L),
@@ -203,7 +223,7 @@ class ReportingTest {
                 ),
             )
             `when`(
-                ledgerSplitRepository.monthlyLiabilityPaymentsByHousehold(householdId, janStart, janEnd, SplitSide.DEBIT, SplitSide.CREDIT),
+                ledgerSplitRepository.monthlyLiabilityPaymentsByHousehold(sharedAccountIds, janStart, janEnd, SplitSide.DEBIT, SplitSide.CREDIT),
             ).thenReturn(emptyList())
 
             val result = service.getMonthlyExpenses(userA, jan2026, "HOUSEHOLD", householdId)
@@ -240,14 +260,17 @@ class ReportingTest {
         @DisplayName("household mode succeeds for active member")
         fun householdModeSucceedsForActiveMember() {
             val householdId = UUID.randomUUID()
+            val sharedAccountIds = setOf(checkingId)
             `when`(manageHousehold.isActiveMember(householdId, 1L)).thenReturn(true)
+            `when`(manageHousehold.getRolloverDay(householdId)).thenReturn(1)
+            `when`(manageHousehold.getSharedAccountIds(householdId)).thenReturn(sharedAccountIds)
             `when`(
-                ledgerSplitRepository.monthlyExpensesByHousehold(householdId, janStart, janEnd, SplitSide.DEBIT, SplitSide.CREDIT),
+                ledgerSplitRepository.monthlyExpensesByHousehold(sharedAccountIds, janStart, janEnd, SplitSide.DEBIT, SplitSide.CREDIT),
             ).thenReturn(
                 listOf(MonthlyExpenseProjection(groceriesId, "Groceries", foodTagId, "Food", "EUR", 7000L)),
             )
             `when`(
-                ledgerSplitRepository.monthlyLiabilityPaymentsByHousehold(householdId, janStart, janEnd, SplitSide.DEBIT, SplitSide.CREDIT),
+                ledgerSplitRepository.monthlyLiabilityPaymentsByHousehold(sharedAccountIds, janStart, janEnd, SplitSide.DEBIT, SplitSide.CREDIT),
             ).thenReturn(emptyList())
 
             val result = service.getMonthlyExpenses(userA, jan2026, "HOUSEHOLD", householdId)

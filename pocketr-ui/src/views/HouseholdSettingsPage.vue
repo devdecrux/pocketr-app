@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { HTTPError } from 'ky'
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useAccountStore } from '@/stores/account'
 import { useAuthStore } from '@/stores/auth'
@@ -25,6 +25,10 @@ const inviteEmail = ref('')
 const isInviting = ref(false)
 const inviteError = ref('')
 const inviteSuccess = ref('')
+const selectedRolloverDay = ref(1)
+const isSavingRollover = ref(false)
+const rolloverError = ref('')
+const rolloverSuccess = ref('')
 
 const sharingAccountId = ref<string | null>(null)
 
@@ -34,6 +38,20 @@ onMounted(async () => {
     householdStore.loadSharedAccounts(householdId.value),
     accountStore.load(),
   ])
+})
+
+watch(
+  () => householdStore.currentHousehold?.rolloverDay,
+  (rolloverDay) => {
+    if (rolloverDay) {
+      selectedRolloverDay.value = rolloverDay
+    }
+  },
+  { immediate: true },
+)
+
+const hasRolloverChanged = computed(() => {
+  return selectedRolloverDay.value !== householdStore.currentHousehold?.rolloverDay
 })
 
 function roleBadgeVariant(role: HouseholdRole) {
@@ -132,6 +150,32 @@ async function handleInvite(): Promise<void> {
     isInviting.value = false
   }
 }
+
+async function saveRolloverDay(): Promise<void> {
+  rolloverError.value = ''
+  rolloverSuccess.value = ''
+
+  if (selectedRolloverDay.value < 1 || selectedRolloverDay.value > 31) {
+    rolloverError.value = translate('validation.rollover.dayRange')
+    return
+  }
+
+  isSavingRollover.value = true
+  try {
+    const success = await householdStore.updateRolloverDay(
+      householdId.value,
+      selectedRolloverDay.value,
+    )
+    if (success) {
+      selectedRolloverDay.value = householdStore.currentHousehold?.rolloverDay ?? 1
+      rolloverSuccess.value = translate('views.householdSettings.rollover.updated')
+    } else {
+      rolloverError.value = householdStore.error ?? translate('errors.households.updateRollover')
+    }
+  } finally {
+    isSavingRollover.value = false
+  }
+}
 </script>
 
 <template>
@@ -148,6 +192,36 @@ async function handleInvite(): Promise<void> {
           }}
         </CardDescription>
       </CardHeader>
+      <CardContent class="space-y-3 border-t border-border pt-4">
+        <div class="flex flex-col gap-3 sm:flex-row sm:items-end">
+          <AppFormField :label="$t('views.householdSettings.rollover.day')" class="sm:max-w-56">
+            <Input
+              v-model.number="selectedRolloverDay"
+              type="number"
+              min="1"
+              max="31"
+              inputmode="numeric"
+              :disabled="!householdStore.isOwnerOrAdmin"
+            />
+          </AppFormField>
+          <Button
+            v-if="householdStore.isOwnerOrAdmin"
+            size="sm"
+            class="w-fit sm:h-9"
+            :disabled="isSavingRollover || !hasRolloverChanged"
+            @click="saveRolloverDay"
+          >
+            {{ isSavingRollover ? $t('common.feedback.saving') : $t('common.actions.save') }}
+          </Button>
+        </div>
+        <p class="text-xs text-muted-foreground">
+          {{ $t('views.householdSettings.rollover.help') }}
+        </p>
+        <AppStatusText v-if="rolloverSuccess" variant="success">{{
+          rolloverSuccess
+        }}</AppStatusText>
+        <AppStatusText v-if="rolloverError">{{ rolloverError }}</AppStatusText>
+      </CardContent>
     </Card>
 
     <!-- Three-column grid -->

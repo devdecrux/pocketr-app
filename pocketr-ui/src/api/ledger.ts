@@ -24,6 +24,7 @@ export function listTxns(params: TxnQuery): Promise<PagedResponse<LedgerTxn>> {
   if (params.dateTo) searchParams.dateTo = params.dateTo
   if (params.accountId) searchParams.accountId = params.accountId
   if (params.categoryId) searchParams.categoryId = params.categoryId
+  if (params.spendingOnly !== undefined) searchParams.spendingOnly = String(params.spendingOnly)
   if (params.page !== undefined) searchParams.page = String(params.page)
   if (params.size !== undefined) searchParams.size = String(params.size)
   return api.get(`${BASE}/transactions`, { searchParams }).json<PagedResponse<LedgerTxn>>()

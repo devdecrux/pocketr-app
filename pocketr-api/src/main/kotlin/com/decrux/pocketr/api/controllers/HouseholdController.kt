@@ -9,18 +9,20 @@ import com.decrux.pocketr.api.entities.dtos.HouseholdMemberDto
 import com.decrux.pocketr.api.entities.dtos.HouseholdSummaryDto
 import com.decrux.pocketr.api.entities.dtos.InviteMemberDto
 import com.decrux.pocketr.api.entities.dtos.ShareAccountDto
+import com.decrux.pocketr.api.entities.dtos.UpdateRolloverDayDto
 import com.decrux.pocketr.api.services.household.ManageHousehold
 import org.springframework.http.HttpStatus
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.PatchMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.ResponseStatus
 import org.springframework.web.bind.annotation.RestController
-import java.util.*
+import java.util.UUID
 
 @RestController
 @RequestMapping("/api/v1/households")
@@ -67,6 +69,13 @@ class HouseholdController(
     ) {
         manageHousehold.leaveHousehold(id, user)
     }
+
+    @PatchMapping("/{id}/rollover")
+    fun updateRolloverDay(
+        @PathVariable id: UUID,
+        @RequestBody dto: UpdateRolloverDayDto,
+        @AuthenticationPrincipal user: User,
+    ): HouseholdDto = manageHousehold.updateRolloverDay(id, dto, user)
 
     @GetMapping("/{id}/shares")
     fun listSharedAccounts(

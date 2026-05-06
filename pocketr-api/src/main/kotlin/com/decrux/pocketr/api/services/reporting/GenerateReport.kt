@@ -4,6 +4,7 @@ import com.decrux.pocketr.api.entities.db.auth.User
 import com.decrux.pocketr.api.entities.dtos.AccountBalanceSummaryDto
 import com.decrux.pocketr.api.entities.dtos.AccountBalanceTimeseriesDto
 import com.decrux.pocketr.api.entities.dtos.MonthlyExpenseDto
+import com.decrux.pocketr.api.entities.dtos.RolloverExpenseReportDto
 import java.time.LocalDate
 import java.time.YearMonth
 import java.util.UUID
@@ -12,6 +13,19 @@ interface GenerateReport {
     fun getMonthlyExpenses(
         user: User,
         period: YearMonth,
+        mode: String,
+        householdId: UUID?,
+    ): List<MonthlyExpenseDto>
+
+    fun getRolloverExpenses(
+        user: User,
+        period: YearMonth,
+        mode: String,
+        householdId: UUID?,
+    ): RolloverExpenseReportDto
+
+    fun getLifetimeExpenses(
+        user: User,
         mode: String,
         householdId: UUID?,
     ): List<MonthlyExpenseDto>
