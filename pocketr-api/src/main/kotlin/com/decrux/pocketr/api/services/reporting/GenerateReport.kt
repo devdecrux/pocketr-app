@@ -24,6 +24,12 @@ interface GenerateReport {
         householdId: UUID?,
     ): RolloverExpenseReportDto
 
+    fun getLifetimeExpenses(
+        user: User,
+        mode: String,
+        householdId: UUID?,
+    ): List<MonthlyExpenseDto>
+
     fun getAllAccountBalances(
         user: User,
         asOf: LocalDate,

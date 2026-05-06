@@ -9,4 +9,5 @@ data class MonthlyExpenseProjection(
     val categoryTagName: String?,
     val currency: String,
     val netMinor: Long,
+    val categoryTagColor: String? = null,
 )

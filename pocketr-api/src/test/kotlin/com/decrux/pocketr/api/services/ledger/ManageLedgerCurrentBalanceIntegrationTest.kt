@@ -388,6 +388,48 @@ class ManageLedgerCurrentBalanceIntegrationTest
         }
 
         @Test
+        @DisplayName("spendingOnly includes expenses and debt payments only")
+        fun spendingOnlyIncludesExpensesAndDebtPaymentsOnly() {
+            val user = persistUser("integration-spending-filter")
+            val cash = persistAccount(user, "Filter Cash", AccountType.ASSET)
+            val savings = persistAccount(user, "Filter Savings", AccountType.ASSET)
+            val expense = persistAccount(user, "Filter Expense", AccountType.EXPENSE)
+            val income = persistAccount(user, "Filter Income", AccountType.INCOME)
+            val liability = persistAccount(user, "Filter Liability", AccountType.LIABILITY)
+            val equity = persistAccount(user, "Filter Equity", AccountType.EQUITY)
+            val cashId = requireNotNull(cash.id)
+            val savingsId = requireNotNull(savings.id)
+            val expenseId = requireNotNull(expense.id)
+            val incomeId = requireNotNull(income.id)
+            val liabilityId = requireNotNull(liability.id)
+            val equityId = requireNotNull(equity.id)
+            val today = LocalDate.now()
+
+            postTxn(user, today, "Expense", cashId to "CREDIT", expenseId to "DEBIT")
+            postTxn(user, today, "Debt payment", cashId to "CREDIT", liabilityId to "DEBIT")
+            postTxn(user, today, "Income", cashId to "DEBIT", incomeId to "CREDIT")
+            postTxn(user, today, "Transfer", savingsId to "DEBIT", cashId to "CREDIT")
+            postTxn(user, today, "Opening balance", cashId to "DEBIT", equityId to "CREDIT")
+            postTxn(user, today, "Opening debt", equityId to "DEBIT", liabilityId to "CREDIT")
+
+            val result =
+                manageLedger.listTransactions(
+                    user = user,
+                    mode = "INDIVIDUAL",
+                    householdId = null,
+                    dateFrom = null,
+                    dateTo = null,
+                    accountId = null,
+                    categoryId = null,
+                    spendingOnly = true,
+                    page = 0,
+                    size = 10,
+                )
+
+            assertEquals(setOf("Expense", "Debt payment"), result.content.map { it.description }.toSet())
+        }
+
+        @Test
         @DisplayName("projection failure rolls back persisted ledger rows")
         fun projectionFailureRollsBackLedgerRows() {
             val user = persistUser("integration-rollback")
@@ -449,4 +491,25 @@ class ManageLedgerCurrentBalanceIntegrationTest
                     currency = eur,
                 ),
             )
+
+        private fun postTxn(
+            user: User,
+            txnDate: LocalDate,
+            description: String,
+            vararg splits: Pair<UUID, String>,
+        ) {
+            manageLedger.createTransaction(
+                dto =
+                    CreateTransactionDto(
+                        txnDate = txnDate,
+                        currency = "EUR",
+                        description = description,
+                        splits =
+                            splits.map { (accountId, side) ->
+                                CreateSplitDto(accountId = accountId, side = side, amountMinor = 1_000)
+                            },
+                    ),
+                creator = user,
+            )
+        }
     }

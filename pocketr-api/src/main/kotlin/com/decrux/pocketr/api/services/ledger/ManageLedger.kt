@@ -27,6 +27,7 @@ interface ManageLedger {
         dateTo: LocalDate?,
         accountId: UUID?,
         categoryId: UUID?,
+        spendingOnly: Boolean,
         page: Int,
         size: Int,
     ): PagedTransactionsDto

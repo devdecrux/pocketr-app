@@ -43,6 +43,13 @@ class ReportingController(
         @AuthenticationPrincipal user: User,
     ): RolloverExpenseReportDto = generateReport.getRolloverExpenses(user, period, mode, householdId)
 
+    @GetMapping("/expenses/lifetime")
+    fun getLifetimeExpenses(
+        @RequestParam(defaultValue = "INDIVIDUAL") mode: String,
+        @RequestParam(required = false) householdId: UUID?,
+        @AuthenticationPrincipal user: User,
+    ): List<MonthlyExpenseDto> = generateReport.getLifetimeExpenses(user, mode, householdId)
+
     @GetMapping("/timeseries")
     fun getBalanceTimeseries(
         @RequestParam accountId: UUID,

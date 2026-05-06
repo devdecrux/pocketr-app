@@ -99,6 +99,7 @@ export interface TxnQuery {
   dateTo?: string
   accountId?: string
   categoryId?: string
+  spendingOnly?: boolean
   page?: number
   size?: number
 }
@@ -125,6 +126,7 @@ export interface MonthlyReportEntry {
   expenseAccountName: string
   categoryTagId: string | null
   categoryTagName: string | null
+  categoryTagColor: string | null
   currency: string
   netMinor: number
 }

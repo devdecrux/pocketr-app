@@ -1,9 +1,11 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, shallowMount } from '@vue/test-utils'
 import { i18n } from '@/i18n'
 import type { Account } from '@/types/ledger'
 
 const getAccountBalances = vi.fn()
+const listTxns = vi.fn()
+const getLifetimeExpenseReport = vi.fn()
 const getMonthlyReport = vi.fn()
 
 const accountStore = {
@@ -63,9 +65,11 @@ vi.mock('@tanstack/vue-table', () => ({
 
 vi.mock('@/api/ledger', () => ({
   getAccountBalances,
+  listTxns,
 }))
 
 vi.mock('@/api/reports', () => ({
+  getLifetimeExpenseReport,
   getMonthlyReport,
 }))
 
@@ -94,12 +98,42 @@ vi.mock('@/stores/ledger', () => ({
   useLedgerStore: () => ledgerStore,
 }))
 
+vi.mock('echarts/core', () => ({
+  use: vi.fn(),
+}))
+
+vi.mock('echarts/charts', () => ({
+  BarChart: {},
+  LineChart: {},
+}))
+
+vi.mock('echarts/components', () => ({
+  GridComponent: {},
+  TooltipComponent: {},
+}))
+
+vi.mock('echarts/renderers', () => ({
+  CanvasRenderer: {},
+}))
+
+vi.mock('vue-echarts', () => ({
+  default: {
+    name: 'VChart',
+    props: ['option', 'autoresize'],
+    template: '<div />',
+  },
+}))
+
 const { default: AccountsPage } = await import('@/views/AccountsPage.vue')
 const { default: DashboardPage } = await import('@/views/DashboardPage.vue')
 
 describe('batch balances page wiring', () => {
   beforeEach(() => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-05-05T12:00:00Z'))
     getAccountBalances.mockReset()
+    listTxns.mockReset()
+    getLifetimeExpenseReport.mockReset()
     getMonthlyReport.mockReset()
     accountStore.load.mockClear()
     currencyStore.load.mockClear()
@@ -120,11 +154,23 @@ describe('batch balances page wiring', () => {
 
     currencyStore.getMinorUnit.mockReturnValue(2)
     getAccountBalances.mockResolvedValue([])
+    listTxns.mockResolvedValue({
+      content: [],
+      page: 0,
+      size: 10,
+      totalElements: 0,
+      totalPages: 0,
+    })
     getMonthlyReport.mockResolvedValue({
       periodStart: '2026-02-01',
       periodEnd: '2026-02-28',
       entries: [],
     })
+    getLifetimeExpenseReport.mockResolvedValue([])
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
   })
 
   it('AccountsPage calls batch balances once per load with all active account ids', async () => {
@@ -184,6 +230,14 @@ describe('batch balances page wiring', () => {
         createdAt: '2026-02-01T00:00:00Z',
       },
       {
+        id: 'acc-liability',
+        ownerUserId: 1,
+        name: 'Shared Credit Card',
+        type: 'LIABILITY',
+        currency: 'EUR',
+        createdAt: '2026-02-01T00:00:00Z',
+      },
+      {
         id: 'acc-expense',
         ownerUserId: 1,
         name: 'Groceries',
@@ -230,6 +284,25 @@ describe('batch balances page wiring', () => {
     expect(householdStore.loadSharedAccounts).toHaveBeenCalledWith('hh-1')
     expect(getAccountBalances).toHaveBeenCalledTimes(1)
     expect(getAccountBalances).toHaveBeenCalledWith(['acc-shared'], undefined, 'hh-1')
+    expect(getMonthlyReport).toHaveBeenCalledTimes(6)
+    expect(getMonthlyReport).toHaveBeenCalledWith({
+      mode: 'HOUSEHOLD',
+      householdId: 'hh-1',
+      period: '2026-05',
+    })
+    expect(getLifetimeExpenseReport).toHaveBeenCalledTimes(1)
+    expect(getLifetimeExpenseReport).toHaveBeenCalledWith({
+      mode: 'HOUSEHOLD',
+      householdId: 'hh-1',
+    })
+    expect(listTxns).toHaveBeenCalledTimes(1)
+    expect(listTxns).toHaveBeenCalledWith({
+      mode: 'HOUSEHOLD',
+      householdId: 'hh-1',
+      spendingOnly: true,
+      page: 0,
+      size: 10,
+    })
     wrapper.unmount()
   })
 })

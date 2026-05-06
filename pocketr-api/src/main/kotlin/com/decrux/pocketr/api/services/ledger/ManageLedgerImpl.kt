@@ -191,6 +191,7 @@ class ManageLedgerImpl(
         dateTo: LocalDate?,
         accountId: UUID?,
         categoryId: UUID?,
+        spendingOnly: Boolean,
         page: Int,
         size: Int,
     ): PagedTransactionsDto {
@@ -218,6 +219,9 @@ class ManageLedgerImpl(
         dateTo?.let { spec = spec.and(LedgerTxnSpecs.dateTo(it)) }
         accountId?.let { spec = spec.and(LedgerTxnSpecs.hasAccount(it)) }
         categoryId?.let { spec = spec.and(LedgerTxnSpecs.hasCategory(it)) }
+        if (spendingOnly) {
+            spec = spec.and(LedgerTxnSpecs.spendingOnly())
+        }
 
         val pageable =
             PageRequest.of(
