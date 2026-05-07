@@ -1,17 +1,32 @@
 name: pocketr
 
 services:
+  pocketr-app:
+    image: ghcr.io/devdecrux/pocketr-app:${POCKETR_VERSION:-latest}
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      DB_URL: ${DB_URL:-jdbc:postgresql://db:5432/${POSTGRES_DB:-pocketr_db}}
+      DB_USERNAME: ${DB_USERNAME:-${POSTGRES_USER:-pocketr_user}}
+      DB_PASSWORD: ${DB_PASSWORD:-${POSTGRES_PASSWORD:?POSTGRES_PASSWORD or DB_PASSWORD is required}}
+      AVATAR_STORAGE_DIR: ${AVATAR_STORAGE_DIR:-/opt/pocketr/avatars}
+    ports:
+      - "${POCKETR_BIND_ADDRESS:-0.0.0.0}:${POCKETR_PORT:-8081}:8081"
+    volumes:
+      - avatar-data:/opt/pocketr/avatars
+
   db:
-    image: postgres:18.0-alpine3.22
+    image: postgres:18.3-alpine3.23
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-pocketr_user}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-${DB_PASSWORD:?POSTGRES_PASSWORD or DB_PASSWORD is required}}
       POSTGRES_DB: ${POSTGRES_DB:-pocketr_db}
-    ports:
-      - "${POSTGRES_BIND_ADDRESS:-127.0.0.1}:${POSTGRES_PORT:-5432}:5432"
     volumes:
-      - db-data:/var/lib/postgresql/data
+      - db-data:/var/lib/postgresql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-pocketr_user} -d ${POSTGRES_DB:-pocketr_db}"]
       interval: 10s
@@ -20,4 +35,5 @@ services:
       start_period: 10s
 
 volumes:
+  avatar-data:
   db-data:

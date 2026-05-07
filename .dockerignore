@@ -1,0 +1,16 @@
+.git
+.github
+.idea
+.run
+.DS_Store
+
+storage
+
+pocketr-api/.gradle
+pocketr-api/build
+
+pocketr-ui/dist
+pocketr-ui/node_modules
+
+pocketr-docs/build
+pocketr-docs/node_modules

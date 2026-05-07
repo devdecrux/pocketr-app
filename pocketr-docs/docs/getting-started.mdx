@@ -12,6 +12,21 @@ Docker is the simplest production path for most users. It packages the app and i
 
 This mode is a good fit if you want a predictable self-hosted installation without manually configuring every runtime component on the host system.
 
+The repository `docker-compose.yaml` starts the released Pocketr app image with bundled PostgreSQL by default:
+
+```bash
+POSTGRES_PASSWORD=change-me docker compose up -d
+```
+
+If you already run PostgreSQL elsewhere, start only the app service and provide the datasource variables:
+
+```bash
+DB_URL=jdbc:postgresql://postgres.example.com:5432/pocketr_db \
+DB_USERNAME=pocketr_user \
+DB_PASSWORD=change-me \
+docker compose up -d --no-deps pocketr-app
+```
+
 ## Production In An LXC Container
 
 Pocketr can also be deployed inside an LXC container, for example on a Proxmox host. This gives you a lightweight, isolated environment while still keeping the deployment close to a traditional Linux server setup.
