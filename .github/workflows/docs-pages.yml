@@ -1,0 +1,45 @@
+name: Pocketr Docs
+
+on:
+  pull_request:
+    branches:
+      - master
+    paths:
+      - pocketr-docs/**
+      - .github/workflows/docs-pages.yml
+      - .github/workflows/release.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: docs-build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build docs
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: pocketr-docs/package-lock.json
+
+      - name: Install dependencies
+        working-directory: pocketr-docs
+        run: npm ci
+
+      - name: Typecheck
+        working-directory: pocketr-docs
+        run: npm run typecheck
+
+      - name: Build
+        working-directory: pocketr-docs
+        run: npm run build

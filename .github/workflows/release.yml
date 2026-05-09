@@ -13,8 +13,7 @@ on:
         default: ""
 
 permissions:
-  contents: write
-  packages: write
+  contents: read
 
 concurrency:
   group: release-${{ inputs.target_tag }}
@@ -24,6 +23,11 @@ jobs:
   release:
     name: Build and publish release
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+    outputs:
+      target_tag: ${{ steps.range.outputs.target_tag }}
 
     steps:
       - name: Check out repository
@@ -246,3 +250,49 @@ jobs:
           files: dist/pocketr-${{ steps.range.outputs.version }}.jar
           fail_on_unmatched_files: true
           make_latest: ${{ steps.range.outputs.make_latest }}
+
+  deploy-docs:
+    name: Build and deploy docs
+    needs: release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Check out released tag
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.release.outputs.target_tag }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: pocketr-docs/package-lock.json
+
+      - name: Install dependencies
+        working-directory: pocketr-docs
+        run: npm ci
+
+      - name: Typecheck
+        working-directory: pocketr-docs
+        run: npm run typecheck
+
+      - name: Build
+        working-directory: pocketr-docs
+        run: npm run build
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: pocketr-docs/build
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v5
