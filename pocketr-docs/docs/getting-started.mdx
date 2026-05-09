@@ -4,21 +4,41 @@ sidebar_position: 2
 
 # Getting Started
 
-Pocketr is designed to be easy to run whether you want a stable home setup or a local development environment. The app can be used in three main modes: two production-oriented options and one local development option.
+Pocketr can be run as a self-hosted app or as a local development environment. Choose the setup that matches how you want to use it.
 
-## Production With Docker
+## How to deploy
 
-Docker is the simplest production path for most users. It packages the app and its required services into containers, making the setup easier to repeat, update, and move between machines.
+### 1. Docker deployment
 
-This mode is a good fit if you want a predictable self-hosted installation without manually configuring every runtime component on the host system.
+Docker is the simplest deployment path for most users. It packages Pocketr and PostgreSQL into containers, making the setup easy to repeat, update, and move between machines.
 
-The repository `docker-compose.yaml` starts the released Pocketr app image with bundled PostgreSQL by default:
+Create a `.env` file with the required database password:
 
-```bash
-POSTGRES_PASSWORD=change-me docker compose up -d
+```dotenv
+POSTGRES_PASSWORD=change-me
 ```
 
-If you already run PostgreSQL elsewhere, start only the app service and provide the datasource variables:
+Start Pocketr:
+
+```bash
+docker compose up -d
+```
+
+The default Compose setup starts:
+
+- Pocketr app
+- PostgreSQL database
+- Persistent storage for uploaded avatars and database data
+
+Useful optional settings:
+
+```dotenv
+POCKETR_VERSION=latest
+POCKETR_BIND_ADDRESS=0.0.0.0
+POCKETR_PORT=8081
+```
+
+If you already run PostgreSQL elsewhere, provide the external datasource settings and start only the app service:
 
 ```bash
 DB_URL=jdbc:postgresql://postgres.example.com:5432/pocketr_db \
@@ -27,18 +47,46 @@ DB_PASSWORD=change-me \
 docker compose up -d --no-deps pocketr-app
 ```
 
-## Production In An LXC Container
+### 2. LXC container
 
 Pocketr can also be deployed inside an LXC container, for example on a Proxmox host. This gives you a lightweight, isolated environment while still keeping the deployment close to a traditional Linux server setup.
 
-This mode is useful if you already manage home lab or server infrastructure with Proxmox and prefer to keep each service in its own container.
+This mode is useful if you already manage home lab or server infrastructure with Proxmox and prefer to keep each service in its own container. Inside the LXC container, install Docker and run the same Docker deployment described above.
 
-## Local Development
+### 3. Local development
 
-For development, Pocketr is intended to be quick to run locally. The local setup uses Docker-based infrastructure, including Traefik and the database, so contributors can start the required services with only a few clicks.
+Pocketr's local development infrastructure is Docker based. It includes Traefik, PostgreSQL and pgAdmin. This way contributors do not need to install every supporting service directly on their machine.
 
-This makes it easier to review the code, test changes, and contribute without spending a lot of time preparing a custom environment.
+JetBrains IntelliJ IDEA gives the most plug-and-play local experience because the repository already contains run configurations. After fetching the repository from GitHub and opening it in IntelliJ, those configurations should be loaded automatically.
 
-## Next Steps
+You can still use any IDE or tools to your preference.
 
-The exact setup guides for each mode will be improved over time. For now, this page gives a high-level view of the supported ways to run Pocketr and where each option fits best.
+In IntelliJ, run the `Pocketr Local Dev` configuration. It starts:
+
+- Docker infrastructure with Traefik, PostgreSQL and pgAdmin
+- Pocketr backend
+- Pocketr frontend
+
+If everything is green, the local development setup should be available at:
+
+```text
+http://localhost
+```
+
+For a manual local setup, start the infrastructure first:
+
+```bash
+docker compose -f docker-compose.dev.yaml up -d db traefik-reverse-proxy pgadmin
+```
+
+Then start the backend and frontend:
+
+```bash
+cd pocketr-api
+./gradlew bootRun
+```
+
+```bash
+cd pocketr-ui
+npm run dev
+```

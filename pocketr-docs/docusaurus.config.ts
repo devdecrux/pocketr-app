@@ -14,7 +14,7 @@ const config: Config = {
     v4: true, // Improve compatibility with the upcoming Docusaurus v4
   },
 
-  // Set the production url of your site here
+  // Set the public URL of your site here.
   url: 'https://docs.pocketr.app',
   // Set the /<baseUrl>/ pathname under which your site is served
   // For GitHub pages deployment, it is often '/<projectName>/'
@@ -41,6 +41,7 @@ const config: Config = {
       'classic',
       {
         docs: {
+          routeBasePath: '/',
           sidebarPath: './sidebars.ts',
           // Please change this to your repo.
           // Remove this to remove the "edit this page" links.
@@ -90,56 +91,31 @@ const config: Config = {
         },
         {to: '/blog', label: 'Blog', position: 'left'},
         {
-          href: 'https://github.com/devdecrux/pocketr-app',
-          label: 'GitHub',
+          type: 'html',
           position: 'right',
+          className: 'github-stars-navbar-item',
+          value:
+            '<a href="https://github.com/devdecrux/pocketr-app" target="_blank" rel="noopener noreferrer" aria-label="Pocketr GitHub repository stars"><img src="https://img.shields.io/github/stars/devdecrux/pocketr-app?style=social" alt="GitHub Repo stars" /></a>',
+        },
+        {
+          href: 'https://github.com/devdecrux/pocketr-app',
+          position: 'right',
+          className: 'header-github-link',
+          'aria-label': 'Pocketr on GitHub',
+          title: 'GitHub',
+        },
+        {
+          href: 'https://discord.gg/HtzYp9bM25',
+          position: 'right',
+          className: 'header-discord-link',
+          'aria-label': 'Join Pocketr on Discord',
+          title: 'Discord',
         },
       ],
     },
     footer: {
       style: 'dark',
-      links: [
-        {
-          title: 'Docs',
-          items: [
-            {
-              label: 'Introduction',
-              to: '/docs/intro',
-            },
-          ],
-        },
-        {
-          title: 'Community',
-          items: [
-            {
-              label: 'Issues',
-              href: 'https://github.com/devdecrux/pocketr-app/issues',
-            },
-            {
-              label: 'Discussions',
-              href: 'https://github.com/devdecrux/pocketr-app/discussions',
-            },
-            {
-              label: 'Security',
-              href: 'https://github.com/devdecrux/pocketr-app/security',
-            },
-          ],
-        },
-        {
-          title: 'More',
-          items: [
-            {
-              label: 'Blog',
-              to: '/blog',
-            },
-            {
-              label: 'GitHub',
-              href: 'https://github.com/devdecrux/pocketr-app',
-            },
-          ],
-        },
-      ],
-      copyright: `Copyright © ${new Date().getFullYear()} Pocketr contributors. Built with Docusaurus.`,
+      copyright: 'Copyright © 2026 Pocketr contributors. Built with Docusaurus.',
     },
     prism: {
       theme: prismThemes.github,

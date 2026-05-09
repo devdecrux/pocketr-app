@@ -67,3 +67,36 @@
 .roadmap-status--exploring {
   color: #f59e0b;
 }
+
+.github-stars-navbar-item {
+  display: flex;
+  align-items: center;
+}
+
+.github-stars-navbar-item a {
+  display: flex;
+  align-items: center;
+}
+
+.github-stars-navbar-item img {
+  display: block;
+}
+
+.header-github-link::before,
+.header-discord-link::before {
+  content: '';
+  width: 1.25rem;
+  height: 1.25rem;
+  display: block;
+  background-color: currentColor;
+}
+
+.header-github-link::before {
+  mask: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M12 .3a12 12 0 0 0-3.8 23.4c.6.1.8-.3.8-.6v-2.1c-3.3.7-4-1.6-4-1.6-.5-1.4-1.3-1.8-1.3-1.8-1.1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1.1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.8-1.6-2.7-.3-5.5-1.3-5.5-5.9 0-1.3.5-2.4 1.2-3.2-.1-.3-.5-1.6.1-3.2 0 0 1-.3 3.3 1.2a11.5 11.5 0 0 1 6 0c2.3-1.5 3.3-1.2 3.3-1.2.6 1.6.2 2.9.1 3.2.8.8 1.2 1.9 1.2 3.2 0 4.6-2.8 5.6-5.5 5.9.4.4.8 1.1.8 2.2v3.2c0 .3.2.7.8.6A12 12 0 0 0 12 .3Z'/%3E%3C/svg%3E")
+    no-repeat center / contain;
+}
+
+.header-discord-link::before {
+  mask: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M20.3 4.4A19.9 19.9 0 0 0 15.4 3l-.2.4c-.2.4-.4.8-.5 1.2a18.2 18.2 0 0 0-5.4 0 12 12 0 0 0-.7-1.6 19.7 19.7 0 0 0-4.9 1.4C.7 8.9-.2 13.3.2 17.6a20 20 0 0 0 6 3.1c.5-.7.9-1.4 1.3-2.1-.7-.3-1.3-.6-1.9-.9l.4-.3a14.3 14.3 0 0 0 12 0l.4.3c-.6.4-1.2.7-1.9.9.4.7.8 1.4 1.3 2.1a19.9 19.9 0 0 0 6-3.1c.5-5-1-9.4-3.5-13.2ZM8 15c-1.2 0-2.1-1.1-2.1-2.4s.9-2.4 2.1-2.4 2.1 1.1 2.1 2.4S9.2 15 8 15Zm8 0c-1.2 0-2.1-1.1-2.1-2.4s.9-2.4 2.1-2.4 2.1 1.1 2.1 2.4S17.2 15 16 15Z'/%3E%3C/svg%3E")
+    no-repeat center / contain;
+}
