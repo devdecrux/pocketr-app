@@ -37,12 +37,33 @@ _Planned ahead:_
 
 ## Docker Compose Files
 
-- `docker-compose.yaml`: production-oriented Docker Compose file. It currently provisions only PostgreSQL and expects `POSTGRES_PASSWORD` to be set.
+- `docker-compose.yaml`: production Docker Compose file for the released app image, bundled PostgreSQL, and persistent avatar storage.
 - `docker-compose.dev.yaml`: local development infrastructure with PostgreSQL, pgAdmin, and Traefik.
+
+## Production With Docker
+
+The production Compose file runs `ghcr.io/devdecrux/pocketr-app:${POCKETR_VERSION:-latest}` and a bundled PostgreSQL database by default. Set a strong database password before starting it:
+
+```bash
+POSTGRES_PASSWORD=change-me docker compose up -d
+```
+
+The app is available on `http://<HOST>:8081` by default. Use `POCKETR_PORT` to change the host port, or `POCKETR_BIND_ADDRESS` to restrict the bind address.
+
+For an external PostgreSQL server, provide the Spring datasource variables and start only the app service:
+
+```bash
+DB_URL=jdbc:postgresql://postgres.example.com:5432/pocketr_db \
+DB_USERNAME=pocketr_user \
+DB_PASSWORD=change-me \
+docker compose up -d --no-deps pocketr-app
+```
+
+When using an external database, do not run bare `docker compose up`; that command starts the bundled PostgreSQL service too.
 
 ### Useful Commands
 
-- Start the production database only: `POSTGRES_PASSWORD=change-me docker compose up -d`
+- Start production app with bundled PostgreSQL: `POSTGRES_PASSWORD=change-me docker compose up -d`
 - Start development infrastructure: `docker compose -f docker-compose.dev.yaml up -d db traefik-reverse-proxy`
 - Stop development infrastructure: `docker compose -f docker-compose.dev.yaml down`
 

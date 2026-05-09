@@ -2,7 +2,7 @@ name: pocketr-dev
 
 services:
   db:
-    image: postgres:18.0-alpine3.22
+    image: postgres:18.3-alpine3.23
     container_name: pocketr-db
     ports:
       - "127.0.0.1:5432:5432"
@@ -12,7 +12,7 @@ services:
       POSTGRES_PASSWORD: pocketr_password
       POSTGRES_DB: pocketr_db
     volumes:
-      - db-data:/var/lib/postgresql/data
+      - db-data:/var/lib/postgresql
     networks:
       - pocketr-network
 

@@ -14,6 +14,12 @@ RUN chmod +x ./gradlew
 RUN ./gradlew bootJar -x test
 
 FROM eclipse-temurin:25-jre-alpine
-COPY --from=backend-builder /backend/build/libs/*.jar app.jar
+RUN addgroup -S pocketr && \
+    adduser -S -G pocketr pocketr && \
+    mkdir -p /opt/pocketr/avatars && \
+    chown -R pocketr:pocketr /opt/pocketr
+WORKDIR /opt/pocketr
+COPY --from=backend-builder --chown=pocketr:pocketr /backend/build/libs/*.jar app.jar
+USER pocketr
 EXPOSE 8081
-CMD ["java", "-jar", "app.jar"]
+ENTRYPOINT ["java", "-jar", "app.jar"]
