@@ -10,20 +10,9 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   type SidebarProps,
-  SidebarSeparator,
+  SidebarSeparator
 } from '@/components/ui/sidebar'
-import {
-  ArrowUpDown,
-  ChevronsUpDown,
-  LayoutDashboard,
-  LogOut,
-  Palette,
-  RotateCw,
-  Shapes,
-  User,
-  Users,
-  WalletMinimal,
-} from 'lucide-vue-next'
+import { ArrowUpDown, ChevronsUpDown, LayoutDashboard, LogOut, Palette, RotateCw, Shapes, User, Users, WalletMinimal } from 'lucide-vue-next'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -33,7 +22,7 @@ import {
   DropdownMenuSub,
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
-  DropdownMenuTrigger,
+  DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import ThemeMenu from '@/components/ThemeMenu.vue'
@@ -44,6 +33,7 @@ import { useAuthStore } from '@/stores/auth'
 import { useHouseholdStore } from '@/stores/household'
 import { useModeStore } from '@/stores/mode'
 import { api } from '@/api/http'
+import { initialsFromName } from '@/utils/initials'
 import pocketrLogo from '@/assets/logo.svg'
 import pocketrDarkLogo from '@/assets/logo-dark.svg'
 
@@ -96,6 +86,9 @@ const props = withDefaults(defineProps<SidebarProps>(), {
 
 const router = useRouter()
 const authStore = useAuthStore()
+const userInitials = computed(() =>
+  initialsFromName(authStore.user?.firstName, authStore.user?.lastName),
+)
 
 async function logout(): Promise<void> {
   try {
@@ -174,7 +167,7 @@ async function logout(): Promise<void> {
                 <Avatar class="app-sidebar-avatar h-10 w-10 rounded-lg border">
                   <AvatarImage v-if="authStore.user?.avatar" :src="authStore.user.avatar" />
                   <AvatarFallback class="app-sidebar-avatar rounded-lg border">
-                    {{ initialsFromName(authStore.user?.firstName, authStore.user?.lastName) }}
+                    {{ userInitials }}
                   </AvatarFallback>
                 </Avatar>
                 <div class="grid flex-1 text-left text-sm leading-tight">
