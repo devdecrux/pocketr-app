@@ -20,18 +20,6 @@ Pocketr is a self-hosted, open-source personal finance application that makes ev
 - **Secure user access:** Use session-based authentication and individual user profiles to protect access to financial data.
 - **Self-hosted and open source:** Retain control over the application, its deployment, and your data.
 
-## Why Pocketr?
-
-| | Pocketr | Spreadsheets | Hosted finance apps | Traditional accounting software |
-| --- | --- | --- | --- | --- |
-| Easy everyday use | Purpose-built, clear workflows | Requires manual setup and upkeep | Often easy, but provider-dependent | Frequently designed for professionals |
-| Financial accuracy | Double-entry bookkeeping foundation | Depends on formulas and manual discipline | Implementation is usually opaque | Strong, but often unnecessarily complex |
-| Data ownership | Self-hosted and under your control | Controlled locally, with limited automation | Stored and governed by a third party | Varies by product and deployment |
-| Cost and access | Free and open source forever | Usually low cost | Commonly subscription-based | Often paid or licensed |
-| Extensibility | Open architecture designed to grow | Flexible but difficult to maintain at scale | Limited to vendor features | Customization can be complex |
-
-Pocketr combines the approachability of a modern personal finance app with an accounting foundation designed for reliable balances and future growth.
-
 ## Getting Started
 
 Explore the documentation:
