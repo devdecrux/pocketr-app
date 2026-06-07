@@ -81,6 +81,7 @@ const config: Config = {
       logo: {
         alt: 'Pocketr Logo',
         src: 'img/logo.svg',
+        srcDark: 'img/logo-dark.svg',
       },
       items: [
         {

@@ -10,20 +10,9 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   type SidebarProps,
-  SidebarSeparator,
+  SidebarSeparator
 } from '@/components/ui/sidebar'
-import {
-  ArrowUpDown,
-  ChevronsUpDown,
-  LayoutDashboard,
-  LogOut,
-  Palette,
-  RotateCw,
-  Shapes,
-  User,
-  Users,
-  WalletMinimal,
-} from 'lucide-vue-next'
+import { ArrowUpDown, ChevronsUpDown, LayoutDashboard, LogOut, Palette, RotateCw, Shapes, User, Users, WalletMinimal } from 'lucide-vue-next'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -33,18 +22,19 @@ import {
   DropdownMenuSub,
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
-  DropdownMenuTrigger,
+  DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import ThemeMenu from '@/components/ThemeMenu.vue'
 import ModeSwitcher from '@/components/ModeSwitcher.vue'
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { initialsFromName } from '@/utils/initials'
 import { useAuthStore } from '@/stores/auth'
 import { useHouseholdStore } from '@/stores/household'
 import { useModeStore } from '@/stores/mode'
 import { api } from '@/api/http'
+import pocketrLogo from '@/assets/logo.svg'
+import pocketrDarkLogo from '@/assets/logo-dark.svg'
 
 const routes = [
   {
@@ -115,6 +105,8 @@ async function logout(): Promise<void> {
         <SidebarMenuItem>
           <SidebarMenuButton as-child class="app-sidebar-brand-button h-auto">
             <RouterLink class="flex w-full items-start" to="/dashboard">
+              <img :src="pocketrLogo" class="h-8 w-auto dark:hidden" alt="Pocketr logo" />
+              <img :src="pocketrDarkLogo" class="hidden h-8 w-auto dark:block" alt="Pocketr logo" />
               <div class="grid flex-1 text-left text-sm leading-tight">
                 <span class="truncate font-semibold">{{ $t('app.name') }}</span>
                 <span class="app-sidebar-subtitle truncate text-xs">{{ $t('app.tagline') }}</span>

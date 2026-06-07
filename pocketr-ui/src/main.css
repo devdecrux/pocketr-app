@@ -378,17 +378,6 @@
     box-shadow: var(--app-sidebar-panel-shadow);
   }
 
-  :root:not(.dark) .app-sidebar-brand-button {
-    min-height: 4.25rem;
-    border-radius: 1.25rem;
-    padding: 0.9rem 0.95rem;
-    color: var(--sidebar-foreground);
-  }
-
-  :root:not(.dark) .app-sidebar-brand-button:hover {
-    background-color: var(--app-sidebar-hover);
-  }
-
   :root:not(.dark) .app-sidebar-divider {
     background-color: var(--app-sidebar-divider);
   }
@@ -574,17 +563,6 @@
     box-shadow: var(--app-sidebar-panel-shadow);
   }
 
-  .dark .app-sidebar-brand-button {
-    min-height: 4.25rem;
-    border-radius: 1.25rem;
-    padding: 0.9rem 0.95rem;
-    color: var(--sidebar-foreground);
-  }
-
-  .dark .app-sidebar-brand-button:hover {
-    background-color: var(--app-sidebar-hover);
-  }
-
   .dark .app-sidebar-divider {
     background-color: var(--app-sidebar-divider);
   }
@@ -702,6 +680,17 @@
 
 /* Cross-theme app component rules */
 /* Sidebar layout fixes */
+.app-sidebar-brand-button {
+  min-height: 3rem;
+  border-radius: 1.25rem;
+  padding: 0.25rem 0.5rem;
+  color: var(--sidebar-foreground);
+}
+
+.app-sidebar-brand-button:hover {
+  background-color: var(--app-sidebar-hover);
+}
+
 .app-sidebar-divider {
   width: 100%;
   margin-inline: 0;

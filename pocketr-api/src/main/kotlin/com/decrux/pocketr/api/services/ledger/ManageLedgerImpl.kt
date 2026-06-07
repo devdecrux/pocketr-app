@@ -4,6 +4,7 @@ import com.decrux.pocketr.api.entities.db.auth.User
 import com.decrux.pocketr.api.entities.db.ledger.Account
 import com.decrux.pocketr.api.entities.db.ledger.AccountType
 import com.decrux.pocketr.api.entities.db.ledger.CategoryTag
+import com.decrux.pocketr.api.entities.db.ledger.Currency
 import com.decrux.pocketr.api.entities.db.ledger.LedgerSplit
 import com.decrux.pocketr.api.entities.db.ledger.LedgerTxn
 import com.decrux.pocketr.api.entities.db.ledger.SplitSide
@@ -82,64 +83,101 @@ class ManageLedgerImpl(
         val userId = requireNotNull(creator.userId) { "User ID must not be null" }
         val isHouseholdMode = dto.mode?.uppercase() == "HOUSEHOLD"
 
-        // 1-4. Validate splits (count, amounts, sides, double-entry balance)
-        minimumSplitCountValidator.validate(dto.splits)
-        positiveSplitAmountValidator.validate(dto.splits)
-        splitSideValueValidator.validate(dto.splits)
-        doubleEntryBalanceValidator.validate(dto.splits)
+        validateSplits(dto.splits)
 
-        // 5. Validate currency exists
-        val currency =
-            currencyRepository
-                .findById(dto.currency)
-                .orElseThrow { BadRequestException("Invalid currency: ${dto.currency}") }
+        val currency = loadCurrency(dto.currency)
+        val accountMap = loadAccounts(dto.splits)
+        val accounts = accountMap.values.toList()
 
-        // 6. Load and validate all accounts
-        val accountIds = dto.splits.map { it.accountId }.distinct()
+        transactionAccountCurrencyValidator.validate(accounts, dto.currency)
+
+        validateAccountAccess(dto, accounts, userId, isHouseholdMode)
+
+        val categoryTagMap = loadCategoryTags(dto.splits, userId)
+        val txn = buildTransaction(dto, creator, currency, accountMap, categoryTagMap, isHouseholdMode)
+        val savedTxn = ledgerTxnRepository.save(txn)
+        applyCurrentBalanceProjection(savedTxn.splits)
+
+        return savedTxn.toDto(userAvatarService)
+    }
+
+    private fun validateSplits(splits: List<CreateSplitDto>) {
+        minimumSplitCountValidator.validate(splits)
+        positiveSplitAmountValidator.validate(splits)
+        splitSideValueValidator.validate(splits)
+        doubleEntryBalanceValidator.validate(splits)
+    }
+
+    private fun loadCurrency(currencyCode: String): Currency =
+        currencyRepository
+            .findById(currencyCode)
+            .orElseThrow { BadRequestException("Invalid currency: $currencyCode") }
+
+    private fun loadAccounts(splits: List<CreateSplitDto>): Map<UUID, Account> {
+        val accountIds = splits.map { it.accountId }.distinct()
         val accounts = accountRepository.findAllById(accountIds)
         if (accounts.size != accountIds.size) {
             val foundIds = accounts.map { it.id }.toSet()
             val missingIds = accountIds.filter { it !in foundIds }
             throw BadRequestException("Accounts not found: $missingIds")
         }
-        val accountMap = accounts.associateBy { requireNotNull(it.id) }
 
-        // 7. Currency consistency
-        transactionAccountCurrencyValidator.validate(accounts, dto.currency)
+        return accounts.associateBy { requireNotNull(it.id) }
+    }
 
-        // 8. Permission check: individual vs household mode
+    private fun validateAccountAccess(
+        dto: CreateTransactionDto,
+        accounts: List<Account>,
+        userId: Long,
+        isHouseholdMode: Boolean,
+    ) {
         val nonOwnedAccounts = accounts.filter { it.owner?.userId != userId }
-        if (nonOwnedAccounts.isNotEmpty()) {
-            individualModeOwnershipValidator.validate(nonOwnedAccounts, isHouseholdMode)
-            val hhId = householdIdPresenceValidator.validate(dto.householdId)
-            householdMembershipValidator.validate(manageHousehold, hhId, userId)
-            householdSharedAccountValidator.validate(nonOwnedAccounts, manageHousehold, hhId)
-            crossUserAssetAccountTypeValidator.validate(accounts, dto.splits, userId)
+        if (nonOwnedAccounts.isEmpty()) {
+            return
         }
 
-        // 9. Validate category tags
-        val categoryTagIds = dto.splits.mapNotNull { it.categoryTagId }.distinct()
-        val categoryTagMap: Map<UUID, CategoryTag> =
-            if (categoryTagIds.isNotEmpty()) {
-                val tags = categoryTagRepository.findAllById(categoryTagIds)
-                if (tags.size != categoryTagIds.size) {
-                    val foundIds = tags.map { it.id }.toSet()
-                    val missingIds = categoryTagIds.filter { it !in foundIds }
-                    throw BadRequestException("Category tags not found: $missingIds")
-                }
-                tags.forEach { tag ->
-                    if (tag.owner?.userId != userId) {
-                        throw ForbiddenException(
-                            "Category tag '${tag.name}' is not owned by current user",
-                        )
-                    }
-                }
-                tags.associateBy { requireNotNull(it.id) }
-            } else {
-                emptyMap()
-            }
+        individualModeOwnershipValidator.validate(nonOwnedAccounts, isHouseholdMode)
+        val householdId = householdIdPresenceValidator.validate(dto.householdId)
+        householdMembershipValidator.validate(manageHousehold, householdId, userId)
+        householdSharedAccountValidator.validate(nonOwnedAccounts, manageHousehold, householdId)
+        crossUserAssetAccountTypeValidator.validate(accounts, dto.splits, userId)
+    }
 
-        // 10. Persist transaction
+    private fun loadCategoryTags(
+        splits: List<CreateSplitDto>,
+        userId: Long,
+    ): Map<UUID, CategoryTag> {
+        val categoryTagIds = splits.mapNotNull { it.categoryTagId }.distinct()
+        if (categoryTagIds.isEmpty()) {
+            return emptyMap()
+        }
+
+        val tags = categoryTagRepository.findAllById(categoryTagIds)
+        if (tags.size != categoryTagIds.size) {
+            val foundIds = tags.map { it.id }.toSet()
+            val missingIds = categoryTagIds.filter { it !in foundIds }
+            throw BadRequestException("Category tags not found: $missingIds")
+        }
+
+        tags.forEach { tag ->
+            if (tag.owner?.userId != userId) {
+                throw ForbiddenException(
+                    "Category tag '${tag.name}' is not owned by current user",
+                )
+            }
+        }
+
+        return tags.associateBy { requireNotNull(it.id) }
+    }
+
+    private fun buildTransaction(
+        dto: CreateTransactionDto,
+        creator: User,
+        currency: Currency,
+        accountMap: Map<UUID, Account>,
+        categoryTagMap: Map<UUID, CategoryTag>,
+        isHouseholdMode: Boolean,
+    ): LedgerTxn {
         val txn =
             LedgerTxn(
                 createdBy = creator,
@@ -149,21 +187,19 @@ class ManageLedgerImpl(
                 currency = currency,
             )
 
-        val splits =
-            dto.splits.map { splitDto ->
-                LedgerSplit(
-                    transaction = txn,
-                    account = accountMap.getValue(splitDto.accountId),
-                    side = SplitSide.valueOf(splitDto.side),
-                    amountMinor = splitDto.amountMinor,
-                    categoryTag = splitDto.categoryTagId?.let { categoryTagMap[it] },
-                )
-            }
-        txn.splits = splits.toMutableList()
+        txn.splits =
+            dto.splits
+                .map { splitDto ->
+                    LedgerSplit(
+                        transaction = txn,
+                        account = accountMap.getValue(splitDto.accountId),
+                        side = SplitSide.valueOf(splitDto.side),
+                        amountMinor = splitDto.amountMinor,
+                        categoryTag = splitDto.categoryTagId?.let { categoryTagMap[it] },
+                    )
+                }.toMutableList()
 
-        val savedTxn = ledgerTxnRepository.save(txn)
-        applyCurrentBalanceProjection(savedTxn.splits)
-        return savedTxn.toDto(userAvatarService)
+        return txn
     }
 
     @Transactional
