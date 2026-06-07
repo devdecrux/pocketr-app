@@ -60,6 +60,10 @@
   color: #16a34a;
 }
 
+.roadmap-status--in-progress {
+  color: #2563eb;
+}
+
 .roadmap-status--planned {
   color: #9ca3af;
 }

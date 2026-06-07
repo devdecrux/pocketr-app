@@ -10,9 +10,20 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   type SidebarProps,
-  SidebarSeparator
+  SidebarSeparator,
 } from '@/components/ui/sidebar'
-import { ArrowUpDown, ChevronsUpDown, LayoutDashboard, LogOut, Palette, RotateCw, Shapes, User, Users, WalletMinimal } from 'lucide-vue-next'
+import {
+  ArrowUpDown,
+  ChevronsUpDown,
+  LayoutDashboard,
+  LogOut,
+  Palette,
+  RotateCw,
+  Shapes,
+  User,
+  Users,
+  WalletMinimal,
+} from 'lucide-vue-next'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -22,7 +33,7 @@ import {
   DropdownMenuSub,
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
-  DropdownMenuTrigger
+  DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import ThemeMenu from '@/components/ThemeMenu.vue'
