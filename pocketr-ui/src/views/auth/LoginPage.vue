@@ -23,16 +23,21 @@ const password = ref('')
 const isAlert = ref(false)
 const isSubmitting = ref(false)
 
-async function login(): Promise<void> {
+async function login(event: SubmitEvent): Promise<void> {
+  const form = event.currentTarget
+  if (!(form instanceof HTMLFormElement)) return
+
+  const formData = new FormData(form)
+  const body = new URLSearchParams({
+    email: String(formData.get('email') ?? '').trim(),
+    password: String(formData.get('password') ?? ''),
+  })
+
   isAlert.value = false
   isSubmitting.value = true
 
   try {
     await primeCsrfToken()
-
-    const body = new URLSearchParams()
-    body.set('email', email.value.trim())
-    body.set('password', password.value)
 
     await api.post('/api/v1/user/login', {
       body,
@@ -72,13 +77,14 @@ async function login(): Promise<void> {
               <Input
                 id="email"
                 v-model="email"
+                name="email"
                 type="email"
                 :placeholder="$t('common.formHints.email')"
                 required
               />
             </AppFormField>
             <AppFormField :label="$t('common.fields.password')" control-id="password">
-              <Input id="password" v-model="password" type="password" required />
+              <Input id="password" v-model="password" name="password" type="password" required />
             </AppFormField>
 
             <p v-if="isAlert" class="text-sm text-destructive">
