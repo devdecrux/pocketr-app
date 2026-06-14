@@ -14,6 +14,12 @@ CREATE TABLE public.account_current_balance (
     account_id uuid NOT NULL
 );
 
+CREATE TABLE public.app_settings (
+    id smallint DEFAULT 1 NOT NULL,
+    base_currency character varying(3) NOT NULL,
+    CONSTRAINT ck_app_settings_singleton CHECK (id = 1)
+);
+
 CREATE TABLE public.category_tag (
     color character varying(7),
     created_at timestamp(6) with time zone NOT NULL,
@@ -117,6 +123,9 @@ ALTER TABLE ONLY public.account_current_balance
 ALTER TABLE ONLY public.account
     ADD CONSTRAINT account_pkey PRIMARY KEY (id);
 
+ALTER TABLE ONLY public.app_settings
+    ADD CONSTRAINT app_settings_pkey PRIMARY KEY (id);
+
 ALTER TABLE ONLY public.category_tag
     ADD CONSTRAINT category_tag_owner_user_id_name_key UNIQUE (owner_user_id, name);
 
@@ -204,6 +213,9 @@ ALTER TABLE ONLY public.household_member
 
 ALTER TABLE ONLY public.account
     ADD CONSTRAINT fk_account_currency FOREIGN KEY (currency) REFERENCES public.currency(code);
+
+ALTER TABLE ONLY public.app_settings
+    ADD CONSTRAINT fk_app_settings_base_currency FOREIGN KEY (base_currency) REFERENCES public.currency(code);
 
 ALTER TABLE ONLY public.user_roles
     ADD CONSTRAINT fk_user_roles_user FOREIGN KEY (user_id) REFERENCES public.users(user_id);
