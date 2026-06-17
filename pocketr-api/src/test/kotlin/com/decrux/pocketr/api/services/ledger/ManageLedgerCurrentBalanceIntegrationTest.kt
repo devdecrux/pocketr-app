@@ -281,9 +281,9 @@ class ManageLedgerCurrentBalanceIntegrationTest
         fun integrityMismatchDisablesSnapshotBalance() {
             val user = persistUser("integration-snapshot-balance-gate")
             val cash = persistAccount(user, "Cash Gate", AccountType.ASSET)
-            val expense = persistAccount(user, "Expense Gate", AccountType.EXPENSE)
+            val savings = persistAccount(user, "Savings Gate", AccountType.ASSET)
             val cashId = requireNotNull(cash.id)
-            val expenseId = requireNotNull(expense.id)
+            val savingsId = requireNotNull(savings.id)
             val today = LocalDate.now()
 
             manageLedger.createTransaction(
@@ -295,7 +295,7 @@ class ManageLedgerCurrentBalanceIntegrationTest
                         splits =
                             listOf(
                                 CreateSplitDto(accountId = cashId, side = "CREDIT", amountMinor = 1_200),
-                                CreateSplitDto(accountId = expenseId, side = "DEBIT", amountMinor = 1_200),
+                                CreateSplitDto(accountId = savingsId, side = "DEBIT", amountMinor = 1_200),
                             ),
                     ),
                 creator = user,
@@ -305,12 +305,12 @@ class ManageLedgerCurrentBalanceIntegrationTest
             currentAccountBalanceMonitor.logIntegrityStatusOnStartup()
 
             // Tamper a healthy account after the integrity check to verify it still uses snapshot reads.
-            accountCurrentBalanceRepository.addDelta(expenseId, 700L)
+            accountCurrentBalanceRepository.addDelta(savingsId, 700L)
 
             val cashBalance = manageLedger.getAccountBalance(cashId, today, user, null)
-            val expenseBalance = manageLedger.getAccountBalance(expenseId, today, user, null)
+            val savingsBalance = manageLedger.getAccountBalance(savingsId, today, user, null)
             assertEquals(-1_200L, cashBalance.balanceMinor)
-            assertEquals(1_900L, expenseBalance.balanceMinor)
+            assertEquals(1_900L, savingsBalance.balanceMinor)
         }
 
         @Test

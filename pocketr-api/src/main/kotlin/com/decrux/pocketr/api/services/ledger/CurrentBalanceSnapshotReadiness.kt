@@ -1,7 +1,7 @@
 package com.decrux.pocketr.api.services.ledger
 
 import org.springframework.stereotype.Component
-import java.util.*
+import java.util.UUID
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicReference
 

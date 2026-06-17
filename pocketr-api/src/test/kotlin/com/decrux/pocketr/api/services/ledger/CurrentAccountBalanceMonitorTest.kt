@@ -7,7 +7,7 @@ import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
 import org.mockito.Mockito.mock
 import org.mockito.Mockito.`when`
-import java.util.*
+import java.util.UUID
 
 @DisplayName("CurrentAccountBalanceMonitor")
 class CurrentAccountBalanceMonitorTest {

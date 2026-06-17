@@ -237,10 +237,17 @@ function txnCategories(txn: LedgerTxn): { name: string; color?: string | null }[
 
 // Total amount for display
 function txnDisplayAmount(txn: LedgerTxn): string {
-  const total = txn.splits.reduce((sum, s) => {
+  const sourceCurrencySplits = txn.splits.filter((s) => s.accountCurrency === txn.currency)
+  const splits = sourceCurrencySplits.length > 0 ? sourceCurrencySplits : txn.splits
+  const debitTotal = splits.reduce((sum, s) => {
     if (s.side === 'DEBIT') return sum + s.amountMinor
     return sum
   }, 0)
+  const creditTotal = splits.reduce((sum, s) => {
+    if (s.side === 'CREDIT') return sum + s.amountMinor
+    return sum
+  }, 0)
+  const total = Math.max(debitTotal, creditTotal)
   const minorUnit = currencyStore.getMinorUnit(txn.currency)
   return formatMinor(total, txn.currency, minorUnit)
 }
@@ -449,7 +456,8 @@ function splitLabel(split: LedgerSplit): string {
   return acc?.name ?? split.accountId
 }
 
-function splitAmount(split: LedgerSplit, currency: string): string {
+function splitAmount(split: LedgerSplit): string {
+  const currency = split.accountCurrency ?? ''
   const minorUnit = currencyStore.getMinorUnit(currency)
   const prefix = split.side === 'DEBIT' ? '+' : '-'
   return `${prefix}${formatMinor(split.amountMinor, currency, minorUnit)}`
@@ -697,7 +705,6 @@ async function deleteTransaction(txn: LedgerTxn): Promise<void> {
                   <AccountSelector
                     v-model="transferTo"
                     :allowed-types="['ASSET']"
-                    :currency="transferCurrency || undefined"
                     :placeholder="$t('views.transactions.formHints.selectDestinationAccount')"
                   />
                 </AppFormField>
@@ -738,7 +745,6 @@ async function deleteTransaction(txn: LedgerTxn): Promise<void> {
                   <AccountSelector
                     v-model="debtPaymentLiabilityAccount"
                     :allowed-types="['LIABILITY']"
-                    :currency="debtPaymentCurrency || undefined"
                     :placeholder="$t('views.transactions.formHints.selectLiabilityAccount')"
                   />
                 </AppFormField>
@@ -849,7 +855,7 @@ async function deleteTransaction(txn: LedgerTxn): Promise<void> {
                   }}</Badge>
                   <span>{{ splitLabel(split) }}</span>
                 </div>
-                <span class="font-mono">{{ splitAmount(split, row.original.currency) }}</span>
+                <span class="font-mono">{{ splitAmount(split) }}</span>
               </div>
             </div>
           </template>

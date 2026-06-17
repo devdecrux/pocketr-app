@@ -28,10 +28,21 @@ CREATE TABLE public.category_tag (
     name character varying(255) NOT NULL
 );
 
-CREATE TABLE public.currency (
+CREATE TABLE public.currencies (
     code character varying(3) NOT NULL,
+    iso_numeric character varying(3) NOT NULL,
     minor_unit smallint NOT NULL,
-    name character varying(255) NOT NULL
+    name character varying(255) NOT NULL,
+    symbol character varying(255) NOT NULL
+);
+
+CREATE TABLE public.currencies_exchange_rates (
+    rate numeric(38,18) NOT NULL,
+    provider_date date NOT NULL,
+    updated_at timestamp(6) with time zone NOT NULL,
+    base_currency character varying(3) NOT NULL,
+    quote_currency character varying(3) NOT NULL,
+    CONSTRAINT currencies_exchange_rates_rate_check CHECK (rate > 0)
 );
 
 CREATE TABLE public.household (
@@ -63,6 +74,7 @@ CREATE TABLE public.household_member (
 
 CREATE TABLE public.ledger_split (
     amount_minor bigint NOT NULL,
+    exchange_rate numeric(38,18) DEFAULT 1 NOT NULL,
     account_id uuid NOT NULL,
     category_tag_id uuid,
     id uuid NOT NULL,
@@ -132,8 +144,11 @@ ALTER TABLE ONLY public.category_tag
 ALTER TABLE ONLY public.category_tag
     ADD CONSTRAINT category_tag_pkey PRIMARY KEY (id);
 
-ALTER TABLE ONLY public.currency
-    ADD CONSTRAINT currency_pkey PRIMARY KEY (code);
+ALTER TABLE ONLY public.currencies_exchange_rates
+    ADD CONSTRAINT currencies_exchange_rates_pkey PRIMARY KEY (base_currency, quote_currency);
+
+ALTER TABLE ONLY public.currencies
+    ADD CONSTRAINT currencies_pkey PRIMARY KEY (code);
 
 ALTER TABLE ONLY public.household_account_share
     ADD CONSTRAINT household_account_share_pkey PRIMARY KEY (account_id, household_id);
@@ -206,16 +221,22 @@ ALTER TABLE ONLY public.ledger_txn
     ADD CONSTRAINT fk_ledger_txn_household FOREIGN KEY (household_id) REFERENCES public.household(id);
 
 ALTER TABLE ONLY public.ledger_txn
-    ADD CONSTRAINT fk_ledger_txn_currency FOREIGN KEY (currency) REFERENCES public.currency(code);
+    ADD CONSTRAINT fk_ledger_txn_currency FOREIGN KEY (currency) REFERENCES public.currencies(code);
 
 ALTER TABLE ONLY public.household_member
     ADD CONSTRAINT fk_household_member_household FOREIGN KEY (household_id) REFERENCES public.household(id);
 
 ALTER TABLE ONLY public.account
-    ADD CONSTRAINT fk_account_currency FOREIGN KEY (currency) REFERENCES public.currency(code);
+    ADD CONSTRAINT fk_account_currency FOREIGN KEY (currency) REFERENCES public.currencies(code);
 
 ALTER TABLE ONLY public.app_settings
-    ADD CONSTRAINT fk_app_settings_base_currency FOREIGN KEY (base_currency) REFERENCES public.currency(code);
+    ADD CONSTRAINT fk_app_settings_base_currency FOREIGN KEY (base_currency) REFERENCES public.currencies(code);
+
+ALTER TABLE ONLY public.currencies_exchange_rates
+    ADD CONSTRAINT fk_currency_rate_base FOREIGN KEY (base_currency) REFERENCES public.currencies(code);
+
+ALTER TABLE ONLY public.currencies_exchange_rates
+    ADD CONSTRAINT fk_currency_rate_quote FOREIGN KEY (quote_currency) REFERENCES public.currencies(code);
 
 ALTER TABLE ONLY public.user_roles
     ADD CONSTRAINT fk_user_roles_user FOREIGN KEY (user_id) REFERENCES public.users(user_id);

@@ -12,9 +12,11 @@ import com.decrux.pocketr.api.exceptions.ForbiddenException
 import com.decrux.pocketr.api.repositories.AccountCurrentBalanceRepository
 import com.decrux.pocketr.api.repositories.AccountRepository
 import com.decrux.pocketr.api.repositories.CategoryTagRepository
+import com.decrux.pocketr.api.repositories.CurrencyExchangeRateRepository
 import com.decrux.pocketr.api.repositories.CurrencyRepository
 import com.decrux.pocketr.api.repositories.LedgerSplitRepository
 import com.decrux.pocketr.api.repositories.LedgerTxnRepository
+import com.decrux.pocketr.api.services.currency.CurrencyConversionService
 import com.decrux.pocketr.api.services.household.ManageHousehold
 import com.decrux.pocketr.api.services.ledger.validations.CrossUserAssetAccountTypeValidator
 import com.decrux.pocketr.api.services.ledger.validations.DoubleEntryBalanceValidator
@@ -64,6 +66,7 @@ class HouseholdTransactionVisibilityTest {
     private lateinit var ledgerSplitRepository: LedgerSplitRepository
     private lateinit var accountCurrentBalanceRepository: AccountCurrentBalanceRepository
     private lateinit var accountRepository: AccountRepository
+    private lateinit var currencyExchangeRateRepository: CurrencyExchangeRateRepository
     private lateinit var currencyRepository: CurrencyRepository
     private lateinit var categoryTagRepository: CategoryTagRepository
     private lateinit var manageHousehold: ManageHousehold
@@ -117,6 +120,7 @@ class HouseholdTransactionVisibilityTest {
         ledgerSplitRepository = mock(LedgerSplitRepository::class.java)
         accountCurrentBalanceRepository = mock(AccountCurrentBalanceRepository::class.java)
         accountRepository = mock(AccountRepository::class.java)
+        currencyExchangeRateRepository = mock(CurrencyExchangeRateRepository::class.java)
         currencyRepository = mock(CurrencyRepository::class.java)
         categoryTagRepository = mock(CategoryTagRepository::class.java)
         manageHousehold = mock(ManageHousehold::class.java)
@@ -137,6 +141,8 @@ class HouseholdTransactionVisibilityTest {
                 SplitSideValueValidator(),
                 DoubleEntryBalanceValidator(),
                 TransactionAccountCurrencyValidator(),
+                CurrencyConversionService(currencyExchangeRateRepository),
+                "EUR",
                 IndividualModeOwnershipValidator(),
                 HouseholdIdPresenceValidator(),
                 HouseholdMembershipValidator(),

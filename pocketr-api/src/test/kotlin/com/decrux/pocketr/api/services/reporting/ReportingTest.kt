@@ -223,7 +223,13 @@ class ReportingTest {
                 ),
             )
             `when`(
-                ledgerSplitRepository.monthlyLiabilityPaymentsByHousehold(sharedAccountIds, janStart, janEnd, SplitSide.DEBIT, SplitSide.CREDIT),
+                ledgerSplitRepository.monthlyLiabilityPaymentsByHousehold(
+                    sharedAccountIds,
+                    janStart,
+                    janEnd,
+                    SplitSide.DEBIT,
+                    SplitSide.CREDIT,
+                ),
             ).thenReturn(emptyList())
 
             val result = service.getMonthlyExpenses(userA, jan2026, "HOUSEHOLD", householdId)
@@ -270,7 +276,13 @@ class ReportingTest {
                 listOf(MonthlyExpenseProjection(groceriesId, "Groceries", foodTagId, "Food", "EUR", 7000L)),
             )
             `when`(
-                ledgerSplitRepository.monthlyLiabilityPaymentsByHousehold(sharedAccountIds, janStart, janEnd, SplitSide.DEBIT, SplitSide.CREDIT),
+                ledgerSplitRepository.monthlyLiabilityPaymentsByHousehold(
+                    sharedAccountIds,
+                    janStart,
+                    janEnd,
+                    SplitSide.DEBIT,
+                    SplitSide.CREDIT,
+                ),
             ).thenReturn(emptyList())
 
             val result = service.getMonthlyExpenses(userA, jan2026, "HOUSEHOLD", householdId)

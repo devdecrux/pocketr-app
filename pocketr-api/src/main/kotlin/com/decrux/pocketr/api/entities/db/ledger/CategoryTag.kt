@@ -13,7 +13,7 @@ import jakarta.persistence.ManyToOne
 import jakarta.persistence.Table
 import jakarta.persistence.UniqueConstraint
 import java.time.Instant
-import java.util.*
+import java.util.UUID
 
 @Entity
 @Table(

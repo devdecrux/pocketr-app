@@ -17,7 +17,7 @@ import com.decrux.pocketr.api.services.household.ManageHousehold
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.LocalDate
-import java.util.*
+import java.util.UUID
 
 @Service
 class ManageAccountImpl(

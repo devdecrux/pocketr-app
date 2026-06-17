@@ -20,6 +20,13 @@ app:
   security:
     csrf-cookie-path: ${APP_SECURITY_CSRF_COOKIE_PATH:/}
 
+pocketr:
+  currency:
+    base: ${POCKETR_CURRENCY_BASE:EUR}
+    refresh-interval-ms: ${POCKETR_CURRENCY_REFRESH_INTERVAL_MS:86400000}
+    frankfurter:
+      base-url: ${POCKETR_CURRENCY_FRANKFURTER_BASE_URL:https://api.frankfurter.dev}
+
 ledger:
   accounts:
     snapshot:

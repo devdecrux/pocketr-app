@@ -51,9 +51,11 @@ export interface LedgerSplit {
   accountId: string
   accountName?: string
   accountType?: AccountType
+  accountCurrency?: string
   side: SplitSide
   amountMinor: number
   effectMinor?: number
+  exchangeRate?: string
   categoryTagId?: string | null
   categoryTagName?: string | null
 }
