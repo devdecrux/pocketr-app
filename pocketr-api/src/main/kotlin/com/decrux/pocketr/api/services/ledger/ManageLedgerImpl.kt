@@ -35,7 +35,6 @@ import com.decrux.pocketr.api.services.ledger.validations.IndividualModeOwnershi
 import com.decrux.pocketr.api.services.ledger.validations.MinimumSplitCountValidator
 import com.decrux.pocketr.api.services.ledger.validations.PositiveSplitAmountValidator
 import com.decrux.pocketr.api.services.ledger.validations.SplitSideValueValidator
-import com.decrux.pocketr.api.services.ledger.validations.TransactionAccountCurrencyValidator
 import com.decrux.pocketr.api.services.rollover.RolloverPeriod
 import com.decrux.pocketr.api.services.user_avatar.UserAvatarService
 import org.slf4j.LoggerFactory
@@ -65,7 +64,6 @@ class ManageLedgerImpl(
     private val positiveSplitAmountValidator: PositiveSplitAmountValidator,
     private val splitSideValueValidator: SplitSideValueValidator,
     private val doubleEntryBalanceValidator: DoubleEntryBalanceValidator,
-    private val transactionAccountCurrencyValidator: TransactionAccountCurrencyValidator,
     private val currencyConversionService: CurrencyConversionService,
     @Value("\${pocketr.currency.base:EUR}")
     private val baseCurrency: String,

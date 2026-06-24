@@ -35,7 +35,6 @@ import com.decrux.pocketr.api.services.ledger.validations.IndividualModeOwnershi
 import com.decrux.pocketr.api.services.ledger.validations.MinimumSplitCountValidator
 import com.decrux.pocketr.api.services.ledger.validations.PositiveSplitAmountValidator
 import com.decrux.pocketr.api.services.ledger.validations.SplitSideValueValidator
-import com.decrux.pocketr.api.services.ledger.validations.TransactionAccountCurrencyValidator
 import com.decrux.pocketr.api.services.rollover.RolloverPeriod
 import com.decrux.pocketr.api.services.user_avatar.UserAvatarService
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -154,7 +153,6 @@ class LedgerTransactionValidationTest {
             PositiveSplitAmountValidator(),
             SplitSideValueValidator(),
             DoubleEntryBalanceValidator(),
-            TransactionAccountCurrencyValidator(),
             CurrencyConversionService(currencyExchangeRateRepository),
             "EUR",
             IndividualModeOwnershipValidator(),
@@ -340,17 +338,7 @@ class LedgerTransactionValidationTest {
         @DisplayName("should convert split amount into account currency and snapshot exchange rate")
         fun convertCrossCurrencySplit() {
             stubAccounts(usdAccount, expenseAcct)
-            `when`(currencyExchangeRateRepository.findById(CurrencyExchangeRateId("EUR", "USD")))
-                .thenReturn(
-                    Optional.of(
-                        CurrencyExchangeRate(
-                            id = CurrencyExchangeRateId("EUR", "USD"),
-                            base = eur,
-                            quote = usd,
-                            rate = BigDecimal("1.10"),
-                        ),
-                    ),
-                )
+            stubExchangeRate("EUR", "USD", "1.10")
 
             val result =
                 service.createTransaction(
@@ -375,6 +363,125 @@ class LedgerTransactionValidationTest {
             assertEquals(4500, eurSplit.amountMinor)
             assertEquals("EUR", eurSplit.accountCurrency)
             assertEquals("1", eurSplit.exchangeRate)
+        }
+
+        @Test
+        @DisplayName("should convert cross-currency income splits")
+        fun convertCrossCurrencyIncome() {
+            val usdIncomeId = UUID.randomUUID()
+            val usdIncome = Account(id = usdIncomeId, owner = userA, name = "USD Salary", type = AccountType.INCOME, currency = usd)
+            stubAccounts(checking, usdIncome)
+            stubExchangeRate("EUR", "USD", "1.20")
+
+            val result =
+                service.createTransaction(
+                    CreateTransactionDto(
+                        txnDate = LocalDate.now(),
+                        currency = "EUR",
+                        description = "Cross currency income",
+                        splits =
+                            listOf(
+                                CreateSplitDto(accountId = checkingId, side = "DEBIT", amountMinor = 10000),
+                                CreateSplitDto(accountId = usdIncomeId, side = "CREDIT", amountMinor = 10000),
+                            ),
+                    ),
+                    userA,
+                )
+
+            val usdSplit = result.splits.single { it.accountId == usdIncomeId }
+            assertEquals("INCOME", result.txnKind)
+            assertEquals(12000, usdSplit.amountMinor)
+            assertEquals("USD", usdSplit.accountCurrency)
+            assertEquals("1.2", usdSplit.exchangeRate)
+            verify(accountCurrentBalanceRepository).addDelta(usdIncomeId, -12000L)
+        }
+
+        @Test
+        @DisplayName("should convert cross-currency transfer splits")
+        fun convertCrossCurrencyTransfer() {
+            stubAccounts(checking, usdAccount)
+            stubExchangeRate("EUR", "USD", "1.20")
+
+            val result =
+                service.createTransaction(
+                    CreateTransactionDto(
+                        txnDate = LocalDate.now(),
+                        currency = "EUR",
+                        description = "Cross currency transfer",
+                        splits =
+                            listOf(
+                                CreateSplitDto(accountId = checkingId, side = "CREDIT", amountMinor = 10000),
+                                CreateSplitDto(accountId = usdAccountId, side = "DEBIT", amountMinor = 10000),
+                            ),
+                    ),
+                    userA,
+                )
+
+            val usdSplit = result.splits.single { it.accountId == usdAccountId }
+            assertEquals("TRANSFER", result.txnKind)
+            assertEquals(12000, usdSplit.amountMinor)
+            assertEquals("USD", usdSplit.accountCurrency)
+            verify(accountCurrentBalanceRepository).addDelta(usdAccountId, 12000L)
+        }
+
+        @Test
+        @DisplayName("should convert cross-currency debt payment splits")
+        fun convertCrossCurrencyDebtPayment() {
+            val usdLiabilityId = UUID.randomUUID()
+            val usdLiability = Account(id = usdLiabilityId, owner = userA, name = "USD Loan", type = AccountType.LIABILITY, currency = usd)
+            stubAccounts(checking, usdLiability)
+            stubExchangeRate("EUR", "USD", "1.20")
+
+            val result =
+                service.createTransaction(
+                    CreateTransactionDto(
+                        txnDate = LocalDate.now(),
+                        currency = "EUR",
+                        description = "Cross currency debt payment",
+                        splits =
+                            listOf(
+                                CreateSplitDto(accountId = checkingId, side = "CREDIT", amountMinor = 10000),
+                                CreateSplitDto(accountId = usdLiabilityId, side = "DEBIT", amountMinor = 10000),
+                            ),
+                    ),
+                    userA,
+                )
+
+            val usdSplit = result.splits.single { it.accountId == usdLiabilityId }
+            assertEquals("DEBT_PAYMENT", result.txnKind)
+            assertEquals(12000, usdSplit.amountMinor)
+            assertEquals("USD", usdSplit.accountCurrency)
+            verify(accountCurrentBalanceRepository).addDelta(usdLiabilityId, 12000L)
+        }
+
+        @Test
+        @DisplayName("should convert cross-currency equity opening splits")
+        fun convertCrossCurrencyEquityOpening() {
+            val usdEquityId = UUID.randomUUID()
+            val usdEquity = Account(id = usdEquityId, owner = userA, name = "USD Opening Equity", type = AccountType.EQUITY, currency = usd)
+            stubAccounts(checking, usdEquity)
+            stubExchangeRate("EUR", "USD", "1.20")
+
+            val result =
+                service.createTransaction(
+                    CreateTransactionDto(
+                        txnDate = LocalDate.now(),
+                        currency = "EUR",
+                        description = "Cross currency opening balance",
+                        splits =
+                            listOf(
+                                CreateSplitDto(accountId = checkingId, side = "DEBIT", amountMinor = 10000),
+                                CreateSplitDto(accountId = usdEquityId, side = "CREDIT", amountMinor = 10000),
+                            ),
+                    ),
+                    userA,
+                )
+
+            val usdSplit = result.splits.single { it.accountId == usdEquityId }
+            assertEquals("OPENING_BALANCE", result.txnKind)
+            assertEquals(12000, usdSplit.amountMinor)
+            assertEquals("USD", usdSplit.accountCurrency)
+            verify(accountCurrentBalanceRepository).addDelta(usdEquityId, -12000L)
         }
 
         @Test
@@ -1334,5 +1441,23 @@ class LedgerTransactionValidationTest {
                 )
             verifyNoMoreInteractions(ledgerSplitRepository)
         }
+    }
+
+    private fun stubExchangeRate(
+        base: String,
+        quote: String,
+        rate: String,
+    ) {
+        `when`(currencyExchangeRateRepository.findById(CurrencyExchangeRateId(base, quote)))
+            .thenReturn(
+                Optional.of(
+                    CurrencyExchangeRate(
+                        id = CurrencyExchangeRateId(base, quote),
+                        base = eur,
+                        quote = usd,
+                        rate = BigDecimal(rate),
+                    ),
+                ),
+            )
     }
 }

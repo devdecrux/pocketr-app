@@ -1,5 +1,6 @@
 package com.decrux.pocketr.api.entities.db.ledger
 
+import jakarta.persistence.CheckConstraint
 import jakarta.persistence.Column
 import jakarta.persistence.EmbeddedId
 import jakarta.persistence.Entity
@@ -14,7 +15,15 @@ import java.time.Instant
 import java.time.LocalDate
 
 @Entity
-@Table(name = "currencies_exchange_rates")
+@Table(
+    name = "currencies_exchange_rates",
+    check = [
+        CheckConstraint(
+            name = "currencies_exchange_rates_rate_check",
+            constraint = "rate > 0",
+        ),
+    ],
+)
 class CurrencyExchangeRate(
     @EmbeddedId
     var id: CurrencyExchangeRateId = CurrencyExchangeRateId(),

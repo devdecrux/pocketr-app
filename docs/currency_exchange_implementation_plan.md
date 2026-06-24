@@ -1,36 +1,48 @@
-# Currency Exchange - Implementation Plan
+# Currency Exchange Implementation Plan
 
-This document describes the incremental implementation of externally synchronized currencies, current exchange rates, and currency conversion in the Pocketr ledger.
-
-The work is organized so independent packages can be prepared concurrently by subagents in isolated worktrees. Integration into `feat/currency_exchange` remains sequential.
-
-After each integrated commit:
-
-1. Run the targeted tests and formatting checks.
-2. Stop for review and approval.
-3. Do not push without explicit permission.
+This document defines the desired currency exchange behavior for Pocketr and the remaining work needed to finish the implementation.
 
 ## 1. Goals
 
 1. Load the supported currency catalog from Frankfurter.
 2. Refresh currencies and current exchange rates every 24 hours.
-3. Store only the latest rates for one configurable app-wide base currency.
-4. Convert every ledger split into its account currency.
-5. Store the exchange rate applied to each split.
-6. Make synchronized currencies available in the existing account currency dropdowns.
+3. Store only the latest exchange rates for one configurable app-wide base currency.
+4. Convert every ledger split into the split account's currency.
+5. Store the exchange rate applied to each persisted split.
+6. Make synchronized currencies available in existing account currency dropdowns.
+7. Preserve existing same-currency transaction behavior.
 
-## 2. Non-goals
+## 2. Non-Goals
 
 1. Keeping historical exchange-rate rows.
 2. Fetching rates while creating a transaction.
 3. Adding exchange-rate management UI.
 4. Restricting conversion to specific account types.
 5. Changing existing ownership, household, or account-type authorization rules.
-6. Reading the base currency from `app_settings` in this iteration. For the time being default should be EUR
+6. Reading the base currency from `app_settings` in this iteration.
+7. Reintroducing development demo data seeding. The old development seed service is intentionally removed.
 
-## 3. External API
+## 3. Fixed Contracts
 
-Use Frankfurter v2:
+These contracts are the source of truth for backend, frontend, and tests.
+
+| Area | Contract |
+| --- | --- |
+| Currency table | `currencies` |
+| Rate table | `currencies_exchange_rates` |
+| Rate precision | `NUMERIC(38,18)` persisted as `BigDecimal` |
+| Rate direction | Transaction currency to split account currency |
+| Request split amount | Transaction currency minor units |
+| Persisted split amount | Split account currency minor units |
+| Split DTO fields | `accountCurrency`, `exchangeRate` |
+| Same-currency rate | `1` |
+| Initial app base | `pocketr.currency.base`, default `EUR` |
+| Frankfurter base URL | `pocketr.currency.frankfurter.base-url` |
+| Missing required rate | Reject transaction without partial writes |
+
+## 4. External API
+
+Use Frankfurter v2 through Spring's existing HTTP client support. Do not add dependencies.
 
 - Currencies: `GET https://api.frankfurter.dev/v2/currencies`
 - Rates: `GET https://api.frankfurter.dev/v2/rates?base={baseCurrency}`
@@ -49,15 +61,13 @@ Expected rate fields:
 - `quote`
 - `rate`
 
-Use Spring's existing HTTP client support. Do not add a dependency.
+The Frankfurter client must remain independent from JPA entities and repositories.
 
-## 4. Data Model
+## 5. Data Model
 
-### 4.1 `currencies`
+### 5.1 `currencies`
 
-Rename the existing `currency` table to `currencies` and update the JPA model.
-
-Required columns:
+Rename the previous `currency` table to `currencies` and update the JPA model.
 
 | Column | Type | Meaning |
 | --- | --- | --- |
@@ -69,9 +79,9 @@ Required columns:
 
 Frankfurter does not provide `minor_unit`. Resolve it with `java.util.Currency.defaultFractionDigits`. Use `2` only when JVM metadata is unavailable or invalid.
 
-Do not delete currencies during synchronization. Accounts, transactions, settings, or rates may already reference them.
+Synchronization must upsert currencies and never delete currencies. Accounts, transactions, settings, or rates may already reference them.
 
-### 4.2 `currencies_exchange_rates`
+### 5.2 `currencies_exchange_rates`
 
 Store one current row per base/quote pair.
 
@@ -88,11 +98,11 @@ Rules:
 - Primary key: `base_currency`, `quote_currency`.
 - Both currencies reference `currencies(code)`.
 - `rate` must be greater than zero.
-- A successful refresh replaces the current set for the configured base.
-- A failed or empty refresh keeps the previous rows unchanged.
-- The base-to-base rate is treated as `1` in code and does not require a row.
+- A successful refresh replaces the current set for the supplied base.
+- Failed or empty refresh keeps previous rows unchanged.
+- Base-to-base rate is treated as `1` in code and does not require a row.
 
-### 4.3 `ledger_split`
+### 5.3 `ledger_split`
 
 Add:
 
@@ -100,13 +110,14 @@ Add:
 | --- | --- | --- |
 | `exchange_rate` | `NUMERIC(38,18)` | Transaction currency to account currency rate used by the split |
 
-Split semantics after conversion:
+Split semantics:
 
 - `ledger_txn.currency` is the transaction/input currency.
 - Incoming `CreateSplitDto.amountMinor` is expressed in the transaction currency.
 - Persisted `ledger_split.amount_minor` is expressed in the split account's currency.
 - `ledger_split.exchange_rate` converts one major unit of transaction currency into the account currency.
 - Same-currency splits use rate `1`.
+- Existing same-currency rows should use `exchange_rate = 1` when the schema is rebuilt or seeded.
 
 Example:
 
@@ -114,13 +125,45 @@ Example:
 - Credit EUR account: `10.00 EUR`, rate `1`
 - Debit CZK account: converted CZK amount, rate `EUR -> CZK`
 
-The request remains balanced before conversion in the transaction currency. Account balances use the converted persisted split amounts.
+The request remains balanced before conversion in the transaction currency. Account balances use converted persisted split amounts.
 
-## 5. Rate Resolution
+## 6. Synchronization
+
+Add two focused synchronizers and one small scheduler/orchestrator:
+
+1. Currency catalog synchronizer.
+2. Exchange-rate synchronizer for a supplied base currency.
+3. Currency data refresh scheduler.
+
+Run synchronization:
+
+- once during application startup
+- every 24 hours afterward
+
+Use configuration:
+
+```yaml
+pocketr:
+  currency:
+    base: EUR
+    refresh-interval-ms: 86400000
+    frankfurter:
+      base-url: https://api.frankfurter.dev
+```
+
+Failure rules:
+
+- Log failures without removing existing currencies or rates.
+- Keep catalog and rate failures independent.
+- Never partially replace the current rates.
+- Transaction creation must fail with a clear bad-request error when a required database rate is unavailable.
+- Transaction creation must never call Frankfurter directly.
+
+## 7. Conversion
 
 The database stores rates relative to the configured app base, initially `EUR`.
 
-Resolve a direct transaction-to-account rate as follows:
+Resolve transaction-to-account rate:
 
 ```text
 transaction == account:
@@ -153,510 +196,173 @@ account minor amount
 
 Round the final account minor amount to a whole number with `HALF_UP`.
 
-## 6. Scheduling and Failure Handling
+## 8. Ledger Behavior
 
-Add two focused synchronizers and one small scheduler/orchestrator:
+Transaction creation must:
 
-1. Synchronize currencies.
-2. Synchronize exchange rates for a supplied base currency.
+1. Validate split count, positive amounts, split sides, account access, household access, and request balance before conversion.
+2. Resolve the transaction currency from `currencies`.
+3. Resolve each split account's currency.
+4. Convert and persist each split amount in the account currency.
+5. Store each applied exchange rate on the split.
+6. Apply this uniformly to `ASSET`, `LIABILITY`, `INCOME`, `EXPENSE`, and `EQUITY`.
+7. Update current balances using persisted account-currency split amounts.
+8. Delete transactions by reversing persisted account-currency split amounts.
+9. Roll back atomically when conversion cannot be completed.
 
-Run synchronization:
+The old rule requiring every account currency to match the transaction currency is obsolete and should be removed, including stale validator tests.
 
-- once during application startup
-- every 24 hours afterward
+## 9. Frontend Behavior
 
-Use an application property for the initial base currency:
+The transaction UI must:
 
-```yaml
-pocketr:
-  currency:
-    base: EUR
+1. Remove destination account currency filtering where it prevents selecting a valid account.
+2. Keep entered amounts denominated in the transaction/source currency.
+3. Continue sending request split amounts in transaction/source currency minor units.
+4. Consume `accountCurrency` and `exchangeRate` from split responses.
+5. Format each persisted split with its account currency.
+6. Continue using `/api/v1/currencies` for account currency dropdowns.
+
+No exchange-rate management UI is required.
+
+## 10. Required Verification
+
+### 10.1 Backend Tests
+
+Currency persistence:
+
+- `currencies` table mapping.
+- Foreign keys from accounts and transactions to `currencies(code)`.
+- `iso_numeric`, `symbol`, and `minor_unit` persistence.
+
+Exchange-rate persistence:
+
+- Composite primary key uniqueness.
+- Foreign keys to `currencies(code)`.
+- Positive-rate constraint.
+
+Frankfurter client:
+
+- Successful currency response mapping.
+- Successful rate response mapping.
+- Invalid or missing required fields fail clearly.
+- Configurable provider base URL is used.
+
+Currency synchronization:
+
+- Upserts currencies.
+- Derives minor units from JVM metadata.
+- Falls back to minor unit `2` when metadata is unavailable or invalid.
+- Preserves currencies missing from later provider responses.
+- Empty provider response keeps existing catalog unchanged.
+
+Rate synchronization:
+
+- Fetches rates for supplied base currency.
+- Replaces current rows for that base on success.
+- Preserves existing rows on failed or empty responses.
+- Does not partially replace rows when a quote currency is missing.
+
+Scheduler:
+
+- Invokes catalog and rate synchronizers at startup.
+- Invokes both synchronizers on the scheduled interval.
+- Handles catalog and rate failures independently.
+- Uses configured app base currency.
+
+Conversion service:
+
+- Same-currency conversion.
+- Direct base-to-quote conversion.
+- Inverse quote-to-base conversion.
+- Cross-rate conversion between two quote currencies.
+- Different source/target minor units.
+- `HALF_UP` final minor-unit rounding.
+- Missing-rate bad-request error.
+
+Ledger integration:
+
+- Same-currency regression.
+- Cross-currency expense.
+- Cross-currency income.
+- Cross-currency transfer.
+- Cross-currency debt payment.
+- Cross-currency equity/opening-entry.
+- Current-balance creation uses persisted account-currency amounts.
+- Transaction deletion reverses persisted account-currency amounts.
+- Missing-rate rollback leaves no partial transaction/split/balance writes.
+- Ownership, household, split count, positive amount, and side validations still apply.
+
+### 10.2 Frontend Tests
+
+- Transaction strategy unit tests continue sending source-currency amounts.
+- Transaction page tests cover mixed-currency account selection.
+- Transaction page tests display split amounts with `accountCurrency`.
+- Response types include `accountCurrency` and `exchangeRate`.
+
+### 10.3 Commands
+
+Backend:
+
+```bash
+cd pocketr-api
+./gradlew test
+./gradlew build
 ```
 
-The synchronization and conversion APIs must accept the base currency as a parameter so configuration can later come from `app_settings`.
+Frontend:
 
-Failure rules:
-
-- Log failures without removing existing currencies or rates.
-- Never partially replace the current rates.
-- Transaction creation must fail with a clear bad-request error when a required database rate is unavailable.
-- Transaction creation must never call Frankfurter directly.
-
-## 7. Parallel Delivery Rules
-
-### 7.1 Coordinator Responsibilities
-
-The main agent owns:
-
-1. Dependency ordering.
-2. Shared contract decisions.
-3. Integration into `feat/currency_exchange`.
-4. Full diff review.
-5. Final verification.
-6. Stopping after each integrated commit for user review.
-
-### 7.2 Subagent Rules
-
-Each subagent must:
-
-1. Work from the same reviewed base commit in an isolated worktree or branch.
-2. Own exactly one work package at a time.
-3. Edit only the files assigned to that package.
-4. Avoid broad formatting or unrelated refactoring.
-5. Add and run the tests assigned to the package.
-6. Produce one focused Conventional Commit.
-7. Never push.
-8. Report changed files, tests run, and assumptions to the coordinator.
-
-If a required shared contract is unclear, the subagent must stop instead of inventing a competing model.
-
-### 7.3 Shared Contracts
-
-These contracts must be treated as fixed before parallel implementation begins:
-
-- Table names: `currencies`, `currencies_exchange_rates`.
-- Rate precision: `NUMERIC(38,18)` and `BigDecimal`.
-- Rate direction: transaction currency to split account currency.
-- Request split amounts: transaction currency minor units.
-- Persisted split amounts: account currency minor units.
-- Split DTO field names: `accountCurrency` and `exchangeRate`.
-- Same-currency rate: `1`.
-- Initial app base property: `pocketr.currency.base`, default `EUR`.
-- Frankfurter base URL property: `pocketr.currency.frankfurter.base-url`.
-- Missing required rate: reject the transaction without partial writes.
-
-Only the coordinator may change these contracts after implementation starts.
-
-### 7.4 Shared-File Ownership
-
-Files likely to cause conflicts must have one owner per wave:
-
-- `db/migration/V1__init.sql`: schema owner only.
-- `Currency.kt`, `CurrencyDto.kt`, `CurrencyController.kt`: currency model owner only.
-- `application.yaml`: HTTP client owner in Wave 1, scheduler owner afterward.
-- `ManageLedgerImpl.kt`: ledger snapshot owner first, ledger conversion owner afterward.
-- Frontend transaction files: UI owner only after the backend response contract is integrated.
-
-Subagents must not edit this plan while implementation is in progress.
-
-## 8. Work Packages and Incremental Commits
-
-### WP1 / Commit 1: Align Currency Schema
-
-Suggested commit:
-
-```text
-refactor(currency): align currency persistence model
+```bash
+cd pocketr-ui
+npm run type-check
+npm run lint
+npm run test:unit
 ```
 
-Changes:
+Formatting:
 
-1. Rename `currency` to `currencies`.
-2. Add `iso_numeric` and `symbol`.
-3. Update all foreign keys.
-4. Update `Currency`, `CurrencyDto`, seed data, and persistence tests.
-5. Keep existing API behavior compatible while exposing the additional fields.
-
-Verification:
-
-- Currency repository tests.
-- App settings repository tests.
-- Backend formatting.
-
-Owned files:
-
-- `pocketr-api/src/main/resources/db/migration/V1__init.sql`
-- `pocketr-api/src/main/kotlin/com/decrux/pocketr/api/entities/db/ledger/Currency.kt`
-- `pocketr-api/src/main/kotlin/com/decrux/pocketr/api/entities/dtos/CurrencyDto.kt`
-- `pocketr-api/src/main/kotlin/com/decrux/pocketr/api/controllers/CurrencyController.kt`
-- Directly affected currency and app-settings tests
-
-Dependencies: none.
-
-### WP2 / Commit 2: Add Current Exchange-Rate Schema
-
-Suggested commit:
-
-```text
-feat(currency): add current exchange rate model
+```bash
+git diff --check
 ```
 
-Changes:
+## 11. Improvement Strategy
 
-1. Create `currencies_exchange_rates`.
-2. Add exchange-rate entity and repository.
-3. Add persistence tests for uniqueness, foreign keys, and positive rates.
+Use tests to protect behavior before simplifying implementation. Do not start with broad refactoring.
 
-Verification:
+Recommended order:
 
-- Targeted repository tests.
-- Backend formatting.
+1. Remove dead code and stale tests that encode old invariants.
+2. Add missing backend and frontend tests listed in this document.
+3. Simplify implementation only where tests now protect the behavior.
+4. Fix frontend lint so the validation gate is reliable.
+5. Re-run backend, frontend, and formatting verification commands.
 
-Owned files:
+Targeted cleanup and simplification areas:
 
-- `pocketr-api/src/main/resources/db/migration/V1__init.sql`
-- New exchange-rate entity, identifier, and repository files
-- New exchange-rate repository tests
+- Delete obsolete `TransactionAccountCurrencyValidator` and stale currency-mismatch tests. Cross-currency account selection is now valid when required rates exist.
+- Make `CurrencyExchangeRateSynchronizer` explicitly validate the full replacement set before deleting existing rows, so atomic replacement behavior is obvious.
+- Simplify `CurrencyConversionService` by normalizing currency codes once and keeping direct, inverse, and cross-rate lookup helpers small.
+- Extract split conversion/building from `ManageLedgerImpl.buildTransaction` into a focused private helper only if it improves readability without changing ownership or transaction boundaries.
+- Clarify the frontend transaction total display policy for mixed-currency rows. Current source-currency-split fallback logic should be covered by tests or replaced with a simpler, explicit rule.
+- Prefer narrow changes over broad formatting or unrelated refactoring.
 
-Dependencies: WP1.
+## 12. Known Follow-Up Work
 
-### WP3 / Commit 3: Add Frankfurter HTTP Client
+Before implementation is considered complete:
 
-Suggested commit:
+1. Remove obsolete `TransactionAccountCurrencyValidator` usage, class, and stale tests.
+2. Add missing backend tests listed above.
+3. Add missing cross-currency ledger tests listed above.
+4. Add missing frontend tests listed above.
+5. Improve implementation using the targeted cleanup areas above.
+6. Fix frontend lint gate.
+7. Re-run backend, frontend, and formatting verification commands.
 
-```text
-feat(currency): add Frankfurter client
-```
+## 13. Future Work
 
-Changes:
+After this iteration:
 
-1. Add configurable Frankfurter base URL.
-2. Implement currency and rate endpoints.
-3. Add response DTOs.
-4. Add client contract tests for successful and invalid responses.
-
-Verification:
-
-- Targeted HTTP client tests.
-- Backend formatting.
-
-Owned files:
-
-- New files under a dedicated `services/currency/frankfurter` package
-- Frankfurter-specific response DTOs in the same package
-- Frankfurter client tests
-- `application.yaml` for the provider base URL only
-
-Dependencies: none for preparation; integrate after WP2.
-
-The client work must not depend on JPA entities or repositories.
-
-### WP4 / Commit 4: Synchronize Currency Catalog
-
-Suggested commit:
-
-```text
-feat(currency): synchronize currency catalog
-```
-
-Changes:
-
-1. Upsert Frankfurter currencies.
-2. Derive minor units from JVM currency metadata.
-3. Preserve currencies missing from later responses.
-4. Keep minimal static seed data as an offline startup fallback.
-
-Verification:
-
-- Synchronization service tests.
-- Existing currency endpoint tests or focused controller coverage.
-- Backend formatting.
-
-The frontend dropdowns already load `/api/v1/currencies`; no UI redesign is required.
-
-Owned files:
-
-- New currency catalog synchronizer and tests
-- `CurrencySeeder.kt`
-- Focused currency endpoint tests if required
-
-Dependencies: WP1 and WP3.
-
-### WP5 / Commit 5: Synchronize Current Rates
-
-Suggested commit:
-
-```text
-feat(currency): synchronize current exchange rates
-```
-
-Changes:
-
-1. Fetch rates for a supplied base currency.
-2. Atomically replace current rows for that base.
-3. Preserve old rows on failed or empty responses.
-
-Verification:
-
-- Rate synchronization tests.
-- Backend formatting.
-
-Owned files:
-
-- New exchange-rate synchronizer and tests
-- Exchange-rate repository additions needed for atomic replacement
-
-Dependencies: WP1, WP2, and WP3.
-
-### WP6 / Commit 6: Schedule Currency Data Refresh
-
-Suggested commit:
-
-```text
-feat(currency): schedule currency data refresh
-```
-
-Changes:
-
-1. Invoke both synchronizers once during application startup.
-2. Invoke both synchronizers every 24 hours.
-3. Configure `EUR` as the initial app base.
-4. Keep catalog and rate failure handling independent.
-
-Verification:
-
-- Startup delegation test.
-- Scheduler delegation test.
-- Backend formatting.
-
-Owned files:
-
-- New scheduler/orchestrator and tests
-- Scheduling enablement
-- `application.yaml` for the app base and interval properties
-
-Dependencies: WP4 and WP5.
-
-### WP7 / Commit 7: Add Database-Backed Conversion
-
-Suggested commit:
-
-```text
-feat(currency): add database-backed conversion
-```
-
-Changes:
-
-1. Add a conversion service using only persisted rates.
-2. Support direct, inverse, and cross-rate calculations.
-3. Support different source and target minor units.
-4. Add explicit missing-rate errors.
-
-Verification:
-
-- Same-currency conversion test.
-- Direct-rate test.
-- Inverse-rate test.
-- Cross-rate test.
-- Different-minor-unit and rounding tests.
-- Missing-rate test.
-
-Owned files:
-
-- New currency conversion service and tests
-- Read-only exchange-rate repository methods if required
-
-Dependencies: WP1 and WP2.
-
-The conversion package must not edit ledger entities or `ManageLedgerImpl`.
-
-### WP8 / Commit 8: Snapshot Rates on Ledger Splits
-
-Suggested commit:
-
-```text
-feat(ledger): snapshot split exchange rates
-```
-
-Changes:
-
-1. Add `exchange_rate` to `ledger_split`.
-2. Add the field to `LedgerSplit`.
-3. Add `exchangeRate` and `accountCurrency` to `SplitDto`.
-4. Store rate `1` for all existing same-currency transaction paths.
-5. Keep current behavior unchanged before enabling mixed-currency posting.
-
-Verification:
-
-- Ledger persistence and DTO tests.
-- Existing transaction tests.
-- Backend formatting.
-
-Owned files:
-
-- `pocketr-api/src/main/resources/db/migration/V1__init.sql`
-- `pocketr-api/src/main/kotlin/com/decrux/pocketr/api/entities/db/ledger/LedgerSplit.kt`
-- `pocketr-api/src/main/kotlin/com/decrux/pocketr/api/entities/dtos/SplitDto.kt`
-- DTO mapping section of `ManageLedgerImpl.kt`
-- Directly affected ledger tests
-
-Dependencies: WP1 and WP2.
-
-### WP9 / Commit 9: Convert All Ledger Splits
-
-Suggested commit:
-
-```text
-feat(ledger): support cross-currency splits
-```
-
-Changes:
-
-1. Validate request balancing before conversion.
-2. Resolve each split account's currency.
-3. Convert and persist each split amount in its account currency.
-4. Store each applied exchange rate.
-5. Remove the requirement that every account matches the transaction currency.
-6. Apply the behavior uniformly to `ASSET`, `LIABILITY`, `INCOME`, `EXPENSE`, and `EQUITY`.
-7. Keep ownership, household, positive amount, split count, and side validations.
-8. Ensure current-balance updates and transaction deletion use persisted account-currency amounts.
-
-Verification:
-
-- Same-currency regression tests.
-- Cross-currency expense, income, transfer, debt payment, and equity/opening-entry tests.
-- Current-balance creation and deletion tests.
-- Missing-rate rollback test.
-- Backend formatting.
-
-Owned files:
-
-- `ManageLedgerImpl.kt`
-- `TransactionAccountCurrencyValidator.kt` and its tests
-- Cross-currency ledger service and integration tests
-
-Dependencies: WP7 and WP8.
-
-### WP10 / Commit 10: Enable Cross-Currency Selection in the UI
-
-Suggested commit:
-
-```text
-feat(ui): enable cross-currency transactions
-```
-
-Changes:
-
-1. Remove destination currency filtering where it prevents selecting a valid account.
-2. Consume `accountCurrency` and `exchangeRate` from the split response contract.
-3. Format each persisted split with its account currency.
-4. Keep the entered amount denominated in the transaction/source currency.
-5. Continue using the synchronized currency endpoint for account dropdowns.
-
-Verification:
-
-- Transaction strategy unit tests.
-- Transaction page unit tests.
-- Frontend type check and lint.
-
-Owned files:
-
-- `pocketr-ui/src/types/ledger.ts`
-- `pocketr-ui/src/views/TransactionsPage.vue`
-- `pocketr-ui/src/utils/txnStrategies.ts` only if request construction changes
-- Directly affected frontend tests
-
-Dependencies: WP8 response contract and WP9 backend behavior.
-
-## 9. Parallel Execution Waves
-
-Parallel preparation is allowed only within a wave. Integration remains one commit at a time.
-
-### Wave 1: Foundations
-
-Run concurrently:
-
-- Schema agent: WP1, then WP2 sequentially.
-- HTTP agent: WP3.
-
-Integration order:
-
-1. WP1
-2. WP2
-3. WP3
-
-Gate: currency schema, exchange-rate schema, and Frankfurter contracts compile together.
-
-### Wave 2: Independent Backend Features
-
-After Wave 1 is integrated, run concurrently:
-
-- Catalog agent: WP4.
-- Rate synchronization agent: WP5.
-- Conversion agent: WP7.
-- Ledger schema/DTO agent: WP8.
-
-Integration order:
-
-1. WP4
-2. WP5
-3. WP7
-4. WP8
-
-Gate: synchronization services, conversion service, and split DTO contract pass targeted tests.
-
-### Wave 3: Orchestration and Ledger Integration
-
-After Wave 2 is integrated, run concurrently:
-
-- Scheduler agent: WP6.
-- Ledger integration agent: WP9.
-- UI agent: prepare WP10 against the integrated WP8 API contract.
-
-Integration order:
-
-1. WP6
-2. WP9
-3. WP10
-
-The UI commit must not be integrated before WP9.
-
-Gate: backend build, frontend checks, and same-currency regression tests pass.
-
-### Dependency Graph
-
-```text
-WP1 -> WP2
-WP1 -> WP4
-WP3 -> WP4
-WP1 -> WP5
-WP2 -> WP5
-WP3 -> WP5
-WP4 -> WP6
-WP5 -> WP6
-WP1 -> WP7
-WP2 -> WP7
-WP1 -> WP8
-WP2 -> WP8
-WP7 -> WP9
-WP8 -> WP9
-WP8 -> WP10
-WP9 -> WP10
-```
-
-## 10. Integration and Review Gates
-
-For every prepared work package:
-
-1. Rebase or recreate it from the latest reviewed integration commit.
-2. Review the diff for file ownership violations.
-3. Run the package's targeted tests.
-4. Integrate exactly one commit.
-5. Run `git diff --check` and the relevant formatter.
-6. Present the commit and verification result to the user.
-7. Wait for approval before integrating the next commit.
-
-At the end of each wave, run:
-
-- Backend: targeted tests for all packages in the wave, then `./gradlew build`.
-- Frontend, when touched: `npm run type-check`, `npm run lint`, and targeted unit tests.
-
-No subagent or coordinator may push without explicit user permission.
-
-## 11. Compatibility Rules
-
-1. Existing same-currency transactions must behave exactly as before.
-2. Existing ledger rows should use an exchange rate of `1` when the schema is rebuilt or seeded.
-3. Currency synchronization must not invalidate referenced currencies.
-4. Rate refresh failure must not block unrelated same-currency transactions.
-5. Cross-currency posting must fail atomically when conversion cannot be completed.
-6. No account type receives special currency-conversion restrictions.
-
-## 12. Future Work
-
-After the above commits are complete and approved:
-
-1. Read the base currency from `app_settings`.
+1. Read base currency from `app_settings`.
 2. Add an app-settings API and first-run configuration flow.
 3. Convert dashboard and reporting totals into the configured base currency if desired.
 4. Add manual rate refresh or synchronization status only if operationally necessary.

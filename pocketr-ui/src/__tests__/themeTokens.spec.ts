@@ -109,6 +109,7 @@ describe('theme token contract', () => {
 
   it('keeps every theme scope on the same token contract', () => {
     const [baselineScope] = themeScopes
+    expect(themeScopes.length).toBeGreaterThan(0)
     if (!baselineScope) {
       throw new Error('No theme scopes were found.')
     }

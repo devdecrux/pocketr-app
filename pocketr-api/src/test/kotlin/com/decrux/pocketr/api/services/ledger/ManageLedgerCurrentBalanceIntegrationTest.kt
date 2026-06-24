@@ -4,11 +4,15 @@ import com.decrux.pocketr.api.entities.db.auth.User
 import com.decrux.pocketr.api.entities.db.ledger.Account
 import com.decrux.pocketr.api.entities.db.ledger.AccountType
 import com.decrux.pocketr.api.entities.db.ledger.Currency
+import com.decrux.pocketr.api.entities.db.ledger.CurrencyExchangeRate
+import com.decrux.pocketr.api.entities.db.ledger.CurrencyExchangeRateId
 import com.decrux.pocketr.api.entities.db.ledger.SplitSide
 import com.decrux.pocketr.api.entities.dtos.CreateSplitDto
 import com.decrux.pocketr.api.entities.dtos.CreateTransactionDto
+import com.decrux.pocketr.api.exceptions.BadRequestException
 import com.decrux.pocketr.api.repositories.AccountCurrentBalanceRepository
 import com.decrux.pocketr.api.repositories.AccountRepository
+import com.decrux.pocketr.api.repositories.CurrencyExchangeRateRepository
 import com.decrux.pocketr.api.repositories.CurrencyRepository
 import com.decrux.pocketr.api.repositories.LedgerSplitRepository
 import com.decrux.pocketr.api.repositories.LedgerTxnRepository
@@ -23,6 +27,8 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.test.context.TestPropertySource
 import org.springframework.transaction.annotation.Transactional
+import java.math.BigDecimal
+import java.time.Instant
 import java.time.LocalDate
 import java.util.UUID
 
@@ -37,17 +43,20 @@ class ManageLedgerCurrentBalanceIntegrationTest
         private val userRepository: UserRepository,
         private val accountRepository: AccountRepository,
         private val currencyRepository: CurrencyRepository,
+        private val currencyExchangeRateRepository: CurrencyExchangeRateRepository,
         private val ledgerTxnRepository: LedgerTxnRepository,
         private val ledgerSplitRepository: LedgerSplitRepository,
         private val accountCurrentBalanceRepository: AccountCurrentBalanceRepository,
         private val currentAccountBalanceMonitor: CurrentAccountBalanceMonitor,
     ) {
         private lateinit var eur: Currency
+        private lateinit var usd: Currency
 
         @BeforeEach
         fun cleanState() {
             accountCurrentBalanceRepository.deleteAll()
             ledgerTxnRepository.deleteAll()
+            currencyExchangeRateRepository.deleteAll()
             accountRepository.deleteAll()
             userRepository.deleteAll()
 
@@ -55,6 +64,12 @@ class ManageLedgerCurrentBalanceIntegrationTest
                 currencyRepository.findById("EUR").orElseGet {
                     currencyRepository.save(
                         Currency(code = "EUR", minorUnit = 2, name = "Euro"),
+                    )
+                }
+            usd =
+                currencyRepository.findById("USD").orElseGet {
+                    currencyRepository.save(
+                        Currency(code = "USD", isoNumeric = "840", minorUnit = 2, name = "US Dollar", symbol = "$"),
                     )
                 }
 
@@ -470,6 +485,98 @@ class ManageLedgerCurrentBalanceIntegrationTest
             )
         }
 
+        @Test
+        @DisplayName("cross-currency posting and deletion use persisted account-currency amounts")
+        fun crossCurrencyPostingAndDeletionUsePersistedAmounts() {
+            val user = persistUser("integration-cross-currency")
+            val usdCash = persistAccount(user, "USD Cash", AccountType.ASSET, usd)
+            val eurExpense = persistAccount(user, "EUR Expense", AccountType.EXPENSE, eur)
+            val usdCashId = requireNotNull(usdCash.id)
+            val eurExpenseId = requireNotNull(eurExpense.id)
+            val today = LocalDate.now()
+            persistRate("EUR", "USD", "1.20")
+
+            val txn =
+                manageLedger.createTransaction(
+                    dto =
+                        CreateTransactionDto(
+                            txnDate = today,
+                            currency = "EUR",
+                            description = "Cross currency expense",
+                            splits =
+                                listOf(
+                                    CreateSplitDto(accountId = usdCashId, side = "CREDIT", amountMinor = 1_000),
+                                    CreateSplitDto(accountId = eurExpenseId, side = "DEBIT", amountMinor = 1_000),
+                                ),
+                        ),
+                    creator = user,
+                )
+
+            val splitByAccount = txn.splits.associateBy { it.accountId }
+            assertEquals(1_200L, splitByAccount.getValue(usdCashId).amountMinor)
+            assertEquals("USD", splitByAccount.getValue(usdCashId).accountCurrency)
+            assertEquals("1.2", splitByAccount.getValue(usdCashId).exchangeRate)
+            assertEquals(1_000L, splitByAccount.getValue(eurExpenseId).amountMinor)
+
+            val projectionById =
+                accountCurrentBalanceRepository
+                    .findAllByAccountIdIn(listOf(usdCashId, eurExpenseId))
+                    .associate { requireNotNull(it.accountId) to it.rawBalanceMinor }
+            assertEquals(-1_200L, projectionById.getValue(usdCashId))
+            assertEquals(1_000L, projectionById.getValue(eurExpenseId))
+            assertEquals(-1_200L, manageLedger.getAccountBalance(usdCashId, today, user, null).balanceMinor)
+            assertEquals(1_000L, manageLedger.getAccountBalance(eurExpenseId, today, user, null).balanceMinor)
+
+            manageLedger.deleteTransaction(txn.id, user)
+
+            val afterDeleteById =
+                accountCurrentBalanceRepository
+                    .findAllByAccountIdIn(listOf(usdCashId, eurExpenseId))
+                    .associate { requireNotNull(it.accountId) to it.rawBalanceMinor }
+            assertEquals(0L, afterDeleteById.getValue(usdCashId))
+            assertEquals(0L, afterDeleteById.getValue(eurExpenseId))
+            assertEquals(0L, ledgerTxnRepository.count())
+            assertEquals(0L, ledgerSplitRepository.count())
+        }
+
+        @Test
+        @DisplayName("missing cross-currency rate rolls back without partial writes")
+        fun missingCrossCurrencyRateRollsBackWithoutPartialWrites() {
+            val user = persistUser("integration-cross-currency-rollback")
+            val usdCash = persistAccount(user, "USD Rollback Cash", AccountType.ASSET, usd)
+            val eurExpense = persistAccount(user, "EUR Rollback Expense", AccountType.EXPENSE, eur)
+            val usdCashId = requireNotNull(usdCash.id)
+            val eurExpenseId = requireNotNull(eurExpense.id)
+            val beforeTxnCount = ledgerTxnRepository.count()
+            val beforeSplitCount = ledgerSplitRepository.count()
+
+            assertThrows(BadRequestException::class.java) {
+                manageLedger.createTransaction(
+                    dto =
+                        CreateTransactionDto(
+                            txnDate = LocalDate.now(),
+                            currency = "EUR",
+                            description = "Missing rate rollback",
+                            splits =
+                                listOf(
+                                    CreateSplitDto(accountId = usdCashId, side = "CREDIT", amountMinor = 1_000),
+                                    CreateSplitDto(accountId = eurExpenseId, side = "DEBIT", amountMinor = 1_000),
+                                ),
+                        ),
+                    creator = user,
+                )
+            }
+
+            assertEquals(beforeTxnCount, ledgerTxnRepository.count())
+            assertEquals(beforeSplitCount, ledgerSplitRepository.count())
+            assertEquals(
+                emptyMap<UUID, Long>(),
+                accountCurrentBalanceRepository
+                    .findAllByAccountIdIn(listOf(usdCashId, eurExpenseId))
+                    .associate { requireNotNull(it.accountId) to it.rawBalanceMinor },
+            )
+        }
+
         private fun persistUser(prefix: String): User =
             userRepository.save(
                 User(
@@ -482,15 +589,35 @@ class ManageLedgerCurrentBalanceIntegrationTest
             user: User,
             name: String,
             type: AccountType,
+            currency: Currency = eur,
         ): Account =
             accountRepository.save(
                 Account(
                     owner = user,
                     name = "$name-${UUID.randomUUID()}",
                     type = type,
-                    currency = eur,
+                    currency = currency,
                 ),
             )
+
+        private fun persistRate(
+            baseCode: String,
+            quoteCode: String,
+            rate: String,
+        ) {
+            val base = requireNotNull(currencyRepository.findById(baseCode).orElseThrow())
+            val quote = requireNotNull(currencyRepository.findById(quoteCode).orElseThrow())
+            currencyExchangeRateRepository.save(
+                CurrencyExchangeRate(
+                    id = CurrencyExchangeRateId(baseCode, quoteCode),
+                    base = base,
+                    quote = quote,
+                    rate = BigDecimal(rate),
+                    providerDate = LocalDate.of(2026, 2, 20),
+                    updatedAt = Instant.parse("2026-02-20T00:00:00Z"),
+                ),
+            )
+        }
 
         private fun postTxn(
             user: User,

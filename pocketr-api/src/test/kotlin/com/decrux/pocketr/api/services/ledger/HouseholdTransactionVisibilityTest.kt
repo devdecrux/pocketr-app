@@ -27,7 +27,6 @@ import com.decrux.pocketr.api.services.ledger.validations.IndividualModeOwnershi
 import com.decrux.pocketr.api.services.ledger.validations.MinimumSplitCountValidator
 import com.decrux.pocketr.api.services.ledger.validations.PositiveSplitAmountValidator
 import com.decrux.pocketr.api.services.ledger.validations.SplitSideValueValidator
-import com.decrux.pocketr.api.services.ledger.validations.TransactionAccountCurrencyValidator
 import com.decrux.pocketr.api.services.user_avatar.UserAvatarService
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotNull
@@ -140,7 +139,6 @@ class HouseholdTransactionVisibilityTest {
                 PositiveSplitAmountValidator(),
                 SplitSideValueValidator(),
                 DoubleEntryBalanceValidator(),
-                TransactionAccountCurrencyValidator(),
                 CurrencyConversionService(currencyExchangeRateRepository),
                 "EUR",
                 IndividualModeOwnershipValidator(),

@@ -1,16 +1,11 @@
 package com.decrux.pocketr.api.services.ledger
 
-import com.decrux.pocketr.api.entities.db.auth.User
-import com.decrux.pocketr.api.entities.db.ledger.Account
-import com.decrux.pocketr.api.entities.db.ledger.AccountType
-import com.decrux.pocketr.api.entities.db.ledger.Currency
 import com.decrux.pocketr.api.entities.dtos.CreateSplitDto
 import com.decrux.pocketr.api.exceptions.BadRequestException
 import com.decrux.pocketr.api.services.ledger.validations.DoubleEntryBalanceValidator
 import com.decrux.pocketr.api.services.ledger.validations.MinimumSplitCountValidator
 import com.decrux.pocketr.api.services.ledger.validations.PositiveSplitAmountValidator
 import com.decrux.pocketr.api.services.ledger.validations.SplitSideValueValidator
-import com.decrux.pocketr.api.services.ledger.validations.TransactionAccountCurrencyValidator
 import org.junit.jupiter.api.Assertions.assertDoesNotThrow
 import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -20,17 +15,12 @@ import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import java.util.UUID
 
-@DisplayName("Ledger validation rules — Isolated split and currency validation")
+@DisplayName("Ledger validation rules — Isolated split validation")
 class LedgerTransactionValidatorTest {
     private lateinit var minimumSplitCountValidator: MinimumSplitCountValidator
     private lateinit var positiveSplitAmountValidator: PositiveSplitAmountValidator
     private lateinit var splitSideValueValidator: SplitSideValueValidator
     private lateinit var doubleEntryBalanceValidator: DoubleEntryBalanceValidator
-    private lateinit var transactionAccountCurrencyValidator: TransactionAccountCurrencyValidator
-
-    private val eur = Currency(code = "EUR", minorUnit = 2, name = "Euro")
-    private val usd = Currency(code = "USD", minorUnit = 2, name = "US Dollar")
-    private val owner = User(userId = 1L, password = "encoded", email = "alice@test.com")
 
     @BeforeEach
     fun setUp() {
@@ -38,7 +28,6 @@ class LedgerTransactionValidatorTest {
         positiveSplitAmountValidator = PositiveSplitAmountValidator()
         splitSideValueValidator = SplitSideValueValidator()
         doubleEntryBalanceValidator = DoubleEntryBalanceValidator()
-        transactionAccountCurrencyValidator = TransactionAccountCurrencyValidator()
     }
 
     private fun validateSplits(splits: List<CreateSplitDto>) {
@@ -154,36 +143,6 @@ class LedgerTransactionValidatorTest {
                     validateSplits(splits)
                 }
             assertTrue(ex.message!!.contains("Double-entry violation"))
-        }
-    }
-
-    @Nested
-    @DisplayName("currency validation")
-    inner class ValidateCurrencyConsistency {
-        @Test
-        @DisplayName("should pass when all accounts match transaction currency")
-        fun allAccountsMatch() {
-            val accounts =
-                listOf(
-                    Account(id = UUID.randomUUID(), owner = owner, name = "A1", type = AccountType.ASSET, currency = eur),
-                    Account(id = UUID.randomUUID(), owner = owner, name = "A2", type = AccountType.EXPENSE, currency = eur),
-                )
-            assertDoesNotThrow { transactionAccountCurrencyValidator.validate(accounts, "EUR") }
-        }
-
-        @Test
-        @DisplayName("should reject when an account has different currency")
-        fun rejectMismatch() {
-            val accounts =
-                listOf(
-                    Account(id = UUID.randomUUID(), owner = owner, name = "EUR Acct", type = AccountType.ASSET, currency = eur),
-                    Account(id = UUID.randomUUID(), owner = owner, name = "USD Acct", type = AccountType.ASSET, currency = usd),
-                )
-            val ex =
-                assertThrows(BadRequestException::class.java) {
-                    transactionAccountCurrencyValidator.validate(accounts, "EUR")
-                }
-            assertTrue(ex.message!!.contains("currency"))
         }
     }
 }

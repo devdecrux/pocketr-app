@@ -21,8 +21,8 @@ import {
   incomeStrategy,
   transferStrategy,
 } from '@/utils/txnStrategies'
+import { formatSplitAmount, formatTxnDisplayAmount } from '@/utils/txnDisplay'
 import { getTxnPresentation } from '@/utils/txnPresentation'
-import { formatMinor } from '@/utils/money'
 import AccountSelector from '@/components/AccountSelector.vue'
 import CategoryTagSelector from '@/components/CategoryTagSelector.vue'
 import DateRangePicker from '@/components/DateRangePicker.vue'
@@ -237,19 +237,7 @@ function txnCategories(txn: LedgerTxn): { name: string; color?: string | null }[
 
 // Total amount for display
 function txnDisplayAmount(txn: LedgerTxn): string {
-  const sourceCurrencySplits = txn.splits.filter((s) => s.accountCurrency === txn.currency)
-  const splits = sourceCurrencySplits.length > 0 ? sourceCurrencySplits : txn.splits
-  const debitTotal = splits.reduce((sum, s) => {
-    if (s.side === 'DEBIT') return sum + s.amountMinor
-    return sum
-  }, 0)
-  const creditTotal = splits.reduce((sum, s) => {
-    if (s.side === 'CREDIT') return sum + s.amountMinor
-    return sum
-  }, 0)
-  const total = Math.max(debitTotal, creditTotal)
-  const minorUnit = currencyStore.getMinorUnit(txn.currency)
-  return formatMinor(total, txn.currency, minorUnit)
+  return formatTxnDisplayAmount(txn, currencyStore.getMinorUnit)
 }
 
 function txnPresentation(txn: LedgerTxn) {
@@ -457,10 +445,7 @@ function splitLabel(split: LedgerSplit): string {
 }
 
 function splitAmount(split: LedgerSplit): string {
-  const currency = split.accountCurrency ?? ''
-  const minorUnit = currencyStore.getMinorUnit(currency)
-  const prefix = split.side === 'DEBIT' ? '+' : '-'
-  return `${prefix}${formatMinor(split.amountMinor, currency, minorUnit)}`
+  return formatSplitAmount(split, currencyStore.getMinorUnit)
 }
 
 function orderedSplits(txn: LedgerTxn): LedgerSplit[] {
