@@ -1,12 +1,22 @@
 package com.decrux.pocketr.api.services.ledger
 
 import com.decrux.pocketr.api.entities.db.auth.User
-import com.decrux.pocketr.api.entities.db.ledger.*
+import com.decrux.pocketr.api.entities.db.ledger.Account
+import com.decrux.pocketr.api.entities.db.ledger.AccountType
 import com.decrux.pocketr.api.entities.db.ledger.Currency
+import com.decrux.pocketr.api.entities.db.ledger.CurrencyExchangeRate
+import com.decrux.pocketr.api.entities.db.ledger.CurrencyExchangeRateId
+import com.decrux.pocketr.api.entities.db.ledger.SplitSide
 import com.decrux.pocketr.api.entities.dtos.CreateSplitDto
 import com.decrux.pocketr.api.entities.dtos.CreateTransactionDto
 import com.decrux.pocketr.api.exceptions.BadRequestException
-import com.decrux.pocketr.api.repositories.*
+import com.decrux.pocketr.api.repositories.AccountCurrentBalanceRepository
+import com.decrux.pocketr.api.repositories.AccountRepository
+import com.decrux.pocketr.api.repositories.CurrencyExchangeRateRepository
+import com.decrux.pocketr.api.repositories.CurrencyRepository
+import com.decrux.pocketr.api.repositories.LedgerSplitRepository
+import com.decrux.pocketr.api.repositories.LedgerTxnRepository
+import com.decrux.pocketr.api.repositories.UserRepository
 import com.decrux.pocketr.api.testsupport.UsePostgresDb
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertThrows
@@ -20,7 +30,7 @@ import org.springframework.transaction.annotation.Transactional
 import java.math.BigDecimal
 import java.time.Instant
 import java.time.LocalDate
-import java.util.*
+import java.util.UUID
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE)
 @UsePostgresDb
@@ -53,13 +63,13 @@ class ManageLedgerCurrentBalanceIntegrationTest
             eur =
                 currencyRepository.findById("EUR").orElseGet {
                     currencyRepository.save(
-                        Currency(code = "EUR", minorUnit = 2, name = "Euro"),
+                        Currency(code = "EUR", minorUnit = 2, name = "Euro", symbol = "€"),
                     )
                 }
             usd =
                 currencyRepository.findById("USD").orElseGet {
                     currencyRepository.save(
-                        Currency(code = "USD", iso = "840", minorUnit = 2, name = "US Dollar", symbol = "$"),
+                        Currency(code = "USD", minorUnit = 2, name = "US Dollar", symbol = "$"),
                     )
                 }
 

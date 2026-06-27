@@ -2,7 +2,6 @@ package com.decrux.pocketr.api.entities.dtos
 
 data class CurrencyDto(
     val code: String,
-    val isoNumeric: String,
     val minorUnit: Short,
     val name: String,
     val symbol: String,

@@ -30,7 +30,6 @@ CREATE TABLE public.category_tag (
 
 CREATE TABLE public.currencies (
     code character varying(3) NOT NULL,
-    iso_numeric character varying(3) NOT NULL,
     minor_unit smallint NOT NULL,
     name character varying(255) NOT NULL,
     symbol character varying(255) NOT NULL

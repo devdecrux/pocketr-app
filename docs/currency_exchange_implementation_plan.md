@@ -50,7 +50,6 @@ Use Frankfurter v2 through Spring's existing HTTP client support. Do not add dep
 Expected currency fields:
 
 - `iso_code`
-- `iso_numeric`
 - `name`
 - `symbol`
 
@@ -72,7 +71,6 @@ Rename the previous `currency` table to `currencies` and update the JPA model.
 | Column | Type | Meaning |
 | --- | --- | --- |
 | `code` | `VARCHAR(3)` | ISO alphabetic code and primary key |
-| `iso_numeric` | `VARCHAR(3)` | ISO numeric code |
 | `name` | `VARCHAR` | Display name |
 | `symbol` | `VARCHAR` | Display symbol |
 | `minor_unit` | `SMALLINT` | Number of fractional digits |
@@ -233,7 +231,7 @@ Currency persistence:
 
 - `currencies` table mapping.
 - Foreign keys from accounts and transactions to `currencies(code)`.
-- `iso_numeric`, `symbol`, and `minor_unit` persistence.
+- `symbol` and `minor_unit` persistence.
 
 Exchange-rate persistence:
 

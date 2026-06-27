@@ -19,21 +19,21 @@ class CurrencySeeder(
 
         val currencies =
             listOf(
-                Currency(code = "EUR", iso = "978", minorUnit = 2, name = "Euro", symbol = "EUR"),
-                Currency(code = "USD", iso = "840", minorUnit = 2, name = "US Dollar", symbol = "$"),
-                Currency(code = "GBP", iso = "826", minorUnit = 2, name = "British Pound", symbol = "GBP"),
-                Currency(code = "JPY", iso = "392", minorUnit = 0, name = "Japanese Yen", symbol = "JPY"),
-                Currency(code = "CHF", iso = "756", minorUnit = 2, name = "Swiss Franc", symbol = "CHF"),
-                Currency(code = "BHD", iso = "048", minorUnit = 3, name = "Bahraini Dinar", symbol = "BHD"),
-                Currency(code = "CAD", iso = "124", minorUnit = 2, name = "Canadian Dollar", symbol = "CA$"),
-                Currency(code = "AUD", iso = "036", minorUnit = 2, name = "Australian Dollar", symbol = "A$"),
-                Currency(code = "SEK", iso = "752", minorUnit = 2, name = "Swedish Krona", symbol = "SEK"),
-                Currency(code = "NOK", iso = "578", minorUnit = 2, name = "Norwegian Krone", symbol = "NOK"),
-                Currency(code = "DKK", iso = "208", minorUnit = 2, name = "Danish Krone", symbol = "DKK"),
-                Currency(code = "PLN", iso = "985", minorUnit = 2, name = "Polish Zloty", symbol = "PLN"),
-                Currency(code = "CZK", iso = "203", minorUnit = 2, name = "Czech Koruna", symbol = "CZK"),
-                Currency(code = "HUF", iso = "348", minorUnit = 2, name = "Hungarian Forint", symbol = "HUF"),
-                Currency(code = "RON", iso = "946", minorUnit = 2, name = "Romanian Leu", symbol = "RON"),
+                Currency(code = "EUR", minorUnit = 2, name = "Euro", symbol = "EUR"),
+                Currency(code = "USD", minorUnit = 2, name = "US Dollar", symbol = "$"),
+                Currency(code = "GBP", minorUnit = 2, name = "British Pound", symbol = "GBP"),
+                Currency(code = "JPY", minorUnit = 0, name = "Japanese Yen", symbol = "JPY"),
+                Currency(code = "CHF", minorUnit = 2, name = "Swiss Franc", symbol = "CHF"),
+                Currency(code = "BHD", minorUnit = 3, name = "Bahraini Dinar", symbol = "BHD"),
+                Currency(code = "CAD", minorUnit = 2, name = "Canadian Dollar", symbol = "CA$"),
+                Currency(code = "AUD", minorUnit = 2, name = "Australian Dollar", symbol = "A$"),
+                Currency(code = "SEK", minorUnit = 2, name = "Swedish Krona", symbol = "SEK"),
+                Currency(code = "NOK", minorUnit = 2, name = "Norwegian Krone", symbol = "NOK"),
+                Currency(code = "DKK", minorUnit = 2, name = "Danish Krone", symbol = "DKK"),
+                Currency(code = "PLN", minorUnit = 2, name = "Polish Zloty", symbol = "PLN"),
+                Currency(code = "CZK", minorUnit = 2, name = "Czech Koruna", symbol = "CZK"),
+                Currency(code = "HUF", minorUnit = 2, name = "Hungarian Forint", symbol = "HUF"),
+                Currency(code = "RON", minorUnit = 2, name = "Romanian Leu", symbol = "RON"),
             )
 
         currencyRepository.saveAll(currencies)

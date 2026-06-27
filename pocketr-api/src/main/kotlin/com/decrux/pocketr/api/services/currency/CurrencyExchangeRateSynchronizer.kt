@@ -5,6 +5,7 @@ import com.decrux.pocketr.api.entities.db.ledger.CurrencyExchangeRateId
 import com.decrux.pocketr.api.repositories.CurrencyExchangeRateRepository
 import com.decrux.pocketr.api.repositories.CurrencyRepository
 import com.decrux.pocketr.api.services.currency.frankfurter.FrankfurterClient
+import lombok.extern.slf4j.Slf4j
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -12,6 +13,7 @@ import java.time.Clock
 import java.time.Instant
 
 @Service
+@Slf4j
 class CurrencyExchangeRateSynchronizer(
     private val frankfurterClient: FrankfurterClient,
     private val currencyRepository: CurrencyRepository,
@@ -19,14 +21,14 @@ class CurrencyExchangeRateSynchronizer(
     private val clock: Clock = Clock.systemDefaultZone(),
 ) {
     @Transactional
-    fun synchronize(baseCurrency: String) {
+    fun update(baseCurrency: String) {
         val normalizedBase = baseCurrency.uppercase()
-        val syncedRates = frankfurterClient.fetchRates(normalizedBase)
-        if (syncedRates.isEmpty()) {
+        val newRates = frankfurterClient.fetchRates(normalizedBase)
+        if (newRates.isEmpty()) {
             logger.warn("Frankfurter returned no exchange rates for {}; keeping existing rates.", normalizedBase)
             return
         }
-        val mismatchedBaseRates = syncedRates.filter { it.base != normalizedBase }
+        val mismatchedBaseRates = newRates.filter { it.base != normalizedBase }
         if (mismatchedBaseRates.isNotEmpty()) {
             val mismatchedBases = mismatchedBaseRates.map { it.base }.distinct()
             throw IllegalStateException("Frankfurter returned rates for unexpected base currencies: $mismatchedBases")
@@ -36,17 +38,17 @@ class CurrencyExchangeRateSynchronizer(
             currencyRepository
                 .findById(normalizedBase)
                 .orElseThrow { IllegalStateException("Base currency $normalizedBase is missing") }
-        val quoteCodes = syncedRates.map { it.quote }.distinct()
-        val quotesByCode = currencyRepository.findAllById(quoteCodes).associateBy { it.code }
-        val missingQuoteCodes = quoteCodes.filter { it !in quotesByCode }
+        val newQuoteCodes = newRates.map { it.quote }.distinct()
+        val storedQuoteCodes = currencyRepository.findAllById(newQuoteCodes).associateBy { it.code }
+        val missingQuoteCodes = newQuoteCodes.filter { it !in storedQuoteCodes }
         if (missingQuoteCodes.isNotEmpty()) {
-            throw IllegalStateException("Quote currencies are missing: $missingQuoteCodes")
+            logger.warn("Quote currencies are missing: $missingQuoteCodes")
         }
 
         val updatedAt = Instant.now(clock)
         val entities =
-            syncedRates.map { synced ->
-                val quote = requireNotNull(quotesByCode[synced.quote])
+            newRates.map { synced ->
+                val quote = requireNotNull(storedQuoteCodes[synced.quote])
                 CurrencyExchangeRate(
                     id = CurrencyExchangeRateId(normalizedBase, synced.quote),
                     base = base,

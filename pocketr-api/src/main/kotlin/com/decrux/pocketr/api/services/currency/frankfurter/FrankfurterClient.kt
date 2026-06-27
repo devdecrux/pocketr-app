@@ -1,5 +1,7 @@
 package com.decrux.pocketr.api.services.currency.frankfurter
 
+import com.decrux.pocketr.api.services.currency.dtos.Currency
+import com.decrux.pocketr.api.services.currency.dtos.Rate
 import com.fasterxml.jackson.annotation.JsonProperty
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Component
@@ -19,7 +21,7 @@ class FrankfurterClient(
             .baseUrl(baseUrl.trimEnd('/'))
             .build()
 
-    fun fetchCurrencies(): List<FrankfurterCurrency> =
+    fun fetchCurrencies(): List<Currency> =
         (
             restClient
                 .get()
@@ -29,7 +31,7 @@ class FrankfurterClient(
                 ?: emptyArray()
         ).map { it.toDomain() }
 
-    fun fetchRates(baseCurrency: String): List<FrankfurterRate> =
+    fun fetchRates(baseCurrency: String): List<Rate> =
         (
             restClient
                 .get()
@@ -47,21 +49,17 @@ class FrankfurterClient(
 private data class FrankfurterCurrencyResponse(
     @JsonProperty("iso_code")
     val isoCode: String = "",
-    @JsonProperty("iso_numeric")
-    val isoNumeric: String? = null,
     val name: String = "",
     val symbol: String? = null,
 ) {
-    fun toDomain(): FrankfurterCurrency {
+    fun toDomain(): Currency {
         require(isoCode.isNotBlank()) { "Missing Frankfurter field: iso_code" }
-        require(!isoNumeric.isNullOrBlank()) { "Missing Frankfurter field: iso_numeric" }
         require(name.isNotBlank()) { "Missing Frankfurter field: name" }
         require(!symbol.isNullOrBlank()) { "Missing Frankfurter field: symbol" }
 
         val code = isoCode.uppercase()
-        return FrankfurterCurrency(
+        return Currency(
             code = code,
-            isoNumeric = isoNumeric,
             name = name,
             symbol = symbol,
         )
@@ -74,13 +72,13 @@ private data class FrankfurterRateResponse(
     val quote: String = "",
     val rate: BigDecimal = BigDecimal.ZERO,
 ) {
-    fun toDomain(): FrankfurterRate {
+    fun toDomain(): Rate {
         require(date.isNotBlank()) { "Missing Frankfurter field: date" }
         require(base.isNotBlank()) { "Missing Frankfurter field: base" }
         require(quote.isNotBlank()) { "Missing Frankfurter field: quote" }
         require(rate > BigDecimal.ZERO) { "Invalid Frankfurter field: rate" }
 
-        return FrankfurterRate(
+        return Rate(
             date = LocalDate.parse(date),
             base = base.uppercase(),
             quote = quote.uppercase(),
