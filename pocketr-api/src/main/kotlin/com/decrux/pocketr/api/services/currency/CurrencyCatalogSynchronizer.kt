@@ -6,7 +6,7 @@ import com.decrux.pocketr.api.services.currency.frankfurter.FrankfurterClient
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
-import java.util.Locale
+import java.util.*
 
 @Service
 class CurrencyCatalogSynchronizer(
@@ -25,7 +25,7 @@ class CurrencyCatalogSynchronizer(
         val entities =
             syncedCurrencies.map { synced ->
                 val entity = existingByCode[synced.code] ?: Currency(code = synced.code)
-                entity.isoNumeric = synced.isoNumeric
+                entity.iso = synced.isoNumeric
                 entity.minorUnit = minorUnitFor(synced.code)
                 entity.name = synced.name
                 entity.symbol = synced.symbol

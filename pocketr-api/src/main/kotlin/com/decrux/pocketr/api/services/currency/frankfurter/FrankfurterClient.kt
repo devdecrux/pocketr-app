@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonProperty
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Component
 import org.springframework.web.client.RestClient
+import org.springframework.web.client.body
 import java.math.BigDecimal
 import java.time.LocalDate
 
@@ -24,7 +25,7 @@ class FrankfurterClient(
                 .get()
                 .uri("/v2/currencies")
                 .retrieve()
-                .body(Array<FrankfurterCurrencyResponse>::class.java)
+                .body<Array<FrankfurterCurrencyResponse>>()
                 ?: emptyArray()
         ).map { it.toDomain() }
 
@@ -38,7 +39,7 @@ class FrankfurterClient(
                         .queryParam("base", baseCurrency.uppercase())
                         .build()
                 }.retrieve()
-                .body(Array<FrankfurterRateResponse>::class.java)
+                .body<Array<FrankfurterRateResponse>>()
                 ?: emptyArray()
         ).map { it.toDomain() }
 }

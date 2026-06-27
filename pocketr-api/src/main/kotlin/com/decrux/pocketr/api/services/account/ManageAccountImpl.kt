@@ -28,6 +28,58 @@ class ManageAccountImpl(
     private val householdAccountShareRepository: HouseholdAccountShareRepository,
     private val ownershipGuard: OwnershipGuard,
 ) : ManageAccount {
+    @Transactional(readOnly = true)
+    override fun listIndividualAccounts(owner: User): List<AccountDto> {
+        val userId = requireNotNull(owner.userId) { "User ID must not be null" }
+        val accounts = accountRepository.findByOwnerUserId(userId)
+        return accounts.map { it.toDto() }
+    }
+
+    @Transactional(readOnly = true)
+    override fun listAccountsByMode(
+        user: User,
+        mode: String,
+        householdId: UUID?,
+    ): List<AccountDto> {
+        val userId = requireNotNull(user.userId) { "User ID must not be null" }
+
+        return when (mode) {
+            "INDIVIDUAL" -> listIndividualAccounts(user)
+            "HOUSEHOLD" -> listHouseholdAccounts(userId, householdId)
+            else -> throw BadRequestException("Invalid mode: $mode")
+        }
+    }
+
+    private fun listHouseholdAccounts(
+        userId: Long,
+        householdId: UUID?,
+    ): List<AccountDto> {
+        val hhId =
+            householdId
+                ?: throw BadRequestException("householdId is required for HOUSEHOLD mode")
+
+        if (!manageHousehold.isActiveMember(hhId, userId)) {
+            throw ForbiddenException("Not an active member of this household")
+        }
+
+        val ownedAccounts = accountRepository.findByOwnerUserId(userId)
+        val sharedAccountIds = householdAccountShareRepository.findSharedAccountIdsByHouseholdId(hhId)
+        val sharedAccounts =
+            if (sharedAccountIds.isNotEmpty()) {
+                accountRepository.findAllById(sharedAccountIds)
+            } else {
+                emptyList()
+            }
+
+        // A user's own account can also be shared with the household, so keep the owned entry once.
+        val uniqueAccounts =
+            (ownedAccounts + sharedAccounts).distinctBy { account ->
+                requireNotNull(account.id) { "Account ID must not be null" }
+            }
+
+        return uniqueAccounts.map { it.toDto() }
+    }
+
     @Transactional
     override fun createAccount(
         dto: CreateAccountDto,
@@ -85,58 +137,6 @@ class ManageAccountImpl(
         }
 
         return savedAccount.toDto()
-    }
-
-    @Transactional(readOnly = true)
-    override fun listIndividualAccounts(owner: User): List<AccountDto> {
-        val userId = requireNotNull(owner.userId) { "User ID must not be null" }
-        val accounts = accountRepository.findByOwnerUserId(userId)
-        return accounts.map { it.toDto() }
-    }
-
-    @Transactional(readOnly = true)
-    override fun listAccountsByMode(
-        user: User,
-        mode: String,
-        householdId: UUID?,
-    ): List<AccountDto> {
-        val userId = requireNotNull(user.userId) { "User ID must not be null" }
-
-        if (mode == "INDIVIDUAL") {
-            return listIndividualAccounts(user)
-        }
-
-        if (mode != "HOUSEHOLD") {
-            throw BadRequestException("Invalid mode: $mode")
-        }
-
-        val hhId =
-            householdId
-                ?: throw BadRequestException("householdId is required for HOUSEHOLD mode")
-
-        if (!manageHousehold.isActiveMember(hhId, userId)) {
-            throw ForbiddenException("Not an active member of this household")
-        }
-
-        val ownedAccounts = accountRepository.findByOwnerUserId(userId)
-        val sharedAccountIds = householdAccountShareRepository.findSharedAccountIdsByHouseholdId(hhId)
-        val sharedAccounts =
-            if (sharedAccountIds.isNotEmpty()) {
-                accountRepository.findAllById(sharedAccountIds)
-            } else {
-                emptyList()
-            }
-
-        val seen = mutableSetOf<UUID>()
-        val merged = mutableListOf<Account>()
-        for (account in ownedAccounts + sharedAccounts) {
-            val accountId = requireNotNull(account.id)
-            if (seen.add(accountId)) {
-                merged.add(account)
-            }
-        }
-
-        return merged.map { it.toDto() }
     }
 
     @Transactional

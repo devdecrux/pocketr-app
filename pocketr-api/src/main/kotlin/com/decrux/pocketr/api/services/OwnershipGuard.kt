@@ -6,10 +6,10 @@ import org.springframework.stereotype.Component
 @Component
 class OwnershipGuard {
     fun requireOwner(
-        resourceOwnerId: Long?,
-        actorId: Long,
+        ownerUserId: Long?,
+        requestingUserId: Long,
         message: String = "Access denied",
     ) {
-        if (resourceOwnerId != actorId) throw ForbiddenException(message)
+        if (ownerUserId != requestingUserId) throw ForbiddenException(message)
     }
 }

@@ -9,11 +9,7 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
 import org.mockito.ArgumentMatchers
-import org.mockito.Mockito.doAnswer
-import org.mockito.Mockito.mock
-import org.mockito.Mockito.never
-import org.mockito.Mockito.verify
-import org.mockito.Mockito.`when`
+import org.mockito.Mockito.*
 
 @DisplayName("CurrencyCatalogSynchronizer")
 class CurrencyCatalogSynchronizerTest {
@@ -36,7 +32,7 @@ class CurrencyCatalogSynchronizerTest {
 
     @Test
     fun upsertsCurrenciesAndDerivesMinorUnits() {
-        val existingEur = Currency(code = "EUR", isoNumeric = "old", minorUnit = 9, name = "Old", symbol = "Old")
+        val existingEur = Currency(code = "EUR", iso = "old", minorUnit = 9, name = "Old", symbol = "Old")
         `when`(frankfurterClient.fetchCurrencies())
             .thenReturn(
                 listOf(
@@ -50,7 +46,7 @@ class CurrencyCatalogSynchronizerTest {
         synchronizer.synchronize()
 
         val saved = savedCurrencies.associateBy { it.code }
-        assertEquals("978", existingEur.isoNumeric)
+        assertEquals("978", existingEur.iso)
         assertEquals("Euro", existingEur.name)
         assertEquals("€", existingEur.symbol)
         assertEquals(2, saved.getValue("EUR").minorUnit.toInt())
