@@ -63,13 +63,13 @@ class ManageLedgerCurrentBalanceIntegrationTest
             eur =
                 currencyRepository.findById("EUR").orElseGet {
                     currencyRepository.save(
-                        Currency(code = "EUR", minorUnit = 2, name = "Euro"),
+                        Currency(code = "EUR", minorUnit = 2, name = "Euro", symbol = "€"),
                     )
                 }
             usd =
                 currencyRepository.findById("USD").orElseGet {
                     currencyRepository.save(
-                        Currency(code = "USD", isoNumeric = "840", minorUnit = 2, name = "US Dollar", symbol = "$"),
+                        Currency(code = "USD", minorUnit = 2, name = "US Dollar", symbol = "$"),
                     )
                 }
 

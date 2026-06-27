@@ -3,17 +3,13 @@ package com.decrux.pocketr.api.services.currency
 import com.decrux.pocketr.api.entities.db.ledger.Currency
 import com.decrux.pocketr.api.repositories.CurrencyRepository
 import com.decrux.pocketr.api.services.currency.frankfurter.FrankfurterClient
-import com.decrux.pocketr.api.services.currency.frankfurter.FrankfurterCurrency
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
 import org.mockito.ArgumentMatchers
-import org.mockito.Mockito.doAnswer
-import org.mockito.Mockito.mock
-import org.mockito.Mockito.never
-import org.mockito.Mockito.verify
-import org.mockito.Mockito.`when`
+import org.mockito.Mockito.*
+import com.decrux.pocketr.api.services.currency.dtos.Currency as ProviderCurrencyDto
 
 @DisplayName("CurrencyCatalogSynchronizer")
 class CurrencyCatalogSynchronizerTest {
@@ -36,21 +32,20 @@ class CurrencyCatalogSynchronizerTest {
 
     @Test
     fun upsertsCurrenciesAndDerivesMinorUnits() {
-        val existingEur = Currency(code = "EUR", isoNumeric = "old", minorUnit = 9, name = "Old", symbol = "Old")
+        val existingEur = Currency(code = "EUR", minorUnit = 9, name = "Old", symbol = "Old")
         `when`(frankfurterClient.fetchCurrencies())
             .thenReturn(
                 listOf(
-                    FrankfurterCurrency(code = "EUR", isoNumeric = "978", name = "Euro", symbol = "€"),
-                    FrankfurterCurrency(code = "JPY", isoNumeric = "392", name = "Yen", symbol = "¥"),
-                    FrankfurterCurrency(code = "XXX", isoNumeric = "999", name = "Unknown", symbol = "X"),
+                    ProviderCurrencyDto(code = "EUR", name = "Euro", symbol = "€"),
+                    ProviderCurrencyDto(code = "JPY", name = "Yen", symbol = "¥"),
+                    ProviderCurrencyDto(code = "XXX", name = "Unknown", symbol = "X"),
                 ),
             )
         `when`(currencyRepository.findAllById(listOf("EUR", "JPY", "XXX"))).thenReturn(listOf(existingEur))
 
-        synchronizer.synchronize()
+        synchronizer.update()
 
         val saved = savedCurrencies.associateBy { it.code }
-        assertEquals("978", existingEur.isoNumeric)
         assertEquals("Euro", existingEur.name)
         assertEquals("€", existingEur.symbol)
         assertEquals(2, saved.getValue("EUR").minorUnit.toInt())
@@ -62,7 +57,7 @@ class CurrencyCatalogSynchronizerTest {
     fun emptyProviderResponseKeepsExistingCatalogUnchanged() {
         `when`(frankfurterClient.fetchCurrencies()).thenReturn(emptyList())
 
-        synchronizer.synchronize()
+        synchronizer.update()
 
         verify(currencyRepository, never()).saveAll(anyCurrencyIterable())
     }
@@ -70,10 +65,10 @@ class CurrencyCatalogSynchronizerTest {
     @Test
     fun doesNotDeleteCurrenciesMissingFromLaterProviderResponses() {
         `when`(frankfurterClient.fetchCurrencies())
-            .thenReturn(listOf(FrankfurterCurrency(code = "EUR", isoNumeric = "978", name = "Euro", symbol = "€")))
+            .thenReturn(listOf(ProviderCurrencyDto(code = "EUR", name = "Euro", symbol = "€")))
         `when`(currencyRepository.findAllById(listOf("EUR"))).thenReturn(emptyList())
 
-        synchronizer.synchronize()
+        synchronizer.update()
 
         verify(currencyRepository, never()).delete(anyCurrency())
         assertEquals(listOf("EUR"), savedCurrencies.map { it.code })

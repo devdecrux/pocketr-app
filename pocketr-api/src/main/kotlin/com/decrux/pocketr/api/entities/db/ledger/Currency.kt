@@ -11,8 +11,6 @@ class Currency(
     @Id
     @Column(length = 3)
     var code: String = "",
-    @Column(name = "iso_numeric", nullable = false, length = 3)
-    var isoNumeric: String = "000",
     @Column(name = "minor_unit", nullable = false)
     var minorUnit: Short = 0,
     @Column(nullable = false)

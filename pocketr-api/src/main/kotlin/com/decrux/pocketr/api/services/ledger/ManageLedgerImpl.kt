@@ -194,10 +194,10 @@ class ManageLedgerImpl(
                     val accountCurrency = requireNotNull(account.currency) { "Account currency must not be null" }
                     val conversion =
                         currencyConversionService.convert(
-                            amountMinor = splitDto.amountMinor,
                             sourceCurrency = currency,
                             targetCurrency = accountCurrency,
                             baseCurrencyCode = baseCurrency,
+                            amountMinor = splitDto.amountMinor,
                         )
                     LedgerSplit(
                         transaction = txn,

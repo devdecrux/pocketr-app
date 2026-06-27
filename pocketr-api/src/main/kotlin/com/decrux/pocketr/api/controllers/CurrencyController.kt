@@ -18,7 +18,6 @@ class CurrencyController(
     private fun Currency.toDto() =
         CurrencyDto(
             code = code,
-            isoNumeric = isoNumeric,
             minorUnit = minorUnit,
             name = name,
             symbol = symbol,

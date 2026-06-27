@@ -35,8 +35,8 @@ class CurrencyExchangeRateRepositoryTest
         fun setUp() {
             exchangeRateRepository.deleteAll()
             currencyRepository.deleteAll()
-            eur = currencyRepository.save(Currency(code = "EUR", isoNumeric = "978", minorUnit = 2, name = "Euro", symbol = "€"))
-            usd = currencyRepository.save(Currency(code = "USD", isoNumeric = "840", minorUnit = 2, name = "US Dollar", symbol = "$"))
+            eur = currencyRepository.save(Currency(code = "EUR", minorUnit = 2, name = "Euro", symbol = "€"))
+            usd = currencyRepository.save(Currency(code = "USD", minorUnit = 2, name = "US Dollar", symbol = "$"))
         }
 
         @Test

@@ -6,7 +6,7 @@ import com.decrux.pocketr.api.services.currency.frankfurter.FrankfurterClient
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
-import java.util.Locale
+import java.util.*
 
 @Service
 class CurrencyCatalogSynchronizer(
@@ -14,21 +14,20 @@ class CurrencyCatalogSynchronizer(
     private val currencyRepository: CurrencyRepository,
 ) {
     @Transactional
-    fun synchronize() {
-        val syncedCurrencies = frankfurterClient.fetchCurrencies()
-        if (syncedCurrencies.isEmpty()) {
+    fun update() {
+        val newCurrencies = frankfurterClient.fetchCurrencies()
+        if (newCurrencies.isEmpty()) {
             logger.warn("Frankfurter returned no currencies; keeping existing catalog.")
             return
         }
 
-        val existingByCode = currencyRepository.findAllById(syncedCurrencies.map { it.code }).associateBy { it.code }
+        val existingByCode = currencyRepository.findAllById(newCurrencies.map { it.code }).associateBy { it.code }
         val entities =
-            syncedCurrencies.map { synced ->
-                val entity = existingByCode[synced.code] ?: Currency(code = synced.code)
-                entity.isoNumeric = synced.isoNumeric
-                entity.minorUnit = minorUnitFor(synced.code)
-                entity.name = synced.name
-                entity.symbol = synced.symbol
+            newCurrencies.map { newCurrency ->
+                val entity = existingByCode[newCurrency.code] ?: Currency(code = newCurrency.code)
+                entity.minorUnit = minorUnitFor(newCurrency.code)
+                entity.name = newCurrency.name
+                entity.symbol = newCurrency.symbol
                 entity
             }
 

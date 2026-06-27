@@ -1,5 +1,7 @@
 package com.decrux.pocketr.api.services.currency.frankfurter
 
+import com.decrux.pocketr.api.services.currency.dtos.Currency
+import com.decrux.pocketr.api.services.currency.dtos.Rate
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.BeforeEach
@@ -36,8 +38,8 @@ class FrankfurterClientTest {
                 withSuccess(
                     """
                     [
-                      {"iso_code":"eur","iso_numeric":"978","name":"Euro","symbol":"€"},
-                      {"iso_code":"usd","iso_numeric":"840","name":"US Dollar","symbol":"$"}
+                      {"iso_code":"eur","name":"Euro","symbol":"€"},
+                      {"iso_code":"usd","name":"US Dollar","symbol":"$"}
                     ]
                     """.trimIndent(),
                     MediaType.APPLICATION_JSON,
@@ -48,8 +50,8 @@ class FrankfurterClientTest {
 
         assertEquals(
             listOf(
-                FrankfurterCurrency(code = "EUR", isoNumeric = "978", name = "Euro", symbol = "€"),
-                FrankfurterCurrency(code = "USD", isoNumeric = "840", name = "US Dollar", symbol = "$"),
+                Currency(code = "EUR", name = "Euro", symbol = "€"),
+                Currency(code = "USD", name = "US Dollar", symbol = "$"),
             ),
             result,
         )
@@ -76,7 +78,7 @@ class FrankfurterClientTest {
 
         assertEquals(
             listOf(
-                FrankfurterRate(
+                Rate(
                     date = LocalDate.of(2026, 2, 20),
                     base = "EUR",
                     quote = "USD",
@@ -94,7 +96,7 @@ class FrankfurterClientTest {
             .expect(requestTo("https://provider.test/v2/currencies"))
             .andRespond(
                 withSuccess(
-                    """[{"iso_numeric":"978","name":"Euro","symbol":"€"}]""",
+                    """[{"name":"Euro","symbol":"€"}]""",
                     MediaType.APPLICATION_JSON,
                 ),
             )
@@ -108,12 +110,12 @@ class FrankfurterClientTest {
     }
 
     @Test
-    fun missingCurrencyMetadataFailsClearly() {
+    fun missingCurrencySymbolFailsClearly() {
         server
             .expect(requestTo("https://provider.test/v2/currencies"))
             .andRespond(
                 withSuccess(
-                    """[{"iso_code":"EUR","name":"Euro","symbol":"€"}]""",
+                    """[{"iso_code":"EUR","name":"Euro"}]""",
                     MediaType.APPLICATION_JSON,
                 ),
             )
@@ -123,7 +125,7 @@ class FrankfurterClientTest {
                 client.fetchCurrencies()
             }
 
-        assertEquals("Missing Frankfurter field: iso_numeric", ex.message)
+        assertEquals("Missing Frankfurter field: symbol", ex.message)
     }
 
     @Test

@@ -18,26 +18,24 @@ class CurrencyConversionService(
     private val exchangeRateRepository: CurrencyExchangeRateRepository,
 ) {
     fun convert(
-        amountMinor: Long,
         sourceCurrency: Currency,
         targetCurrency: Currency,
         baseCurrencyCode: String,
+        amountMinor: Long,
     ): CurrencyConversionResult {
         val sourceCode = requireNotNull(sourceCurrency.code)
         val targetCode = requireNotNull(targetCurrency.code)
         val rate = resolveRate(sourceCode, targetCode, baseCurrencyCode.uppercase())
-        val sourceMajor = BigDecimal.valueOf(amountMinor).movePointLeft(sourceCurrency.minorUnit.toInt())
-        val targetMinor =
-            sourceMajor
-                .multiply(rate)
-                .movePointRight(targetCurrency.minorUnit.toInt())
-                .setScale(0, RoundingMode.HALF_UP)
-                .longValueExact()
+        val sourceMajorAmount = toMajorAmount(amountMinor, sourceCurrency)
+        val targetMajorAmount = sourceMajorAmount.multiply(rate)
 
-        return CurrencyConversionResult(amountMinor = targetMinor, exchangeRate = rate)
+        return CurrencyConversionResult(
+            amountMinor = toMinorAmount(targetMajorAmount, targetCurrency),
+            exchangeRate = rate,
+        )
     }
 
-    fun resolveRate(
+    private fun resolveRate(
         sourceCurrencyCode: String,
         targetCurrencyCode: String,
         baseCurrencyCode: String,
@@ -62,6 +60,20 @@ class CurrencyConversionService(
             .findById(CurrencyExchangeRateId(baseCurrencyCode, quoteCurrencyCode))
             .map { it.rate }
             .orElseThrow { BadRequestException("Missing exchange rate $baseCurrencyCode->$quoteCurrencyCode") }
+
+    private fun toMajorAmount(
+        amountMinor: Long,
+        currency: Currency,
+    ): BigDecimal = BigDecimal.valueOf(amountMinor).movePointLeft(currency.minorUnit.toInt())
+
+    private fun toMinorAmount(
+        amountMajor: BigDecimal,
+        currency: Currency,
+    ): Long =
+        amountMajor
+            .movePointRight(currency.minorUnit.toInt())
+            .setScale(0, RoundingMode.HALF_UP)
+            .longValueExact()
 
     private companion object {
         const val RATE_SCALE = 18

@@ -2,30 +2,23 @@ package com.decrux.pocketr.api.services.currency
 
 import com.decrux.pocketr.api.entities.db.ledger.Currency
 import com.decrux.pocketr.api.entities.db.ledger.CurrencyExchangeRate
-import com.decrux.pocketr.api.entities.db.ledger.CurrencyExchangeRateId
 import com.decrux.pocketr.api.repositories.CurrencyExchangeRateRepository
 import com.decrux.pocketr.api.repositories.CurrencyRepository
+import com.decrux.pocketr.api.services.currency.dtos.Rate
 import com.decrux.pocketr.api.services.currency.frankfurter.FrankfurterClient
-import com.decrux.pocketr.api.services.currency.frankfurter.FrankfurterRate
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
 import org.mockito.ArgumentMatchers
-import org.mockito.Mockito.doAnswer
-import org.mockito.Mockito.inOrder
-import org.mockito.Mockito.mock
-import org.mockito.Mockito.never
-import org.mockito.Mockito.verify
-import org.mockito.Mockito.verifyNoMoreInteractions
-import org.mockito.Mockito.`when`
+import org.mockito.Mockito.*
 import java.math.BigDecimal
 import java.time.Clock
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneOffset
-import java.util.Optional
+import java.util.*
 
 @DisplayName("CurrencyExchangeRateSynchronizer")
 class CurrencyExchangeRateSynchronizerTest {
@@ -63,14 +56,14 @@ class CurrencyExchangeRateSynchronizerTest {
     fun replacesCurrentRowsForBaseAfterValidatingFullSet() {
         val rates =
             listOf(
-                FrankfurterRate(LocalDate.of(2026, 2, 20), "EUR", "USD", BigDecimal("1.08")),
-                FrankfurterRate(LocalDate.of(2026, 2, 20), "EUR", "BGN", BigDecimal("1.95583")),
+                Rate(LocalDate.of(2026, 2, 20), "EUR", "USD", BigDecimal("1.08")),
+                Rate(LocalDate.of(2026, 2, 20), "EUR", "BGN", BigDecimal("1.95583")),
             )
         `when`(frankfurterClient.fetchRates("EUR")).thenReturn(rates)
         `when`(currencyRepository.findById("EUR")).thenReturn(Optional.of(eur))
         `when`(currencyRepository.findAllById(listOf("USD", "BGN"))).thenReturn(listOf(usd, bgn))
 
-        synchronizer.synchronize("eur")
+        synchronizer.update("eur")
 
         val inOrder = inOrder(currencyRepository, exchangeRateRepository)
         inOrder.verify(currencyRepository).findAllById(listOf("USD", "BGN"))
@@ -87,7 +80,7 @@ class CurrencyExchangeRateSynchronizerTest {
     fun emptyProviderResponsePreservesExistingRows() {
         `when`(frankfurterClient.fetchRates("EUR")).thenReturn(emptyList())
 
-        synchronizer.synchronize("EUR")
+        synchronizer.update("EUR")
 
         verify(exchangeRateRepository, never()).deleteByIdBaseCurrency("EUR")
         verify(exchangeRateRepository, never()).saveAll(anyRates())
@@ -98,7 +91,7 @@ class CurrencyExchangeRateSynchronizerTest {
         `when`(frankfurterClient.fetchRates("EUR")).thenThrow(IllegalStateException("provider down"))
 
         assertThrows(IllegalStateException::class.java) {
-            synchronizer.synchronize("EUR")
+            synchronizer.update("EUR")
         }
 
         verifyNoMoreInteractions(exchangeRateRepository)
@@ -107,13 +100,13 @@ class CurrencyExchangeRateSynchronizerTest {
     @Test
     fun missingQuoteCurrencyDoesNotPartiallyReplaceRows() {
         `when`(frankfurterClient.fetchRates("EUR"))
-            .thenReturn(listOf(FrankfurterRate(LocalDate.of(2026, 2, 20), "EUR", "USD", BigDecimal("1.08"))))
+            .thenReturn(listOf(Rate(LocalDate.of(2026, 2, 20), "EUR", "USD", BigDecimal("1.08"))))
         `when`(currencyRepository.findById("EUR")).thenReturn(Optional.of(eur))
         `when`(currencyRepository.findAllById(listOf("USD"))).thenReturn(emptyList())
 
         val ex =
             assertThrows(IllegalStateException::class.java) {
-                synchronizer.synchronize("EUR")
+                synchronizer.update("EUR")
             }
 
         assertEquals("Quote currencies are missing: [USD]", ex.message)
@@ -124,11 +117,11 @@ class CurrencyExchangeRateSynchronizerTest {
     @Test
     fun mismatchedProviderBaseDoesNotPartiallyReplaceRows() {
         `when`(frankfurterClient.fetchRates("EUR"))
-            .thenReturn(listOf(FrankfurterRate(LocalDate.of(2026, 2, 20), "USD", "BGN", BigDecimal("1.80"))))
+            .thenReturn(listOf(Rate(LocalDate.of(2026, 2, 20), "USD", "BGN", BigDecimal("1.80"))))
 
         val ex =
             assertThrows(IllegalStateException::class.java) {
-                synchronizer.synchronize("EUR")
+                synchronizer.update("EUR")
             }
 
         assertEquals("Frankfurter returned rates for unexpected base currencies: [USD]", ex.message)

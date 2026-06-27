@@ -26,13 +26,13 @@ class CurrencyDataRefreshScheduler(
     )
     fun refresh() {
         try {
-            catalogSynchronizer.synchronize()
+            catalogSynchronizer.update()
         } catch (ex: RuntimeException) {
             logger.warn("Currency catalog synchronization failed; keeping existing currencies.", ex)
         }
 
         try {
-            exchangeRateSynchronizer.synchronize(baseCurrency)
+            exchangeRateSynchronizer.update(baseCurrency)
         } catch (ex: RuntimeException) {
             logger.warn("Currency exchange-rate synchronization failed; keeping existing rates.", ex)
         }

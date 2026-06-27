@@ -33,7 +33,13 @@ class CurrencyConversionServiceTest {
 
     @Test
     fun sameCurrencyUsesRateOne() {
-        val result = service.convert(1234, eur, eur, "EUR")
+        val result =
+            service.convert(
+                sourceCurrency = eur,
+                targetCurrency = eur,
+                baseCurrencyCode = "EUR",
+                amountMinor = 1234,
+            )
 
         assertEquals(1234, result.amountMinor)
         assertEquals(BigDecimal("1"), result.exchangeRate)
@@ -43,7 +49,13 @@ class CurrencyConversionServiceTest {
     fun directBaseRateConvertsMinorUnits() {
         stubRate("EUR", "JPY", "162.50")
 
-        val result = service.convert(1234, eur, jpy, "EUR")
+        val result =
+            service.convert(
+                sourceCurrency = eur,
+                targetCurrency = jpy,
+                baseCurrencyCode = "EUR",
+                amountMinor = 1234,
+            )
 
         assertEquals(2005, result.amountMinor)
         assertEquals(BigDecimal("162.5"), result.exchangeRate)
@@ -53,7 +65,13 @@ class CurrencyConversionServiceTest {
     fun inverseRateConvertsToBaseCurrency() {
         stubRate("EUR", "USD", "1.25")
 
-        val result = service.convert(1250, usd, eur, "EUR")
+        val result =
+            service.convert(
+                sourceCurrency = usd,
+                targetCurrency = eur,
+                baseCurrencyCode = "EUR",
+                amountMinor = 1250,
+            )
 
         assertEquals(1000, result.amountMinor)
         assertEquals(BigDecimal("0.8"), result.exchangeRate)
@@ -64,7 +82,13 @@ class CurrencyConversionServiceTest {
         stubRate("EUR", "USD", "1.25")
         stubRate("EUR", "BGN", "1.95583")
 
-        val result = service.convert(1250, usd, bgn, "EUR")
+        val result =
+            service.convert(
+                sourceCurrency = usd,
+                targetCurrency = bgn,
+                baseCurrencyCode = "EUR",
+                amountMinor = 1250,
+            )
 
         assertEquals(1956, result.amountMinor)
         assertEquals(BigDecimal("1.564664"), result.exchangeRate)
@@ -73,7 +97,12 @@ class CurrencyConversionServiceTest {
     @Test
     fun missingRateFailsClearly() {
         assertThrows(BadRequestException::class.java) {
-            service.convert(1000, usd, eur, "EUR")
+            service.convert(
+                sourceCurrency = usd,
+                targetCurrency = eur,
+                baseCurrencyCode = "EUR",
+                amountMinor = 1000,
+            )
         }
     }
 

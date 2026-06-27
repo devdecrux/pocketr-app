@@ -1,9 +1,9 @@
-package com.decrux.pocketr.api.services.currency.frankfurter
+package com.decrux.pocketr.api.services.currency.dtos
 
 import java.math.BigDecimal
 import java.time.LocalDate
 
-data class FrankfurterRate(
+data class Rate(
     val date: LocalDate,
     val base: String,
     val quote: String,
