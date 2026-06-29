@@ -6,7 +6,7 @@ import com.decrux.pocketr.api.services.currency.frankfurter.FrankfurterClient
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
-import java.util.*
+import java.util.Locale
 
 @Service
 class CurrencyCatalogSynchronizer(

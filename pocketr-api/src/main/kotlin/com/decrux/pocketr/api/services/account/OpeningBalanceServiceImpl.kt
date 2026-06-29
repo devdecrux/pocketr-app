@@ -35,41 +35,16 @@ class OpeningBalanceServiceImpl(
         val currency = requireNotNull(account.currency) { "Currency must not be null" }
         val currencyCode = currency.code
 
-        if (account.type !in SUPPORTED_OPENING_BALANCE_TYPES) {
-            throw BadRequestException("Opening balance is supported only for ASSET and LIABILITY accounts")
-        }
-        ownershipGuard.requireOwner(account.owner?.userId, ownerId, "Not the owner of this account")
-        if (openingBalanceMinor == 0L) {
-            throw BadRequestException("openingBalanceMinor must not be zero")
-        }
-        if (openingBalanceMinor == Long.MIN_VALUE) {
-            throw BadRequestException("openingBalanceMinor is out of supported range")
-        }
-        if (account.type == AccountType.LIABILITY && openingBalanceMinor < 0L) {
-            throw BadRequestException("Opening debt must be positive for LIABILITY accounts")
-        }
+        validateOpeningBalanceRequest(
+            ownerId = ownerId,
+            account = account,
+            openingBalanceMinor = openingBalanceMinor,
+        )
 
         val openingEquity = getOrCreateOpeningEquityAccount(owner, currencyCode, currency)
         val openingEquityId = requireNotNull(openingEquity.id) { "Opening equity account ID must not be null" }
-        val absoluteAmount = if (openingBalanceMinor > 0) openingBalanceMinor else -openingBalanceMinor
-        val (accountSide, equitySide) =
-            when (account.type) {
-                AccountType.ASSET -> {
-                    if (openingBalanceMinor > 0) {
-                        "DEBIT" to "CREDIT"
-                    } else {
-                        "CREDIT" to "DEBIT"
-                    }
-                }
-
-                AccountType.LIABILITY -> {
-                    "CREDIT" to "DEBIT"
-                }
-
-                else -> {
-                    throw BadRequestException("Unsupported account type for opening balance")
-                }
-            }
+        val absoluteAmount = toPositiveSplitAmount(openingBalanceMinor)
+        val (accountSide, equitySide) = resolveOpeningBalanceSides(account.type, openingBalanceMinor)
         val descriptionPrefix = if (account.type == AccountType.LIABILITY) "Opening debt" else "Opening balance"
 
         manageLedger.createTransaction(
@@ -98,6 +73,76 @@ class OpeningBalanceServiceImpl(
         )
     }
 
+    /**
+     * Validates that the requested account and signed opening balance can produce a ledger entry.
+     */
+    private fun validateOpeningBalanceRequest(
+        ownerId: Long,
+        account: Account,
+        openingBalanceMinor: Long,
+    ) {
+        if (account.type !in SUPPORTED_OPENING_BALANCE_TYPES) {
+            throw BadRequestException("Opening balance is supported only for ASSET and LIABILITY accounts")
+        }
+
+        ownershipGuard.requireOwner(account.owner?.userId, ownerId, "Not the owner of this account")
+
+        if (openingBalanceMinor == 0L) {
+            throw BadRequestException("openingBalanceMinor must not be zero")
+        }
+
+        if (openingBalanceMinor == Long.MIN_VALUE) {
+            throw BadRequestException("openingBalanceMinor is out of supported range")
+        }
+
+        if (account.type == AccountType.LIABILITY && openingBalanceMinor < 0L) {
+            throw BadRequestException("Opening debt must be positive for LIABILITY accounts")
+        }
+    }
+
+    /**
+     * Converts a signed opening balance into the positive amount stored on ledger splits.
+     *
+     * Ledger split amounts are always positive; the original balance direction is represented by
+     * the debit/credit split side chosen by the caller.
+     */
+    private fun toPositiveSplitAmount(openingBalanceMinor: Long): Long =
+        if (openingBalanceMinor > 0) openingBalanceMinor else -openingBalanceMinor
+
+    /**
+     * Maps a signed opening balance to the ledger sides used for the account and Opening Equity.
+     *
+     * Positive asset balances increase the asset account with a debit, negative asset balances
+     * credit the asset account, and liability opening debts are recorded as credits.
+     */
+    private fun resolveOpeningBalanceSides(
+        accountType: AccountType,
+        openingBalanceMinor: Long,
+    ): Pair<String, String> =
+        when (accountType) {
+            AccountType.ASSET -> {
+                if (openingBalanceMinor > 0) {
+                    "DEBIT" to "CREDIT"
+                } else {
+                    "CREDIT" to "DEBIT"
+                }
+            }
+
+            AccountType.LIABILITY -> {
+                "CREDIT" to "DEBIT"
+            }
+
+            else -> {
+                throw BadRequestException("Unsupported account type for opening balance")
+            }
+        }
+
+    /**
+     * Returns the owner's system-managed Opening Equity account for the requested currency.
+     *
+     * The user row is locked before lookup/creation so concurrent opening-balance requests for the
+     * same owner do not create duplicate Opening Equity accounts.
+     */
     private fun getOrCreateOpeningEquityAccount(
         owner: User,
         currencyCode: String,
@@ -105,7 +150,6 @@ class OpeningBalanceServiceImpl(
     ): Account {
         val ownerId = requireNotNull(owner.userId) { "User ID must not be null" }
 
-        // Serialize Opening Equity creation per user without introducing broad account-name constraints.
         userRepository
             .findByUserIdForUpdate(ownerId)
             .orElseThrow { NotFoundException("User not found") }
