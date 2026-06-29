@@ -1,6 +1,6 @@
 package com.decrux.pocketr.api.repositories.projections
 
-import java.util.*
+import java.util.UUID
 
 data class LiabilityPaymentProjection(
     val liabilityAccountId: UUID,

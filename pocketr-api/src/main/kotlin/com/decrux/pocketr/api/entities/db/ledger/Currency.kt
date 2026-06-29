@@ -6,7 +6,7 @@ import jakarta.persistence.Id
 import jakarta.persistence.Table
 
 @Entity
-@Table(name = "currency")
+@Table(name = "currencies")
 class Currency(
     @Id
     @Column(length = 3)
@@ -15,4 +15,6 @@ class Currency(
     var minorUnit: Short = 0,
     @Column(nullable = false)
     var name: String = "",
+    @Column(nullable = false)
+    var symbol: String = "",
 )

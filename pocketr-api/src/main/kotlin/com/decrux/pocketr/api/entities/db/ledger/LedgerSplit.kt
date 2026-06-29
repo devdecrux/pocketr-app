@@ -15,6 +15,7 @@ import jakarta.persistence.ManyToOne
 import jakarta.persistence.Table
 import org.hibernate.annotations.OnDelete
 import org.hibernate.annotations.OnDeleteAction
+import java.math.BigDecimal
 import java.util.UUID
 
 @Entity
@@ -41,6 +42,8 @@ class LedgerSplit(
     var side: SplitSide = SplitSide.DEBIT,
     @Column(name = "amount_minor", nullable = false)
     var amountMinor: Long = 0,
+    @Column(name = "exchange_rate", nullable = false, precision = 38, scale = 18)
+    var exchangeRate: BigDecimal = BigDecimal.ONE,
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "category_tag_id", foreignKey = ForeignKey(name = "fk_ledger_split_category_tag"))
     var categoryTag: CategoryTag? = null,

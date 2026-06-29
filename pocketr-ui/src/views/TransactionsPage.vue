@@ -21,8 +21,8 @@ import {
   incomeStrategy,
   transferStrategy,
 } from '@/utils/txnStrategies'
+import { formatSplitAmount, formatTxnDisplayAmount } from '@/utils/txnDisplay'
 import { getTxnPresentation } from '@/utils/txnPresentation'
-import { formatMinor } from '@/utils/money'
 import AccountSelector from '@/components/AccountSelector.vue'
 import CategoryTagSelector from '@/components/CategoryTagSelector.vue'
 import DateRangePicker from '@/components/DateRangePicker.vue'
@@ -237,12 +237,7 @@ function txnCategories(txn: LedgerTxn): { name: string; color?: string | null }[
 
 // Total amount for display
 function txnDisplayAmount(txn: LedgerTxn): string {
-  const total = txn.splits.reduce((sum, s) => {
-    if (s.side === 'DEBIT') return sum + s.amountMinor
-    return sum
-  }, 0)
-  const minorUnit = currencyStore.getMinorUnit(txn.currency)
-  return formatMinor(total, txn.currency, minorUnit)
+  return formatTxnDisplayAmount(txn, currencyStore.getMinorUnit)
 }
 
 function txnPresentation(txn: LedgerTxn) {
@@ -449,10 +444,8 @@ function splitLabel(split: LedgerSplit): string {
   return acc?.name ?? split.accountId
 }
 
-function splitAmount(split: LedgerSplit, currency: string): string {
-  const minorUnit = currencyStore.getMinorUnit(currency)
-  const prefix = split.side === 'DEBIT' ? '+' : '-'
-  return `${prefix}${formatMinor(split.amountMinor, currency, minorUnit)}`
+function splitAmount(split: LedgerSplit): string {
+  return formatSplitAmount(split, currencyStore.getMinorUnit)
 }
 
 function orderedSplits(txn: LedgerTxn): LedgerSplit[] {
@@ -697,7 +690,6 @@ async function deleteTransaction(txn: LedgerTxn): Promise<void> {
                   <AccountSelector
                     v-model="transferTo"
                     :allowed-types="['ASSET']"
-                    :currency="transferCurrency || undefined"
                     :placeholder="$t('views.transactions.formHints.selectDestinationAccount')"
                   />
                 </AppFormField>
@@ -738,7 +730,6 @@ async function deleteTransaction(txn: LedgerTxn): Promise<void> {
                   <AccountSelector
                     v-model="debtPaymentLiabilityAccount"
                     :allowed-types="['LIABILITY']"
-                    :currency="debtPaymentCurrency || undefined"
                     :placeholder="$t('views.transactions.formHints.selectLiabilityAccount')"
                   />
                 </AppFormField>
@@ -849,7 +840,7 @@ async function deleteTransaction(txn: LedgerTxn): Promise<void> {
                   }}</Badge>
                   <span>{{ splitLabel(split) }}</span>
                 </div>
-                <span class="font-mono">{{ splitAmount(split, row.original.currency) }}</span>
+                <span class="font-mono">{{ splitAmount(split) }}</span>
               </div>
             </div>
           </template>

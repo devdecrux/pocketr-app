@@ -24,6 +24,7 @@ import com.decrux.pocketr.api.repositories.CategoryTagRepository
 import com.decrux.pocketr.api.repositories.CurrencyRepository
 import com.decrux.pocketr.api.repositories.LedgerSplitRepository
 import com.decrux.pocketr.api.repositories.LedgerTxnRepository
+import com.decrux.pocketr.api.services.currency.CurrencyConversionService
 import com.decrux.pocketr.api.services.household.ManageHousehold
 import com.decrux.pocketr.api.services.ledger.validations.CrossUserAssetAccountTypeValidator
 import com.decrux.pocketr.api.services.ledger.validations.DoubleEntryBalanceValidator
@@ -34,7 +35,6 @@ import com.decrux.pocketr.api.services.ledger.validations.IndividualModeOwnershi
 import com.decrux.pocketr.api.services.ledger.validations.MinimumSplitCountValidator
 import com.decrux.pocketr.api.services.ledger.validations.PositiveSplitAmountValidator
 import com.decrux.pocketr.api.services.ledger.validations.SplitSideValueValidator
-import com.decrux.pocketr.api.services.ledger.validations.TransactionAccountCurrencyValidator
 import com.decrux.pocketr.api.services.rollover.RolloverPeriod
 import com.decrux.pocketr.api.services.user_avatar.UserAvatarService
 import org.slf4j.LoggerFactory
@@ -64,7 +64,9 @@ class ManageLedgerImpl(
     private val positiveSplitAmountValidator: PositiveSplitAmountValidator,
     private val splitSideValueValidator: SplitSideValueValidator,
     private val doubleEntryBalanceValidator: DoubleEntryBalanceValidator,
-    private val transactionAccountCurrencyValidator: TransactionAccountCurrencyValidator,
+    private val currencyConversionService: CurrencyConversionService,
+    @Value("\${pocketr.currency.base:EUR}")
+    private val baseCurrency: String,
     private val individualModeOwnershipValidator: IndividualModeOwnershipValidator,
     private val householdIdPresenceValidator: HouseholdIdPresenceValidator,
     private val householdMembershipValidator: HouseholdMembershipValidator,
@@ -88,8 +90,6 @@ class ManageLedgerImpl(
         val currency = loadCurrency(dto.currency)
         val accountMap = loadAccounts(dto.splits)
         val accounts = accountMap.values.toList()
-
-        transactionAccountCurrencyValidator.validate(accounts, dto.currency)
 
         validateAccountAccess(dto, accounts, userId, isHouseholdMode)
 
@@ -190,11 +190,21 @@ class ManageLedgerImpl(
         txn.splits =
             dto.splits
                 .map { splitDto ->
+                    val account = accountMap.getValue(splitDto.accountId)
+                    val accountCurrency = requireNotNull(account.currency) { "Account currency must not be null" }
+                    val conversion =
+                        currencyConversionService.convert(
+                            sourceCurrency = currency,
+                            targetCurrency = accountCurrency,
+                            baseCurrencyCode = baseCurrency,
+                            amountMinor = splitDto.amountMinor,
+                        )
                     LedgerSplit(
                         transaction = txn,
-                        account = accountMap.getValue(splitDto.accountId),
+                        account = account,
                         side = SplitSide.valueOf(splitDto.side),
-                        amountMinor = splitDto.amountMinor,
+                        amountMinor = conversion.amountMinor,
+                        exchangeRate = conversion.exchangeRate,
                         categoryTag = splitDto.categoryTagId?.let { categoryTagMap[it] },
                     )
                 }.toMutableList()
@@ -804,9 +814,11 @@ class ManageLedgerImpl(
                 accountId = requireNotNull(account?.id) { "Account must not be null" },
                 accountName = requireNotNull(account?.name) { "Account name must not be null" },
                 accountType = accountType.name,
+                accountCurrency = requireNotNull(account?.currency?.code) { "Account currency must not be null" },
                 side = side.name,
                 amountMinor = amountMinor,
                 effectMinor = effectMinor,
+                exchangeRate = exchangeRate.toPlainString(),
                 categoryTagId = categoryTag?.id,
                 categoryTagName = categoryTag?.name,
             )

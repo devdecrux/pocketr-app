@@ -25,6 +25,9 @@
       "unshare": "Unshare",
       "upload": "Upload"
     },
+    "amounts": {
+      "mixedCurrencies": "Mixed currencies"
+    },
     "feedback": {
       "creating": "Creating...",
       "creatingAccount": "Creating account...",
@@ -534,7 +537,6 @@
       "userIdNull": "User ID must not be null"
     },
     "ledger": {
-      "accountCurrencyMismatch": "Account '{accountName}' has currency {accountCurrency} but transaction currency is {transactionCurrency}",
       "accountNotSharedIntoHousehold": "Account '{accountName}' is not shared into household",
       "accountsNotFound": "Accounts not found: {ids}",
       "allSplitAmountsPositive": "All split amounts must be greater than 0",

@@ -1,5 +1,10 @@
 {
   "app": {
     "name": "Pocketr"
+  },
+  "common": {
+    "amounts": {
+      "mixedCurrencies": "Смесени валути"
+    }
   }
 }

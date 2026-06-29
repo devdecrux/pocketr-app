@@ -4,4 +4,5 @@ data class CurrencyDto(
     val code: String,
     val minorUnit: Short,
     val name: String,
+    val symbol: String,
 )

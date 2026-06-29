@@ -6,6 +6,8 @@ import com.decrux.pocketr.api.entities.db.ledger.AccountCurrentBalance
 import com.decrux.pocketr.api.entities.db.ledger.AccountType
 import com.decrux.pocketr.api.entities.db.ledger.CategoryTag
 import com.decrux.pocketr.api.entities.db.ledger.Currency
+import com.decrux.pocketr.api.entities.db.ledger.CurrencyExchangeRate
+import com.decrux.pocketr.api.entities.db.ledger.CurrencyExchangeRateId
 import com.decrux.pocketr.api.entities.db.ledger.LedgerSplit
 import com.decrux.pocketr.api.entities.db.ledger.LedgerTxn
 import com.decrux.pocketr.api.entities.db.ledger.SplitSide
@@ -17,10 +19,12 @@ import com.decrux.pocketr.api.exceptions.NotFoundException
 import com.decrux.pocketr.api.repositories.AccountCurrentBalanceRepository
 import com.decrux.pocketr.api.repositories.AccountRepository
 import com.decrux.pocketr.api.repositories.CategoryTagRepository
+import com.decrux.pocketr.api.repositories.CurrencyExchangeRateRepository
 import com.decrux.pocketr.api.repositories.CurrencyRepository
 import com.decrux.pocketr.api.repositories.LedgerSplitRepository
 import com.decrux.pocketr.api.repositories.LedgerTxnRepository
 import com.decrux.pocketr.api.repositories.projections.AccountRawBalanceProjection
+import com.decrux.pocketr.api.services.currency.CurrencyConversionService
 import com.decrux.pocketr.api.services.household.ManageHousehold
 import com.decrux.pocketr.api.services.ledger.validations.CrossUserAssetAccountTypeValidator
 import com.decrux.pocketr.api.services.ledger.validations.DoubleEntryBalanceValidator
@@ -31,7 +35,7 @@ import com.decrux.pocketr.api.services.ledger.validations.IndividualModeOwnershi
 import com.decrux.pocketr.api.services.ledger.validations.MinimumSplitCountValidator
 import com.decrux.pocketr.api.services.ledger.validations.PositiveSplitAmountValidator
 import com.decrux.pocketr.api.services.ledger.validations.SplitSideValueValidator
-import com.decrux.pocketr.api.services.ledger.validations.TransactionAccountCurrencyValidator
+import com.decrux.pocketr.api.services.rollover.RolloverPeriod
 import com.decrux.pocketr.api.services.user_avatar.UserAvatarService
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotNull
@@ -51,6 +55,7 @@ import org.mockito.Mockito.verifyNoInteractions
 import org.mockito.Mockito.verifyNoMoreInteractions
 import org.mockito.Mockito.`when`
 import org.springframework.dao.DataIntegrityViolationException
+import java.math.BigDecimal
 import java.time.Clock
 import java.time.Instant
 import java.time.LocalDate
@@ -73,6 +78,7 @@ class LedgerTransactionValidationTest {
     private lateinit var ledgerSplitRepository: LedgerSplitRepository
     private lateinit var accountCurrentBalanceRepository: AccountCurrentBalanceRepository
     private lateinit var accountRepository: AccountRepository
+    private lateinit var currencyExchangeRateRepository: CurrencyExchangeRateRepository
     private lateinit var currencyRepository: CurrencyRepository
     private lateinit var categoryTagRepository: CategoryTagRepository
     private lateinit var manageHousehold: ManageHousehold
@@ -113,6 +119,7 @@ class LedgerTransactionValidationTest {
         ledgerSplitRepository = mock(LedgerSplitRepository::class.java)
         accountCurrentBalanceRepository = mock(AccountCurrentBalanceRepository::class.java)
         accountRepository = mock(AccountRepository::class.java)
+        currencyExchangeRateRepository = mock(CurrencyExchangeRateRepository::class.java)
         currencyRepository = mock(CurrencyRepository::class.java)
         categoryTagRepository = mock(CategoryTagRepository::class.java)
         manageHousehold = mock(ManageHousehold::class.java)
@@ -146,7 +153,8 @@ class LedgerTransactionValidationTest {
             PositiveSplitAmountValidator(),
             SplitSideValueValidator(),
             DoubleEntryBalanceValidator(),
-            TransactionAccountCurrencyValidator(),
+            CurrencyConversionService(currencyExchangeRateRepository),
+            "EUR",
             IndividualModeOwnershipValidator(),
             HouseholdIdPresenceValidator(),
             HouseholdMembershipValidator(),
@@ -304,8 +312,8 @@ class LedgerTransactionValidationTest {
     @DisplayName("Currency consistency")
     inner class CurrencyConsistency {
         @Test
-        @DisplayName("should reject transaction where account currency != transaction currency")
-        fun rejectCurrencyMismatch() {
+        @DisplayName("should reject cross-currency transaction when exchange rate is missing")
+        fun rejectMissingExchangeRate() {
             stubAccounts(usdAccount, expenseAcct)
             val dto =
                 CreateTransactionDto(
@@ -323,7 +331,157 @@ class LedgerTransactionValidationTest {
                 assertThrows(BadRequestException::class.java) {
                     service.createTransaction(dto, userA)
                 }
-            assertTrue(ex.message!!.contains("currency"))
+            assertTrue(ex.message!!.contains("Missing exchange rate"))
+        }
+
+        @Test
+        @DisplayName("should convert split amount into account currency and snapshot exchange rate")
+        fun convertCrossCurrencySplit() {
+            stubAccounts(usdAccount, expenseAcct)
+            stubExchangeRate("EUR", "USD", "1.10")
+
+            val result =
+                service.createTransaction(
+                    CreateTransactionDto(
+                        txnDate = LocalDate.now(),
+                        currency = "EUR",
+                        description = "Cross currency expense",
+                        splits =
+                            listOf(
+                                CreateSplitDto(accountId = usdAccountId, side = "CREDIT", amountMinor = 4500),
+                                CreateSplitDto(accountId = expenseId, side = "DEBIT", amountMinor = 4500),
+                            ),
+                    ),
+                    userA,
+                )
+
+            val usdSplit = result.splits.single { it.accountId == usdAccountId }
+            val eurSplit = result.splits.single { it.accountId == expenseId }
+            assertEquals(4950, usdSplit.amountMinor)
+            assertEquals("USD", usdSplit.accountCurrency)
+            assertEquals("1.1", usdSplit.exchangeRate)
+            assertEquals(4500, eurSplit.amountMinor)
+            assertEquals("EUR", eurSplit.accountCurrency)
+            assertEquals("1", eurSplit.exchangeRate)
+        }
+
+        @Test
+        @DisplayName("should convert cross-currency income splits")
+        fun convertCrossCurrencyIncome() {
+            val usdIncomeId = UUID.randomUUID()
+            val usdIncome = Account(id = usdIncomeId, owner = userA, name = "USD Salary", type = AccountType.INCOME, currency = usd)
+            stubAccounts(checking, usdIncome)
+            stubExchangeRate("EUR", "USD", "1.20")
+
+            val result =
+                service.createTransaction(
+                    CreateTransactionDto(
+                        txnDate = LocalDate.now(),
+                        currency = "EUR",
+                        description = "Cross currency income",
+                        splits =
+                            listOf(
+                                CreateSplitDto(accountId = checkingId, side = "DEBIT", amountMinor = 10000),
+                                CreateSplitDto(accountId = usdIncomeId, side = "CREDIT", amountMinor = 10000),
+                            ),
+                    ),
+                    userA,
+                )
+
+            val usdSplit = result.splits.single { it.accountId == usdIncomeId }
+            assertEquals("INCOME", result.txnKind)
+            assertEquals(12000, usdSplit.amountMinor)
+            assertEquals("USD", usdSplit.accountCurrency)
+            assertEquals("1.2", usdSplit.exchangeRate)
+            verify(accountCurrentBalanceRepository).addDelta(usdIncomeId, -12000L)
+        }
+
+        @Test
+        @DisplayName("should convert cross-currency transfer splits")
+        fun convertCrossCurrencyTransfer() {
+            stubAccounts(checking, usdAccount)
+            stubExchangeRate("EUR", "USD", "1.20")
+
+            val result =
+                service.createTransaction(
+                    CreateTransactionDto(
+                        txnDate = LocalDate.now(),
+                        currency = "EUR",
+                        description = "Cross currency transfer",
+                        splits =
+                            listOf(
+                                CreateSplitDto(accountId = checkingId, side = "CREDIT", amountMinor = 10000),
+                                CreateSplitDto(accountId = usdAccountId, side = "DEBIT", amountMinor = 10000),
+                            ),
+                    ),
+                    userA,
+                )
+
+            val usdSplit = result.splits.single { it.accountId == usdAccountId }
+            assertEquals("TRANSFER", result.txnKind)
+            assertEquals(12000, usdSplit.amountMinor)
+            assertEquals("USD", usdSplit.accountCurrency)
+            verify(accountCurrentBalanceRepository).addDelta(usdAccountId, 12000L)
+        }
+
+        @Test
+        @DisplayName("should convert cross-currency debt payment splits")
+        fun convertCrossCurrencyDebtPayment() {
+            val usdLiabilityId = UUID.randomUUID()
+            val usdLiability = Account(id = usdLiabilityId, owner = userA, name = "USD Loan", type = AccountType.LIABILITY, currency = usd)
+            stubAccounts(checking, usdLiability)
+            stubExchangeRate("EUR", "USD", "1.20")
+
+            val result =
+                service.createTransaction(
+                    CreateTransactionDto(
+                        txnDate = LocalDate.now(),
+                        currency = "EUR",
+                        description = "Cross currency debt payment",
+                        splits =
+                            listOf(
+                                CreateSplitDto(accountId = checkingId, side = "CREDIT", amountMinor = 10000),
+                                CreateSplitDto(accountId = usdLiabilityId, side = "DEBIT", amountMinor = 10000),
+                            ),
+                    ),
+                    userA,
+                )
+
+            val usdSplit = result.splits.single { it.accountId == usdLiabilityId }
+            assertEquals("DEBT_PAYMENT", result.txnKind)
+            assertEquals(12000, usdSplit.amountMinor)
+            assertEquals("USD", usdSplit.accountCurrency)
+            verify(accountCurrentBalanceRepository).addDelta(usdLiabilityId, 12000L)
+        }
+
+        @Test
+        @DisplayName("should convert cross-currency equity opening splits")
+        fun convertCrossCurrencyEquityOpening() {
+            val usdEquityId = UUID.randomUUID()
+            val usdEquity = Account(id = usdEquityId, owner = userA, name = "USD Opening Equity", type = AccountType.EQUITY, currency = usd)
+            stubAccounts(checking, usdEquity)
+            stubExchangeRate("EUR", "USD", "1.20")
+
+            val result =
+                service.createTransaction(
+                    CreateTransactionDto(
+                        txnDate = LocalDate.now(),
+                        currency = "EUR",
+                        description = "Cross currency opening balance",
+                        splits =
+                            listOf(
+                                CreateSplitDto(accountId = checkingId, side = "DEBIT", amountMinor = 10000),
+                                CreateSplitDto(accountId = usdEquityId, side = "CREDIT", amountMinor = 10000),
+                            ),
+                    ),
+                    userA,
+                )
+
+            val usdSplit = result.splits.single { it.accountId == usdEquityId }
+            assertEquals("OPENING_BALANCE", result.txnKind)
+            assertEquals(12000, usdSplit.amountMinor)
+            assertEquals("USD", usdSplit.accountCurrency)
+            verify(accountCurrentBalanceRepository).addDelta(usdEquityId, -12000L)
         }
 
         @Test
@@ -992,10 +1150,12 @@ class LedgerTransactionValidationTest {
         fun computeBatchBalancesWithGroupedQuery() {
             val asOf = LocalDate.of(2026, 2, 20)
             val ids = listOf(checkingId, liabilityId, expenseId)
+            val lifetimeIds = listOf(checkingId, liabilityId)
+            val expenseIds = setOf(expenseId)
             `when`(accountRepository.findAllById(ids)).thenReturn(listOf(checking, liabilityAcct, expenseAcct))
             `when`(
                 ledgerSplitRepository.computeRawBalancesByAccountIds(
-                    ids,
+                    lifetimeIds,
                     asOf,
                     SplitSide.DEBIT,
                     SplitSide.CREDIT,
@@ -1006,6 +1166,15 @@ class LedgerTransactionValidationTest {
                     AccountRawBalanceProjection(liabilityId, -49950000L),
                 ),
             )
+            `when`(
+                ledgerSplitRepository.computeRawBalancesByAccountIdsBetween(
+                    expenseIds,
+                    LocalDate.of(2026, 2, 1),
+                    asOf,
+                    SplitSide.DEBIT,
+                    SplitSide.CREDIT,
+                ),
+            ).thenReturn(emptyList())
 
             val result = service.getAccountBalances(ids, asOf, userA, null)
             val byId = result.associateBy { it.accountId }
@@ -1015,7 +1184,15 @@ class LedgerTransactionValidationTest {
             assertEquals(49950000L, byId.getValue(liabilityId).balanceMinor)
             assertEquals(0L, byId.getValue(expenseId).balanceMinor)
             verify(ledgerSplitRepository, times(1))
-                .computeRawBalancesByAccountIds(ids, asOf, SplitSide.DEBIT, SplitSide.CREDIT)
+                .computeRawBalancesByAccountIds(lifetimeIds, asOf, SplitSide.DEBIT, SplitSide.CREDIT)
+            verify(ledgerSplitRepository, times(1))
+                .computeRawBalancesByAccountIdsBetween(
+                    expenseIds,
+                    LocalDate.of(2026, 2, 1),
+                    asOf,
+                    SplitSide.DEBIT,
+                    SplitSide.CREDIT,
+                )
             verifyNoMoreInteractions(ledgerSplitRepository)
         }
 
@@ -1080,11 +1257,19 @@ class LedgerTransactionValidationTest {
         @Test
         @DisplayName("should compute debit-normal balance for EXPENSE account")
         fun debitNormalBalanceForExpense() {
+            val today = LocalDate.now()
             `when`(accountRepository.findById(expenseId)).thenReturn(Optional.of(expenseAcct))
-            `when`(ledgerSplitRepository.computeBalance(expenseId, LocalDate.now(), SplitSide.DEBIT, SplitSide.CREDIT))
-                .thenReturn(8500L)
+            `when`(
+                ledgerSplitRepository.computeBalanceBetween(
+                    expenseId,
+                    RolloverPeriod.containing(today, userA.rolloverDay).startInclusive,
+                    today,
+                    SplitSide.DEBIT,
+                    SplitSide.CREDIT,
+                ),
+            ).thenReturn(8500L)
 
-            val result = service.getAccountBalance(expenseId, LocalDate.now(), userA, null)
+            val result = service.getAccountBalance(expenseId, today, userA, null)
             assertEquals(8500L, result.balanceMinor)
             assertEquals("EXPENSE", result.accountType)
         }
@@ -1221,13 +1406,24 @@ class LedgerTransactionValidationTest {
         fun snapshotBalanceBatchWithMissingRowsAsZero() {
             service = buildService(snapshotBalanceEnabled = true)
             val ids = listOf(checkingId, liabilityId, expenseId)
+            val lifetimeIds = listOf(checkingId, liabilityId)
+            val expenseIds = setOf(expenseId)
             `when`(accountRepository.findAllById(ids)).thenReturn(listOf(checking, liabilityAcct, expenseAcct))
-            `when`(accountCurrentBalanceRepository.findAllByAccountIdIn(ids)).thenReturn(
+            `when`(accountCurrentBalanceRepository.findAllByAccountIdIn(lifetimeIds)).thenReturn(
                 listOf(
                     AccountCurrentBalance(accountId = checkingId, rawBalanceMinor = 2000L),
                     AccountCurrentBalance(accountId = liabilityId, rawBalanceMinor = -7000L),
                 ),
             )
+            `when`(
+                ledgerSplitRepository.computeRawBalancesByAccountIdsBetween(
+                    expenseIds,
+                    LocalDate.of(2026, 2, 1),
+                    LocalDate.of(2026, 2, 20),
+                    SplitSide.DEBIT,
+                    SplitSide.CREDIT,
+                ),
+            ).thenReturn(emptyList())
 
             val result = service.getAccountBalances(ids, LocalDate.of(2026, 2, 20), userA, null)
             val byId = result.associateBy { it.accountId }
@@ -1235,7 +1431,33 @@ class LedgerTransactionValidationTest {
             assertEquals(2000L, byId.getValue(checkingId).balanceMinor)
             assertEquals(7000L, byId.getValue(liabilityId).balanceMinor)
             assertEquals(0L, byId.getValue(expenseId).balanceMinor)
-            verifyNoInteractions(ledgerSplitRepository)
+            verify(ledgerSplitRepository, times(1))
+                .computeRawBalancesByAccountIdsBetween(
+                    expenseIds,
+                    LocalDate.of(2026, 2, 1),
+                    LocalDate.of(2026, 2, 20),
+                    SplitSide.DEBIT,
+                    SplitSide.CREDIT,
+                )
+            verifyNoMoreInteractions(ledgerSplitRepository)
         }
+    }
+
+    private fun stubExchangeRate(
+        base: String,
+        quote: String,
+        rate: String,
+    ) {
+        `when`(currencyExchangeRateRepository.findById(CurrencyExchangeRateId(base, quote)))
+            .thenReturn(
+                Optional.of(
+                    CurrencyExchangeRate(
+                        id = CurrencyExchangeRateId(base, quote),
+                        base = eur,
+                        quote = usd,
+                        rate = BigDecimal(rate),
+                    ),
+                ),
+            )
     }
 }

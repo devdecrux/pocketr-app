@@ -19,7 +19,7 @@ import jakarta.persistence.PreUpdate
 import jakarta.persistence.Table
 import java.time.Instant
 import java.time.LocalDate
-import java.util.*
+import java.util.UUID
 
 @Entity
 @Table(

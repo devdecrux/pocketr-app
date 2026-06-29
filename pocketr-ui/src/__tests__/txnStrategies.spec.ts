@@ -195,3 +195,19 @@ describe('debtPaymentStrategy.buildRequest', () => {
     expect(req.splits[1]).toEqual({ accountId: 'acc-2', side: 'DEBIT', amountMinor: 1500 })
   })
 })
+
+describe('transaction strategy source-currency amount contract', () => {
+  it.each([
+    ['expense', () => expenseStrategy.buildRequest(ctx, { ...validExpense(), amount: 1234 })],
+    ['income', () => incomeStrategy.buildRequest(ctx, { ...validIncome(), amount: 1234 })],
+    ['transfer', () => transferStrategy.buildRequest(ctx, { ...validTransfer(), amount: 1234 })],
+    [
+      'debt payment',
+      () => debtPaymentStrategy.buildRequest(ctx, { ...validDebtPayment(), amount: 1234 }),
+    ],
+  ])('sends %s split amountMinor values in transaction currency minor units', (_label, build) => {
+    const req = build()
+
+    expect(req.splits.map((split) => split.amountMinor)).toEqual([1234, 1234])
+  })
+})

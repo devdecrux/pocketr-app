@@ -15,7 +15,7 @@ import jakarta.persistence.Table
 import org.hibernate.annotations.OnDelete
 import org.hibernate.annotations.OnDeleteAction
 import java.time.Instant
-import java.util.*
+import java.util.UUID
 
 @Entity
 @Table(

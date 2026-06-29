@@ -20,5 +20,6 @@ class CurrencyController(
             code = code,
             minorUnit = minorUnit,
             name = name,
+            symbol = symbol,
         )
 }
