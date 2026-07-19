@@ -6,6 +6,7 @@ import com.decrux.pocketr.api.entities.db.household.HouseholdAccountShare
 import com.decrux.pocketr.api.entities.db.household.HouseholdMember
 import com.decrux.pocketr.api.entities.db.household.HouseholdRole
 import com.decrux.pocketr.api.entities.db.household.MemberStatus
+import com.decrux.pocketr.api.entities.db.ledger.AccountStatus
 import com.decrux.pocketr.api.entities.dtos.AccountDto
 import com.decrux.pocketr.api.entities.dtos.CreateHouseholdDto
 import com.decrux.pocketr.api.entities.dtos.HouseholdAccountShareDto
@@ -257,10 +258,14 @@ class ManageHouseholdImpl(
 
         val account =
             accountRepository
-                .findById(dto.accountId)
+                .findOneById(dto.accountId)
                 .orElseThrow { ResponseStatusException(HttpStatus.NOT_FOUND, "Account not found") }
 
         ownershipGuard.requireOwner(account.owner?.userId, userId, "Only the account owner can share an account")
+
+        if (account.status == AccountStatus.ARCHIVED) {
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Archived accounts cannot be shared")
+        }
 
         if (shareRepository.existsByHouseholdIdAndAccountId(householdId, dto.accountId)) {
             throw ResponseStatusException(HttpStatus.CONFLICT, "Account is already shared into this household")
@@ -302,7 +307,10 @@ class ManageHouseholdImpl(
         val userId = requireNotNull(user.userId) { "User ID must not be null" }
         requireActiveMembership(householdId, userId)
 
-        return shareRepository.findByHouseholdIdWithAccountAndOwner(householdId).map { it.toDto() }
+        return shareRepository
+            .findByHouseholdIdWithAccountAndOwner(householdId)
+            .filter { requireNotNull(it.account).status == AccountStatus.ACTIVE }
+            .map { it.toDto() }
     }
 
     @Transactional(readOnly = true)
@@ -313,17 +321,22 @@ class ManageHouseholdImpl(
         val userId = requireNotNull(user.userId) { "User ID must not be null" }
         requireActiveMembership(householdId, userId)
 
-        return shareRepository.findByHouseholdIdWithAccountAndOwner(householdId).map { share ->
-            val account = requireNotNull(share.account)
-            AccountDto(
-                id = requireNotNull(account.id),
-                ownerUserId = requireNotNull(account.owner?.userId) { "Owner user ID must not be null" },
-                name = account.name,
-                type = account.type.name,
-                currency = requireNotNull(account.currency?.code),
-                createdAt = account.createdAt,
-            )
-        }
+        return shareRepository
+            .findByHouseholdIdWithAccountAndOwner(householdId)
+            .map { requireNotNull(it.account) }
+            .filter { it.status == AccountStatus.ACTIVE }
+            .map { account ->
+                AccountDto(
+                    id = requireNotNull(account.id),
+                    ownerUserId = requireNotNull(account.owner?.userId) { "Owner user ID must not be null" },
+                    name = account.name,
+                    type = account.type.name,
+                    currency = requireNotNull(account.currency?.code),
+                    status = account.status.name,
+                    archivedAt = account.archivedAt,
+                    createdAt = account.createdAt,
+                )
+            }
     }
 
     @Transactional(readOnly = true)

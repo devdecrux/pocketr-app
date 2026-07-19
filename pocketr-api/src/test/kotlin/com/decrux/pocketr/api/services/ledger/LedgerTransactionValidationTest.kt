@@ -3,6 +3,7 @@ package com.decrux.pocketr.api.services.ledger
 import com.decrux.pocketr.api.entities.db.auth.User
 import com.decrux.pocketr.api.entities.db.ledger.Account
 import com.decrux.pocketr.api.entities.db.ledger.AccountCurrentBalance
+import com.decrux.pocketr.api.entities.db.ledger.AccountStatus
 import com.decrux.pocketr.api.entities.db.ledger.AccountType
 import com.decrux.pocketr.api.entities.db.ledger.CategoryTag
 import com.decrux.pocketr.api.entities.db.ledger.Currency
@@ -167,7 +168,7 @@ class LedgerTransactionValidationTest {
 
     private fun stubAccounts(vararg accounts: Account) {
         val ids = accounts.map { requireNotNull(it.id) }
-        `when`(accountRepository.findAllById(ids)).thenReturn(accounts.toList())
+        `when`(accountRepository.findAllByIdInOrderByIdAsc(ids)).thenReturn(accounts.toList())
     }
 
     private fun validExpenseDto() =
@@ -535,6 +536,31 @@ class LedgerTransactionValidationTest {
         }
 
         @Test
+        @DisplayName("should reject posting to an archived account")
+        fun rejectPostingToArchivedAccount() {
+            val archivedChecking =
+                Account(
+                    id = checkingId,
+                    owner = userA,
+                    name = "Checking",
+                    type = AccountType.ASSET,
+                    currency = eur,
+                    status = AccountStatus.ARCHIVED,
+                    archivedAt = Instant.parse("2026-07-12T10:00:00Z"),
+                )
+            stubAccounts(archivedChecking, expenseAcct)
+
+            val exception =
+                assertThrows(BadRequestException::class.java) {
+                    service.createTransaction(validExpenseDto(), userA)
+                }
+
+            assertEquals("Archived accounts cannot be used in new transactions", exception.message)
+            verify(ledgerTxnRepository, never()).save(any(LedgerTxn::class.java))
+            verifyNoInteractions(accountCurrentBalanceRepository)
+        }
+
+        @Test
         @DisplayName("should allow posting to own accounts in individual mode")
         fun allowPostingToOwnAccounts() {
             stubAccounts(checking, expenseAcct)
@@ -603,7 +629,7 @@ class LedgerTransactionValidationTest {
         @DisplayName("should reject transaction with non-existent account")
         fun rejectNonExistentAccount() {
             val missingId = UUID.randomUUID()
-            `when`(accountRepository.findAllById(listOf(checkingId, missingId))).thenReturn(listOf(checking))
+            `when`(accountRepository.findAllByIdInOrderByIdAsc(listOf(checkingId, missingId))).thenReturn(listOf(checking))
 
             val dto =
                 CreateTransactionDto(

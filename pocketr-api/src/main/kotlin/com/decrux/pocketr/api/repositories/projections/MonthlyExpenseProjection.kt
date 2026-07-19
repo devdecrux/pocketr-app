@@ -1,5 +1,6 @@
 package com.decrux.pocketr.api.repositories.projections
 
+import com.decrux.pocketr.api.entities.db.ledger.AccountStatus
 import java.util.UUID
 
 data class MonthlyExpenseProjection(
@@ -10,4 +11,5 @@ data class MonthlyExpenseProjection(
     val currency: String,
     val netMinor: Long,
     val categoryTagColor: String? = null,
+    val expenseAccountStatus: AccountStatus = AccountStatus.ACTIVE,
 )

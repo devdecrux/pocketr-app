@@ -2,6 +2,7 @@ package com.decrux.pocketr.api.services.account
 
 import com.decrux.pocketr.api.entities.db.auth.User
 import com.decrux.pocketr.api.entities.db.ledger.Account
+import com.decrux.pocketr.api.entities.db.ledger.AccountStatus
 import com.decrux.pocketr.api.entities.db.ledger.AccountType
 import com.decrux.pocketr.api.entities.dtos.AccountDto
 import com.decrux.pocketr.api.entities.dtos.CreateAccountDto
@@ -16,6 +17,7 @@ import com.decrux.pocketr.api.services.OwnershipGuard
 import com.decrux.pocketr.api.services.household.ManageHousehold
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import java.time.Instant
 import java.time.LocalDate
 import java.util.UUID
 
@@ -31,7 +33,7 @@ class ManageAccountImpl(
     @Transactional(readOnly = true)
     override fun listIndividualAccounts(owner: User): List<AccountDto> {
         val userId = requireNotNull(owner.userId) { "User ID must not be null" }
-        val accounts = accountRepository.findByOwnerUserId(userId)
+        val accounts = accountRepository.findByOwnerUserIdAndStatus(userId, AccountStatus.ACTIVE)
         return accounts.map { it.toDto() }
     }
 
@@ -62,11 +64,11 @@ class ManageAccountImpl(
             throw ForbiddenException("Not an active member of this household")
         }
 
-        val ownedAccounts = accountRepository.findByOwnerUserId(userId)
+        val ownedAccounts = accountRepository.findByOwnerUserIdAndStatus(userId, AccountStatus.ACTIVE)
         val sharedAccountIds = householdAccountShareRepository.findSharedAccountIdsByHouseholdId(hhId)
         val sharedAccounts =
             if (sharedAccountIds.isNotEmpty()) {
-                accountRepository.findAllById(sharedAccountIds)
+                accountRepository.findAllById(sharedAccountIds).filter { it.status == AccountStatus.ACTIVE }
             } else {
                 emptyList()
             }
@@ -147,13 +149,42 @@ class ManageAccountImpl(
     ): AccountDto {
         val account =
             accountRepository
-                .findById(id)
+                .findOneById(id)
                 .orElseThrow { NotFoundException("Account not found") }
 
         ownershipGuard.requireOwner(account.owner?.userId, requireNotNull(owner.userId), "Not the owner of this account")
 
+        if (account.status == AccountStatus.ARCHIVED) {
+            throw BadRequestException("Archived accounts cannot be updated")
+        }
+
         dto.name?.let { account.name = it.trim() }
         return accountRepository.save(account).toDto()
+    }
+
+    @Transactional
+    override fun archiveAccount(
+        id: UUID,
+        owner: User,
+    ) {
+        val account =
+            accountRepository
+                .findOneById(id)
+                .orElseThrow { NotFoundException("Account not found") }
+
+        ownershipGuard.requireOwner(account.owner?.userId, requireNotNull(owner.userId), "Not the owner of this account")
+
+        if (account.status == AccountStatus.ARCHIVED) {
+            checkNotNull(account.archivedAt) { "Archived account must have an archive timestamp" }
+            return
+        }
+        check(account.archivedAt == null) { "Active account cannot have an archive timestamp" }
+        if (account.type == AccountType.EQUITY) {
+            throw BadRequestException("EQUITY accounts are system-managed and cannot be archived")
+        }
+
+        account.archive(Instant.now())
+        accountRepository.save(account)
     }
 
     private companion object {
@@ -166,6 +197,8 @@ class ManageAccountImpl(
                 name = name,
                 type = type.name,
                 currency = requireNotNull(currency?.code) { "Currency must not be null" },
+                status = status.name,
+                archivedAt = archivedAt,
                 createdAt = createdAt,
             )
     }

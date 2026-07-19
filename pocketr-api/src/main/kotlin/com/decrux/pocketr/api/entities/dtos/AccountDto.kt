@@ -9,5 +9,7 @@ data class AccountDto(
     val name: String,
     val type: String,
     val currency: String,
+    val status: String,
+    val archivedAt: Instant?,
     val createdAt: Instant,
 )

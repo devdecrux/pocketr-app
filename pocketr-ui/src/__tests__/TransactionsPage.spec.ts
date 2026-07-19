@@ -85,6 +85,8 @@ function account(override: Partial<Account>): Account {
     type: 'ASSET',
     currency: 'USD',
     createdAt: '2026-02-24T00:00:00Z',
+    status: 'ACTIVE',
+    archivedAt: null,
     ...override,
   }
 }
@@ -222,5 +224,30 @@ describe('TransactionsPage currency exchange behavior', () => {
 
     expect(wrapper.text()).toContain('-$10.00')
     expect(wrapper.text()).toContain('+€9.20')
+  })
+
+  it('displays the ledger snapshot name when a split account is no longer active', async () => {
+    ledgerStore.transactions = [
+      transaction({
+        splits: [
+          {
+            id: 'split-archived',
+            accountId: 'archived-account',
+            accountName: 'Old Checking',
+            accountCurrency: 'USD',
+            side: 'CREDIT',
+            amountMinor: 1000,
+            exchangeRate: '1',
+          },
+        ],
+      }),
+    ]
+
+    const wrapper = mountPage()
+    await flushPromises()
+
+    expect(accountStore.accountMap.has('archived-account')).toBe(false)
+    expect(wrapper.text()).toContain('Old Checking')
+    expect(wrapper.text()).not.toContain('archived-account')
   })
 })

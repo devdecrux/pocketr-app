@@ -2,6 +2,7 @@ package com.decrux.pocketr.api.services.ledger
 
 import com.decrux.pocketr.api.entities.db.auth.User
 import com.decrux.pocketr.api.entities.db.ledger.Account
+import com.decrux.pocketr.api.entities.db.ledger.AccountStatus
 import com.decrux.pocketr.api.entities.db.ledger.AccountType
 import com.decrux.pocketr.api.entities.db.ledger.CategoryTag
 import com.decrux.pocketr.api.entities.db.ledger.Currency
@@ -92,6 +93,7 @@ class ManageLedgerImpl(
         val accounts = accountMap.values.toList()
 
         validateAccountAccess(dto, accounts, userId, isHouseholdMode)
+        validateAccountsActive(accounts)
 
         val categoryTagMap = loadCategoryTags(dto.splits, userId)
         val txn = buildTransaction(dto, creator, currency, accountMap, categoryTagMap, isHouseholdMode)
@@ -115,7 +117,7 @@ class ManageLedgerImpl(
 
     private fun loadAccounts(splits: List<CreateSplitDto>): Map<UUID, Account> {
         val accountIds = splits.map { it.accountId }.distinct()
-        val accounts = accountRepository.findAllById(accountIds)
+        val accounts = accountRepository.findAllByIdInOrderByIdAsc(accountIds)
         if (accounts.size != accountIds.size) {
             val foundIds = accounts.map { it.id }.toSet()
             val missingIds = accountIds.filter { it !in foundIds }
@@ -141,6 +143,12 @@ class ManageLedgerImpl(
         householdMembershipValidator.validate(manageHousehold, householdId, userId)
         householdSharedAccountValidator.validate(nonOwnedAccounts, manageHousehold, householdId)
         crossUserAssetAccountTypeValidator.validate(accounts, dto.splits, userId)
+    }
+
+    private fun validateAccountsActive(accounts: List<Account>) {
+        if (accounts.any { it.status == AccountStatus.ARCHIVED }) {
+            throw BadRequestException("Archived accounts cannot be used in new transactions")
+        }
     }
 
     private fun loadCategoryTags(

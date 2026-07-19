@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
-import { listAccounts } from '@/api/accounts'
+import { archiveAccount as deleteAccount, listAccounts } from '@/api/accounts'
 import type { Account, AccountType } from '@/types/ledger'
 import { useModeStore } from '@/stores/mode'
 import { translate } from '@/i18n/translate'
@@ -30,8 +30,13 @@ export const useAccountStore = defineStore('account', () => {
 
   // EQUITY accounts are system-managed (e.g. Opening Equity) and hidden from user account UIs.
   const activeAccounts = computed(() =>
-    accounts.value.filter((account) => account.type !== 'EQUITY'),
+    accounts.value.filter((account) => account.type !== 'EQUITY' && account.status === 'ACTIVE'),
   )
+
+  async function archiveAccount(id: string): Promise<void> {
+    await deleteAccount(id)
+    accounts.value = accounts.value.filter((account) => account.id !== id)
+  }
 
   async function load(): Promise<void> {
     const viewModeStore = useModeStore()
@@ -62,6 +67,7 @@ export const useAccountStore = defineStore('account', () => {
     accountsByType,
     accountMap,
     activeAccounts,
+    archiveAccount,
     load,
     $reset,
   }

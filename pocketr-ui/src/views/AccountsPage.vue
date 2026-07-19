@@ -1,7 +1,8 @@
 <script setup lang="ts">
+import { HTTPError } from 'ky'
 import { computed, h, onMounted, ref, watch } from 'vue'
 import { type ColumnDef, getCoreRowModel, useVueTable } from '@tanstack/vue-table'
-import { CreditCard, Pencil, Plus, ShoppingCart, TrendingUp, Wallet } from 'lucide-vue-next'
+import { CreditCard, Pencil, Plus, ShoppingCart, Trash2, TrendingUp, Wallet } from 'lucide-vue-next'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -19,6 +20,7 @@ import { useAccountStore } from '@/stores/account'
 import { useCurrencyStore } from '@/stores/currency'
 import { useModeStore } from '@/stores/mode'
 import { useHouseholdStore } from '@/stores/household'
+import { useAuthStore } from '@/stores/auth'
 import { createAccount, updateAccount } from '@/api/accounts'
 import { getAccountBalances } from '@/api/ledger'
 import { formatMinor } from '@/utils/money'
@@ -40,6 +42,7 @@ const accountStore = useAccountStore()
 const currencyStore = useCurrencyStore()
 const modeStore = useModeStore()
 const householdStore = useHouseholdStore()
+const authStore = useAuthStore()
 
 const balances = ref<Map<string, number>>(new Map())
 const typeFilter = ref<string>('ALL')
@@ -48,6 +51,10 @@ const createDialogOpen = ref(false)
 const isCreating = ref(false)
 const createError = ref('')
 const renameError = ref('')
+const archiveDialogOpen = ref(false)
+const archiveTarget = ref<Account | null>(null)
+const archiveError = ref('')
+const isArchiving = ref(false)
 
 const newAccount = ref({
   name: '',
@@ -145,18 +152,38 @@ const columns = computed<ColumnDef<Account>[]>(() => {
   cols.push({
     id: 'actions',
     header: '',
-    cell: ({ row }) => {
-      return h(
-        Button,
-        {
-          variant: 'ghost',
-          size: 'icon',
-          'data-table-action': 'edit',
-          onClick: () => startRename(row.original),
-        },
-        () => h(Pencil, { class: 'size-4' }),
-      )
-    },
+    cell: ({ row }) =>
+      h('div', { class: 'flex items-center justify-end gap-1' }, [
+        h(
+          Button,
+          {
+            variant: 'ghost',
+            size: 'icon',
+            'data-table-action': 'edit',
+            onClick: () => startRename(row.original),
+          },
+          () => h(Pencil, { class: 'size-4' }),
+        ),
+        canArchive(row.original)
+          ? h(
+              Button,
+              {
+                variant: 'ghost',
+                size: 'icon',
+                'data-table-action': 'delete',
+                'aria-label': translate('views.accounts.archive.actionLabel', {
+                  name: row.original.name,
+                }),
+                title: translate('views.accounts.archive.actionLabel', {
+                  name: row.original.name,
+                }),
+                disabled: isArchiving.value && archiveTarget.value?.id === row.original.id,
+                onClick: () => startArchive(row.original),
+              },
+              () => h(Trash2, { class: 'size-4' }),
+            )
+          : null,
+      ]),
   })
 
   return cols
@@ -221,6 +248,43 @@ const renameName = ref('')
 const renameDescription = computed(() =>
   translate('views.accounts.rename.description', { name: renameTarget.value?.name ?? '' }),
 )
+
+const archiveDescription = computed(() =>
+  translate('views.accounts.archive.description', { name: archiveTarget.value?.name ?? '' }),
+)
+
+function canArchive(account: Account): boolean {
+  return !modeStore.isHousehold || account.ownerUserId === authStore.user?.id
+}
+
+function startArchive(account: Account): void {
+  archiveTarget.value = account
+  archiveError.value = ''
+  archiveDialogOpen.value = true
+}
+
+async function submitArchive(): Promise<void> {
+  const target = archiveTarget.value
+  if (!target || isArchiving.value) return
+
+  archiveError.value = ''
+  isArchiving.value = true
+  try {
+    await accountStore.archiveAccount(target.id)
+    archiveDialogOpen.value = false
+    archiveTarget.value = null
+    await loadAll()
+  } catch (error: unknown) {
+    if (error instanceof HTTPError) {
+      const payload = await error.response.json<{ message?: string }>().catch(() => null)
+      archiveError.value = payload?.message?.trim() || translate('errors.accounts.archive')
+    } else {
+      archiveError.value = translate('errors.accounts.archive')
+    }
+  } finally {
+    isArchiving.value = false
+  }
+}
 
 function startRename(account: Account): void {
   renameTarget.value = account
@@ -537,6 +601,32 @@ function todayString(): string {
         <template #footer>
           <Button :disabled="!renameName.trim()" @click="submitRename">
             {{ $t('common.actions.save') }}
+          </Button>
+        </template>
+      </AppDialogContent>
+    </Dialog>
+
+    <Dialog v-model:open="archiveDialogOpen">
+      <AppDialogContent
+        :title="$t('views.accounts.archive.title')"
+        :description="archiveDescription"
+      >
+        <AppStatusText v-if="archiveError">{{ archiveError }}</AppStatusText>
+        <template #footer>
+          <Button variant="outline" :disabled="isArchiving" @click="archiveDialogOpen = false">
+            {{ $t('common.actions.cancel') }}
+          </Button>
+          <Button
+            variant="destructive"
+            data-testid="confirm-archive-account"
+            :disabled="isArchiving"
+            @click="submitArchive"
+          >
+            {{
+              isArchiving
+                ? $t('views.accounts.archive.archiving')
+                : $t('views.accounts.archive.confirm')
+            }}
           </Button>
         </template>
       </AppDialogContent>

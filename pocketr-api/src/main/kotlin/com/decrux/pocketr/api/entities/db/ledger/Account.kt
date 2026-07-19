@@ -14,7 +14,6 @@ import jakarta.persistence.Index
 import jakarta.persistence.JoinColumn
 import jakarta.persistence.ManyToOne
 import jakarta.persistence.Table
-import jakarta.persistence.UniqueConstraint
 import java.time.Instant
 import java.util.UUID
 
@@ -22,12 +21,6 @@ import java.util.UUID
 @Table(
     name = "account",
     indexes = [Index(name = "idx_account_owner", columnList = "owner_user_id")],
-    uniqueConstraints = [
-        UniqueConstraint(
-            name = "uk_account_owner_type_currency_name",
-            columnNames = ["owner_user_id", "type", "currency", "name"],
-        ),
-    ],
 )
 class Account(
     @Id
@@ -46,4 +39,14 @@ class Account(
     var currency: Currency? = null,
     @Column(name = "created_at", nullable = false, updatable = false)
     var createdAt: Instant = Instant.now(),
-)
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    var status: AccountStatus = AccountStatus.ACTIVE,
+    @Column(name = "archived_at")
+    var archivedAt: Instant? = null,
+) {
+    fun archive(at: Instant) {
+        status = AccountStatus.ARCHIVED
+        archivedAt = at
+    }
+}

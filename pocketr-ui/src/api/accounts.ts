@@ -21,3 +21,7 @@ export function createAccount(req: CreateAccountRequest): Promise<Account> {
 export function updateAccount(id: string, req: UpdateAccountRequest): Promise<Account> {
   return api.patch(`${BASE}/${id}`, { json: req }).json<Account>()
 }
+
+export function archiveAccount(id: string): Promise<void> {
+  return api.delete(`${BASE}/${id}`).then(() => undefined)
+}

@@ -2,6 +2,7 @@ package com.decrux.pocketr.api.services.reporting
 
 import com.decrux.pocketr.api.entities.db.auth.User
 import com.decrux.pocketr.api.entities.db.ledger.Account
+import com.decrux.pocketr.api.entities.db.ledger.AccountStatus
 import com.decrux.pocketr.api.entities.db.ledger.AccountType
 import com.decrux.pocketr.api.entities.db.ledger.Currency
 import com.decrux.pocketr.api.entities.db.ledger.SplitSide
@@ -24,6 +25,7 @@ import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.mockito.Mockito.mock
 import org.mockito.Mockito.`when`
+import java.time.Instant
 import java.time.LocalDate
 import java.time.YearMonth
 import java.util.Optional
@@ -120,6 +122,7 @@ class ReportingTest {
             val checkingResult = result.first { it.accountId == checkingId }
             assertEquals(190000L, checkingResult.balanceMinor)
             assertEquals("ASSET", checkingResult.accountType)
+            assertEquals("ACTIVE", checkingResult.accountStatus)
             assertEquals("EUR", checkingResult.currency)
 
             val mortgageResult = result.first { it.accountId == mortgageId }
@@ -133,6 +136,42 @@ class ReportingTest {
             val equityResult = result.first { it.accountId == equityId }
             assertEquals(150000L, equityResult.balanceMinor)
             assertEquals("EQUITY", equityResult.accountType)
+        }
+
+        @Test
+        @DisplayName("same-name active and archived accounts remain distinguishable")
+        fun sameNameAccountsRemainDistinguishable() {
+            val archivedId = UUID.randomUUID()
+            val activeId = UUID.randomUUID()
+            val archivedAccount =
+                Account(
+                    id = archivedId,
+                    owner = userA,
+                    name = "DSK",
+                    type = AccountType.ASSET,
+                    currency = eur,
+                    status = AccountStatus.ARCHIVED,
+                    archivedAt = Instant.parse("2026-07-12T10:00:00Z"),
+                )
+            val activeAccount =
+                Account(
+                    id = activeId,
+                    owner = userA,
+                    name = "DSK",
+                    type = AccountType.ASSET,
+                    currency = eur,
+                )
+            val asOf = LocalDate.of(2026, 7, 12)
+            `when`(accountRepository.findByOwnerUserId(1L)).thenReturn(listOf(archivedAccount, activeAccount))
+            `when`(ledgerSplitRepository.computeBalance(archivedId, asOf, SplitSide.DEBIT, SplitSide.CREDIT)).thenReturn(100L)
+            `when`(ledgerSplitRepository.computeBalance(activeId, asOf, SplitSide.DEBIT, SplitSide.CREDIT)).thenReturn(200L)
+
+            val result = service.getAllAccountBalances(userA, asOf)
+
+            assertEquals(2, result.size)
+            assertEquals("ARCHIVED", result.first { it.accountId == archivedId }.accountStatus)
+            assertEquals("ACTIVE", result.first { it.accountId == activeId }.accountStatus)
+            assertTrue(result.all { it.accountName == "DSK" })
         }
 
         @Test
@@ -176,6 +215,7 @@ class ReportingTest {
             assertEquals(2, result.size)
             val groceriesResult = result.first { it.expenseAccountId == groceriesId }
             assertEquals("Groceries", groceriesResult.expenseAccountName)
+            assertEquals("ACTIVE", groceriesResult.expenseAccountStatus)
             assertEquals("Food", groceriesResult.categoryTagName)
             assertEquals(8500L, groceriesResult.netMinor)
 
@@ -405,6 +445,7 @@ class ReportingTest {
             assertEquals(checkingId, result.accountId)
             assertEquals("Checking", result.accountName)
             assertEquals("ASSET", result.accountType)
+            assertEquals("ACTIVE", result.accountStatus)
             assertEquals(3, result.points.size)
 
             // Feb 1: 100000 + 200000 = 300000

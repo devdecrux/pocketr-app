@@ -148,6 +148,13 @@
       "actions": {
         "new": "New Account"
       },
+      "archive": {
+        "actionLabel": "Archive account {name}",
+        "archiving": "Archiving...",
+        "confirm": "Archive account",
+        "description": "Archive \"{name}\"? It will no longer be available for new transactions, but its existing transaction history will be preserved. This action cannot currently be undone.",
+        "title": "Archive Account"
+      },
       "create": {
         "descriptions": {
           "assetOpeningBalance": "Posted as an opening balance journal entry against Opening Equity. Opening balance date is used only when initial balance is non-zero.",
@@ -411,6 +418,7 @@
   },
   "errors": {
     "accounts": {
+      "archive": "Failed to archive account.",
       "create": "Failed to create account.",
       "load": "Failed to load accounts.",
       "rename": "Failed to rename account."

@@ -441,7 +441,7 @@ watch(
 // Split display helper
 function splitLabel(split: LedgerSplit): string {
   const acc = accountStore.accountMap.get(split.accountId)
-  return acc?.name ?? split.accountId
+  return acc?.name ?? split.accountName ?? split.accountId
 }
 
 function splitAmount(split: LedgerSplit): string {

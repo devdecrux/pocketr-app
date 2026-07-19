@@ -264,6 +264,46 @@ class ManageLedgerCurrentBalanceIntegrationTest
         }
 
         @Test
+        @Transactional
+        @DisplayName("archived accounts remain readable in transaction history and balances")
+        fun archivedAccountHistoryRemainsReadable() {
+            val user = persistUser("integration-archived-history")
+            val cash = persistAccount(user, "Archived Cash", AccountType.ASSET)
+            val expense = persistAccount(user, "Archived Expense", AccountType.EXPENSE)
+            val today = LocalDate.now()
+
+            manageLedger.createTransaction(
+                dto =
+                    CreateTransactionDto(
+                        txnDate = today,
+                        currency = "EUR",
+                        description = "Preserved history",
+                        splits =
+                            listOf(
+                                CreateSplitDto(accountId = requireNotNull(cash.id), side = "CREDIT", amountMinor = 1_000),
+                                CreateSplitDto(accountId = requireNotNull(expense.id), side = "DEBIT", amountMinor = 1_000),
+                            ),
+                    ),
+                creator = user,
+            )
+            cash.archive(Instant.parse("2026-07-12T10:00:00Z"))
+            accountRepository.saveAndFlush(cash)
+
+            val transactions =
+                manageLedger.listTransactions(user, "INDIVIDUAL", null, null, null, null, null, false, 0, 20)
+            val balance = manageLedger.getAccountBalance(requireNotNull(cash.id), today, user, null)
+            val archivedSplit =
+                transactions.content
+                    .single()
+                    .splits
+                    .single { it.accountId == cash.id }
+
+            assertEquals(1, transactions.totalElements)
+            assertEquals(cash.name, archivedSplit.accountName)
+            assertEquals(-1_000L, balance.balanceMinor)
+        }
+
+        @Test
         @DisplayName("normal posting keeps integrity mismatch count at zero")
         fun normalPostingKeepsIntegrityMismatchCountZero() {
             val user = persistUser("integration-reconcile-ok")

@@ -25,4 +25,9 @@ interface ManageAccount {
         dto: UpdateAccountDto,
         owner: User,
     ): AccountDto
+
+    fun archiveAccount(
+        id: UUID,
+        owner: User,
+    )
 }

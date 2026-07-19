@@ -100,7 +100,8 @@ interface LedgerSplitRepository : JpaRepository<LedgerSplit, UUID> {
             a.currency.code,
             COALESCE(SUM(CASE WHEN ls.side = :debit THEN ls.amountMinor ELSE 0 END), 0)
           - COALESCE(SUM(CASE WHEN ls.side = :credit THEN ls.amountMinor ELSE 0 END), 0),
-            ct.color
+            ct.color,
+            a.status
         )
         FROM LedgerSplit ls
         JOIN ls.account a
@@ -109,7 +110,7 @@ interface LedgerSplitRepository : JpaRepository<LedgerSplit, UUID> {
           AND ls.transaction.txnDate >= :monthStart
           AND ls.transaction.txnDate < :monthEnd
           AND a.owner.userId = :userId
-        GROUP BY a.id, a.name, ct.id, ct.name, ct.color, a.currency.code
+        GROUP BY a.id, a.name, a.status, ct.id, ct.name, ct.color, a.currency.code
         ORDER BY a.name, ct.name
         """,
     )
@@ -127,7 +128,8 @@ interface LedgerSplitRepository : JpaRepository<LedgerSplit, UUID> {
             a.id,
             a.name,
             a.currency.code,
-            COALESCE(SUM(ls.amountMinor), 0)
+            COALESCE(SUM(ls.amountMinor), 0),
+            a.status
         )
         FROM LedgerSplit ls
         JOIN ls.account a
@@ -144,7 +146,7 @@ interface LedgerSplitRepository : JpaRepository<LedgerSplit, UUID> {
                 AND counterSplit.side = :assetCredit
                 AND counterAccount.type = com.decrux.pocketr.api.entities.db.ledger.AccountType.ASSET
           )
-        GROUP BY a.id, a.name, a.currency.code
+        GROUP BY a.id, a.name, a.status, a.currency.code
         ORDER BY a.name
         """,
     )
@@ -166,14 +168,15 @@ interface LedgerSplitRepository : JpaRepository<LedgerSplit, UUID> {
             a.currency.code,
             COALESCE(SUM(CASE WHEN ls.side = :debit THEN ls.amountMinor ELSE 0 END), 0)
           - COALESCE(SUM(CASE WHEN ls.side = :credit THEN ls.amountMinor ELSE 0 END), 0),
-            ct.color
+            ct.color,
+            a.status
         )
         FROM LedgerSplit ls
         JOIN ls.account a
         LEFT JOIN ls.categoryTag ct
         WHERE a.type = com.decrux.pocketr.api.entities.db.ledger.AccountType.EXPENSE
           AND a.owner.userId = :userId
-        GROUP BY a.id, a.name, ct.id, ct.name, ct.color, a.currency.code
+        GROUP BY a.id, a.name, a.status, ct.id, ct.name, ct.color, a.currency.code
         ORDER BY a.name, ct.name
         """,
     )
@@ -189,7 +192,8 @@ interface LedgerSplitRepository : JpaRepository<LedgerSplit, UUID> {
             a.id,
             a.name,
             a.currency.code,
-            COALESCE(SUM(ls.amountMinor), 0)
+            COALESCE(SUM(ls.amountMinor), 0),
+            a.status
         )
         FROM LedgerSplit ls
         JOIN ls.account a
@@ -204,7 +208,7 @@ interface LedgerSplitRepository : JpaRepository<LedgerSplit, UUID> {
                 AND counterSplit.side = :assetCredit
                 AND counterAccount.type = com.decrux.pocketr.api.entities.db.ledger.AccountType.ASSET
           )
-        GROUP BY a.id, a.name, a.currency.code
+        GROUP BY a.id, a.name, a.status, a.currency.code
         ORDER BY a.name
         """,
     )
@@ -224,7 +228,8 @@ interface LedgerSplitRepository : JpaRepository<LedgerSplit, UUID> {
             a.currency.code,
             COALESCE(SUM(CASE WHEN ls.side = :debit THEN ls.amountMinor ELSE 0 END), 0)
           - COALESCE(SUM(CASE WHEN ls.side = :credit THEN ls.amountMinor ELSE 0 END), 0),
-            ct.color
+            ct.color,
+            a.status
         )
         FROM LedgerSplit ls
         JOIN ls.account a
@@ -239,7 +244,7 @@ interface LedgerSplitRepository : JpaRepository<LedgerSplit, UUID> {
               WHERE visibleSplit.transaction = ls.transaction
                 AND visibleAccount.id IN :sharedAccountIds
           )
-        GROUP BY a.id, a.name, ct.id, ct.name, ct.color, a.currency.code
+        GROUP BY a.id, a.name, a.status, ct.id, ct.name, ct.color, a.currency.code
         ORDER BY a.name, ct.name
         """,
     )
@@ -257,7 +262,8 @@ interface LedgerSplitRepository : JpaRepository<LedgerSplit, UUID> {
             a.id,
             a.name,
             a.currency.code,
-            COALESCE(SUM(ls.amountMinor), 0)
+            COALESCE(SUM(ls.amountMinor), 0),
+            a.status
         )
         FROM LedgerSplit ls
         JOIN ls.account a
@@ -280,7 +286,7 @@ interface LedgerSplitRepository : JpaRepository<LedgerSplit, UUID> {
                 AND counterSplit.side = :assetCredit
                 AND counterAccount.type = com.decrux.pocketr.api.entities.db.ledger.AccountType.ASSET
           )
-        GROUP BY a.id, a.name, a.currency.code
+        GROUP BY a.id, a.name, a.status, a.currency.code
         ORDER BY a.name
         """,
     )
@@ -302,7 +308,8 @@ interface LedgerSplitRepository : JpaRepository<LedgerSplit, UUID> {
             a.currency.code,
             COALESCE(SUM(CASE WHEN ls.side = :debit THEN ls.amountMinor ELSE 0 END), 0)
           - COALESCE(SUM(CASE WHEN ls.side = :credit THEN ls.amountMinor ELSE 0 END), 0),
-            ct.color
+            ct.color,
+            a.status
         )
         FROM LedgerSplit ls
         JOIN ls.account a
@@ -315,7 +322,7 @@ interface LedgerSplitRepository : JpaRepository<LedgerSplit, UUID> {
               WHERE visibleSplit.transaction = ls.transaction
                 AND visibleAccount.id IN :sharedAccountIds
           )
-        GROUP BY a.id, a.name, ct.id, ct.name, ct.color, a.currency.code
+        GROUP BY a.id, a.name, a.status, ct.id, ct.name, ct.color, a.currency.code
         ORDER BY a.name, ct.name
         """,
     )
@@ -331,7 +338,8 @@ interface LedgerSplitRepository : JpaRepository<LedgerSplit, UUID> {
             a.id,
             a.name,
             a.currency.code,
-            COALESCE(SUM(ls.amountMinor), 0)
+            COALESCE(SUM(ls.amountMinor), 0),
+            a.status
         )
         FROM LedgerSplit ls
         JOIN ls.account a
@@ -352,7 +360,7 @@ interface LedgerSplitRepository : JpaRepository<LedgerSplit, UUID> {
                 AND counterSplit.side = :assetCredit
                 AND counterAccount.type = com.decrux.pocketr.api.entities.db.ledger.AccountType.ASSET
           )
-        GROUP BY a.id, a.name, a.currency.code
+        GROUP BY a.id, a.name, a.status, a.currency.code
         ORDER BY a.name
         """,
     )

@@ -6,5 +6,21 @@
     "amounts": {
       "mixedCurrencies": "Gemischte Währungen"
     }
+  },
+  "views": {
+    "accounts": {
+      "archive": {
+        "actionLabel": "Konto {name} archivieren",
+        "archiving": "Wird archiviert...",
+        "confirm": "Konto archivieren",
+        "description": "„{name}“ archivieren? Das Konto kann nicht mehr für neue Transaktionen verwendet werden, aber sein bestehender Transaktionsverlauf bleibt erhalten. Diese Aktion kann derzeit nicht rückgängig gemacht werden.",
+        "title": "Konto archivieren"
+      }
+    }
+  },
+  "errors": {
+    "accounts": {
+      "archive": "Das Konto konnte nicht archiviert werden."
+    }
   }
 }
