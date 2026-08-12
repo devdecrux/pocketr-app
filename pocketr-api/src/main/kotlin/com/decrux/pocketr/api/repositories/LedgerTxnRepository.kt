@@ -24,6 +24,7 @@ interface LedgerTxnRepository :
         pageable: Pageable,
     ): Page<LedgerTxn>
 
-    @EntityGraph(attributePaths = ["splits", "splits.account", "splits.account.owner", "createdBy"])
+    // Keep split accounts lazy so deletion initializes them through the ordered locking query.
+    @EntityGraph(attributePaths = ["splits", "createdBy"])
     fun findOneById(id: UUID): Optional<LedgerTxn>
 }

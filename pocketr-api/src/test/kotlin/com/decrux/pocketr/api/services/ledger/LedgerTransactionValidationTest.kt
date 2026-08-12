@@ -1018,6 +1018,12 @@ class LedgerTransactionValidationTest {
     @Nested
     @DisplayName("Transaction deletion")
     inner class TransactionDeletion {
+        private fun stubLockedAccounts(vararg accounts: Account) {
+            val orderedAccounts = accounts.sortedBy { requireNotNull(it.id) }
+            val orderedIds = orderedAccounts.map { requireNotNull(it.id) }
+            `when`(accountRepository.findAllByIdInOrderByIdAsc(orderedIds)).thenReturn(orderedAccounts)
+        }
+
         @Test
         @DisplayName("should reverse projection deltas and delete the transaction")
         fun reverseProjectionDeltasAndDeleteTransaction() {
@@ -1052,13 +1058,71 @@ class LedgerTransactionValidationTest {
                     ),
                 )
             `when`(ledgerTxnRepository.findOneById(txnId)).thenReturn(Optional.of(txn))
+            stubLockedAccounts(upperAccount, lowerAccount)
 
             service.deleteTransaction(txnId, userA)
 
+            verify(accountRepository).findAllByIdInOrderByIdAsc(listOf(lowerId, upperId))
             val inOrder = inOrder(accountCurrentBalanceRepository, ledgerTxnRepository)
             inOrder.verify(accountCurrentBalanceRepository).addDelta(lowerId, -1_000L)
             inOrder.verify(accountCurrentBalanceRepository).addDelta(upperId, 1_000L)
             inOrder.verify(ledgerTxnRepository).delete(txn)
+        }
+
+        @Test
+        @DisplayName("should reject deleting a transaction touching an archived account")
+        fun rejectTransactionTouchingArchivedAccount() {
+            val activeId = UUID.fromString("00000000-0000-0000-0000-000000000001")
+            val archivedId = UUID.fromString("00000000-0000-0000-0000-000000000010")
+            val activeAccount = Account(id = activeId, owner = userA, name = "Active", type = AccountType.ASSET, currency = eur)
+            val archivedAccount =
+                Account(
+                    id = archivedId,
+                    owner = userA,
+                    name = "Archived",
+                    type = AccountType.EXPENSE,
+                    currency = eur,
+                    status = AccountStatus.ARCHIVED,
+                    archivedAt = Instant.parse("2026-02-19T00:00:00Z"),
+                )
+            val txnId = UUID.randomUUID()
+            val txn =
+                LedgerTxn(
+                    id = txnId,
+                    createdBy = userA,
+                    txnDate = LocalDate.of(2026, 2, 18),
+                    description = "Immutable history",
+                    currency = eur,
+                )
+            txn.splits =
+                mutableListOf(
+                    LedgerSplit(
+                        id = UUID.randomUUID(),
+                        transaction = txn,
+                        account = archivedAccount,
+                        side = SplitSide.DEBIT,
+                        amountMinor = 1_000,
+                    ),
+                    LedgerSplit(
+                        id = UUID.randomUUID(),
+                        transaction = txn,
+                        account = activeAccount,
+                        side = SplitSide.CREDIT,
+                        amountMinor = 1_000,
+                    ),
+                )
+            `when`(ledgerTxnRepository.findOneById(txnId)).thenReturn(Optional.of(txn))
+            stubLockedAccounts(archivedAccount, activeAccount)
+
+            val exception =
+                assertThrows(BadRequestException::class.java) {
+                    service.deleteTransaction(txnId, userA)
+                }
+
+            assertTrue(exception.message!!.contains("archived accounts"))
+            verify(accountRepository).findAllByIdInOrderByIdAsc(listOf(activeId, archivedId))
+            verifyNoInteractions(accountCurrentBalanceRepository)
+            verify(ledgerTxnRepository, never()).delete(any(LedgerTxn::class.java))
         }
 
         @Test
@@ -1079,6 +1143,7 @@ class LedgerTransactionValidationTest {
         @DisplayName("should reject deleting a non-owned individual transaction")
         fun rejectNonOwnedIndividualTransaction() {
             val txnId = UUID.randomUUID()
+            val liability = bobLiability()
             val txn =
                 LedgerTxn(
                     id = txnId,
@@ -1099,12 +1164,13 @@ class LedgerTransactionValidationTest {
                     LedgerSplit(
                         id = UUID.randomUUID(),
                         transaction = txn,
-                        account = bobLiability(),
+                        account = liability,
                         side = SplitSide.CREDIT,
                         amountMinor = 1_000,
                     ),
                 )
             `when`(ledgerTxnRepository.findOneById(txnId)).thenReturn(Optional.of(txn))
+            stubLockedAccounts(userBSavings, liability)
 
             assertThrows(ForbiddenException::class.java) {
                 service.deleteTransaction(txnId, userA)
@@ -1146,6 +1212,7 @@ class LedgerTransactionValidationTest {
                     ),
                 )
             `when`(ledgerTxnRepository.findOneById(txnId)).thenReturn(Optional.of(txn))
+            stubLockedAccounts(checking, userBSavings)
             `when`(manageHousehold.isActiveMember(householdId, userA.userId!!)).thenReturn(true)
             `when`(manageHousehold.isAccountShared(householdId, userBSavingsId)).thenReturn(true)
 

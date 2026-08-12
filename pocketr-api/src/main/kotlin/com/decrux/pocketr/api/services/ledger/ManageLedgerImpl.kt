@@ -230,8 +230,16 @@ class ManageLedgerImpl(
             ledgerTxnRepository
                 .findOneById(id)
                 .orElseThrow { NotFoundException("Transaction not found") }
+        val accountIds =
+            txn.splits
+                .map { it.requireAccountId() }
+                .distinct()
+                .sorted()
+        val accounts = accountRepository.findAllByIdInOrderByIdAsc(accountIds)
+        check(accounts.size == accountIds.size) { "Transaction references a missing account" }
 
-        validateDeleteTransactionAccess(txn, userId)
+        validateDeleteTransactionAccess(txn, accounts, userId)
+        validateAccountsActiveForDeletion(accounts)
         reverseCurrentBalanceProjection(txn.splits)
         ledgerTxnRepository.delete(txn)
     }
@@ -399,12 +407,9 @@ class ManageLedgerImpl(
 
     private fun validateDeleteTransactionAccess(
         txn: LedgerTxn,
+        accounts: List<Account>,
         userId: Long,
     ) {
-        val accounts =
-            txn.splits
-                .map { requireNotNull(it.account) { "Split account must not be null" } }
-                .distinctBy { requireNotNull(it.id) }
         val nonOwnedAccounts = accounts.filter { it.owner?.userId != userId }
 
         if (nonOwnedAccounts.isEmpty()) {
@@ -418,6 +423,12 @@ class ManageLedgerImpl(
         householdMembershipValidator.validate(manageHousehold, householdId, userId)
         householdSharedAccountValidator.validate(nonOwnedAccounts, manageHousehold, householdId)
         crossUserAssetAccountTypeValidator.validate(accounts, txn.splits.map { it.toCreateSplitDto() }, userId)
+    }
+
+    private fun validateAccountsActiveForDeletion(accounts: List<Account>) {
+        if (accounts.any { it.status == AccountStatus.ARCHIVED }) {
+            throw BadRequestException("Transactions involving archived accounts cannot be deleted")
+        }
     }
 
     private fun LedgerSplit.toCreateSplitDto(): CreateSplitDto =

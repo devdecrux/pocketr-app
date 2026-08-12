@@ -168,6 +168,48 @@ class ManageLedgerCurrentBalanceIntegrationTest
         }
 
         @Test
+        @DisplayName("deleting is rejected when a referenced account is archived")
+        fun deletingIsRejectedForArchivedAccountHistory() {
+            val user = persistUser("integration-immutable-history")
+            val cash = persistAccount(user, "Archived Cash", AccountType.ASSET)
+            val expense = persistAccount(user, "Historical Expense", AccountType.EXPENSE)
+            val cashId = requireNotNull(cash.id)
+            val expenseId = requireNotNull(expense.id)
+            val txn =
+                manageLedger.createTransaction(
+                    dto =
+                        CreateTransactionDto(
+                            txnDate = LocalDate.now(),
+                            currency = "EUR",
+                            description = "Keep this history",
+                            splits =
+                                listOf(
+                                    CreateSplitDto(accountId = cashId, side = "CREDIT", amountMinor = 1_200),
+                                    CreateSplitDto(accountId = expenseId, side = "DEBIT", amountMinor = 1_200),
+                                ),
+                        ),
+                    creator = user,
+                )
+            cash.archive(Instant.parse("2026-07-12T10:00:00Z"))
+            accountRepository.saveAndFlush(cash)
+
+            val exception =
+                assertThrows(BadRequestException::class.java) {
+                    manageLedger.deleteTransaction(txn.id, user)
+                }
+
+            assertEquals("Transactions involving archived accounts cannot be deleted", exception.message)
+            assertEquals(1L, ledgerTxnRepository.count())
+            assertEquals(2L, ledgerSplitRepository.count())
+            val projectionById =
+                accountCurrentBalanceRepository
+                    .findAllByAccountIdIn(listOf(cashId, expenseId))
+                    .associate { requireNotNull(it.accountId) to it.rawBalanceMinor }
+            assertEquals(-1_200L, projectionById.getValue(cashId))
+            assertEquals(1_200L, projectionById.getValue(expenseId))
+        }
+
+        @Test
         @DisplayName("today request prefers snapshot balance over computed balance")
         @Transactional
         fun todayRequestPrefersSnapshotBalance() {
