@@ -4,17 +4,21 @@ import com.decrux.pocketr.api.entities.db.auth.User
 import com.decrux.pocketr.api.entities.db.ledger.Account
 import com.decrux.pocketr.api.entities.db.ledger.AccountStatus
 import com.decrux.pocketr.api.entities.db.ledger.AccountType
+import com.decrux.pocketr.api.entities.db.ledger.SplitSide
 import com.decrux.pocketr.api.entities.dtos.AccountDto
 import com.decrux.pocketr.api.entities.dtos.CreateAccountDto
 import com.decrux.pocketr.api.entities.dtos.UpdateAccountDto
 import com.decrux.pocketr.api.exceptions.BadRequestException
 import com.decrux.pocketr.api.exceptions.ForbiddenException
 import com.decrux.pocketr.api.exceptions.NotFoundException
+import com.decrux.pocketr.api.repositories.AccountCurrentBalanceRepository
 import com.decrux.pocketr.api.repositories.AccountRepository
 import com.decrux.pocketr.api.repositories.CurrencyRepository
 import com.decrux.pocketr.api.repositories.HouseholdAccountShareRepository
+import com.decrux.pocketr.api.repositories.LedgerSplitRepository
 import com.decrux.pocketr.api.services.OwnershipGuard
 import com.decrux.pocketr.api.services.household.ManageHousehold
+import com.decrux.pocketr.api.services.ledger.CurrentBalanceSnapshotReadiness
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.Instant
@@ -24,6 +28,9 @@ import java.util.UUID
 @Service
 class ManageAccountImpl(
     private val accountRepository: AccountRepository,
+    private val accountCurrentBalanceRepository: AccountCurrentBalanceRepository,
+    private val ledgerSplitRepository: LedgerSplitRepository,
+    private val currentBalanceSnapshotReadiness: CurrentBalanceSnapshotReadiness,
     private val currencyRepository: CurrencyRepository,
     private val openingBalanceService: OpeningBalanceService,
     private val manageHousehold: ManageHousehold,
@@ -105,7 +112,7 @@ class ManageAccountImpl(
                 .orElseThrow { BadRequestException("Invalid currency: ${dto.currency}") }
 
         val openingBalanceMinor = dto.openingBalanceMinor ?: 0L
-        if (openingBalanceMinor != 0L && accountType !in OPENING_BALANCE_TYPES) {
+        if (openingBalanceMinor != 0L && accountType !in BALANCE_SHEET_TYPES) {
             throw BadRequestException(
                 "openingBalanceMinor is supported only for ASSET and LIABILITY accounts",
             )
@@ -182,13 +189,27 @@ class ManageAccountImpl(
         if (account.type == AccountType.EQUITY) {
             throw BadRequestException("EQUITY accounts are system-managed and cannot be archived")
         }
+        if (account.type in BALANCE_SHEET_TYPES && resolveArchiveBalance(id) != 0L) {
+            throw BadRequestException("${account.type} accounts must have a zero balance before they can be archived")
+        }
 
         account.archive(Instant.now())
         accountRepository.save(account)
     }
 
+    private fun resolveArchiveBalance(accountId: UUID): Long {
+        if (!currentBalanceSnapshotReadiness.isSnapshotAllowed(accountId)) {
+            return ledgerSplitRepository.computeLifetimeBalance(accountId, SplitSide.DEBIT, SplitSide.CREDIT)
+        }
+
+        return accountCurrentBalanceRepository
+            .findById(accountId)
+            .map { it.rawBalanceMinor }
+            .orElse(0L)
+    }
+
     private companion object {
-        val OPENING_BALANCE_TYPES = setOf(AccountType.ASSET, AccountType.LIABILITY)
+        val BALANCE_SHEET_TYPES = setOf(AccountType.ASSET, AccountType.LIABILITY)
 
         fun Account.toDto() =
             AccountDto(

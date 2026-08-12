@@ -2,19 +2,24 @@ package com.decrux.pocketr.api.services.account
 
 import com.decrux.pocketr.api.entities.db.auth.User
 import com.decrux.pocketr.api.entities.db.ledger.Account
+import com.decrux.pocketr.api.entities.db.ledger.AccountCurrentBalance
 import com.decrux.pocketr.api.entities.db.ledger.AccountStatus
 import com.decrux.pocketr.api.entities.db.ledger.AccountType
 import com.decrux.pocketr.api.entities.db.ledger.Currency
+import com.decrux.pocketr.api.entities.db.ledger.SplitSide
 import com.decrux.pocketr.api.entities.dtos.CreateAccountDto
 import com.decrux.pocketr.api.entities.dtos.UpdateAccountDto
 import com.decrux.pocketr.api.exceptions.BadRequestException
 import com.decrux.pocketr.api.exceptions.ForbiddenException
 import com.decrux.pocketr.api.exceptions.NotFoundException
+import com.decrux.pocketr.api.repositories.AccountCurrentBalanceRepository
 import com.decrux.pocketr.api.repositories.AccountRepository
 import com.decrux.pocketr.api.repositories.CurrencyRepository
 import com.decrux.pocketr.api.repositories.HouseholdAccountShareRepository
+import com.decrux.pocketr.api.repositories.LedgerSplitRepository
 import com.decrux.pocketr.api.services.OwnershipGuard
 import com.decrux.pocketr.api.services.household.ManageHousehold
+import com.decrux.pocketr.api.services.ledger.CurrentBalanceSnapshotReadiness
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -37,6 +42,9 @@ import java.util.UUID
 @DisplayName("ManageAccountImpl")
 class ManageAccountImplTest {
     private lateinit var accountRepository: AccountRepository
+    private lateinit var accountCurrentBalanceRepository: AccountCurrentBalanceRepository
+    private lateinit var ledgerSplitRepository: LedgerSplitRepository
+    private lateinit var currentBalanceSnapshotReadiness: CurrentBalanceSnapshotReadiness
     private lateinit var currencyRepository: CurrencyRepository
     private lateinit var openingBalanceService: CapturingOpeningBalanceService
     private lateinit var manageHousehold: ManageHousehold
@@ -63,23 +71,31 @@ class ManageAccountImplTest {
     @BeforeEach
     fun setUp() {
         accountRepository = mock(AccountRepository::class.java)
+        accountCurrentBalanceRepository = mock(AccountCurrentBalanceRepository::class.java)
+        ledgerSplitRepository = mock(LedgerSplitRepository::class.java)
+        currentBalanceSnapshotReadiness = CurrentBalanceSnapshotReadiness.AlwaysAllowed
         currencyRepository = mock(CurrencyRepository::class.java)
         openingBalanceService = CapturingOpeningBalanceService()
         manageHousehold = mock(ManageHousehold::class.java)
         householdAccountShareRepository = mock(HouseholdAccountShareRepository::class.java)
-        service =
-            ManageAccountImpl(
-                accountRepository,
-                currencyRepository,
-                openingBalanceService,
-                manageHousehold,
-                householdAccountShareRepository,
-                OwnershipGuard(),
-            )
+        service = buildService()
 
         `when`(currencyRepository.findById("EUR")).thenReturn(Optional.of(eur))
         `when`(currencyRepository.findById("USD")).thenReturn(Optional.of(usd))
     }
+
+    private fun buildService() =
+        ManageAccountImpl(
+            accountRepository,
+            accountCurrentBalanceRepository,
+            ledgerSplitRepository,
+            currentBalanceSnapshotReadiness,
+            currencyRepository,
+            openingBalanceService,
+            manageHousehold,
+            householdAccountShareRepository,
+            OwnershipGuard(),
+        )
 
     @Nested
     @DisplayName("createAccount")
@@ -472,6 +488,106 @@ class ManageAccountImplTest {
         }
 
         @Test
+        @DisplayName("should archive zero-balance ASSET and LIABILITY accounts using snapshots")
+        fun archiveZeroBalanceSheetAccountsUsingSnapshots() {
+            listOf(AccountType.ASSET, AccountType.LIABILITY).forEach { accountType ->
+                val id = UUID.randomUUID()
+                val account =
+                    Account(id = id, owner = ownerUser, name = accountType.name, type = accountType, currency = eur)
+                `when`(accountRepository.findOneById(id)).thenReturn(Optional.of(account))
+                `when`(accountCurrentBalanceRepository.findById(id))
+                    .thenReturn(Optional.of(AccountCurrentBalance(accountId = id, rawBalanceMinor = 0L)))
+
+                service.archiveAccount(id, ownerUser)
+
+                assertEquals(AccountStatus.ARCHIVED, account.status)
+                verify(accountCurrentBalanceRepository).findById(id)
+                verify(accountRepository).save(account)
+            }
+            verifyNoInteractions(ledgerSplitRepository)
+        }
+
+        @Test
+        @DisplayName("should reject non-zero ASSET and LIABILITY snapshot balances")
+        fun rejectNonZeroBalanceSheetAccountSnapshots() {
+            listOf(AccountType.ASSET, AccountType.LIABILITY).forEachIndexed { index, accountType ->
+                val id = UUID.randomUUID()
+                val account =
+                    Account(id = id, owner = ownerUser, name = accountType.name, type = accountType, currency = eur)
+                `when`(accountRepository.findOneById(id)).thenReturn(Optional.of(account))
+                `when`(accountCurrentBalanceRepository.findById(id))
+                    .thenReturn(Optional.of(AccountCurrentBalance(accountId = id, rawBalanceMinor = index + 1L)))
+
+                val exception =
+                    assertThrows(BadRequestException::class.java) {
+                        service.archiveAccount(id, ownerUser)
+                    }
+
+                assertTrue(exception.message!!.contains("zero balance"))
+                assertEquals(AccountStatus.ACTIVE, account.status)
+            }
+            verify(accountRepository, never()).save(any(Account::class.java))
+            verifyNoInteractions(ledgerSplitRepository)
+        }
+
+        @Test
+        @DisplayName("should compute lifetime balance once when the snapshot is unreliable")
+        fun computeLifetimeBalanceForUnreliableSnapshot() {
+            val account =
+                Account(id = accountId, owner = ownerUser, name = "Checking", type = AccountType.ASSET, currency = eur)
+            `when`(accountRepository.findOneById(accountId)).thenReturn(Optional.of(account))
+            currentBalanceSnapshotReadiness = mock(CurrentBalanceSnapshotReadiness::class.java)
+            `when`(currentBalanceSnapshotReadiness.isSnapshotAllowed(accountId)).thenReturn(false)
+            service = buildService()
+            `when`(ledgerSplitRepository.computeLifetimeBalance(accountId, SplitSide.DEBIT, SplitSide.CREDIT)).thenReturn(0L)
+
+            service.archiveAccount(accountId, ownerUser)
+
+            assertEquals(AccountStatus.ARCHIVED, account.status)
+            verify(ledgerSplitRepository).computeLifetimeBalance(accountId, SplitSide.DEBIT, SplitSide.CREDIT)
+            verifyNoInteractions(accountCurrentBalanceRepository)
+        }
+
+        @Test
+        @DisplayName("should reject a non-zero authoritative lifetime balance")
+        fun rejectNonZeroAuthoritativeLifetimeBalance() {
+            val account =
+                Account(id = accountId, owner = ownerUser, name = "Mortgage", type = AccountType.LIABILITY, currency = eur)
+            `when`(accountRepository.findOneById(accountId)).thenReturn(Optional.of(account))
+            currentBalanceSnapshotReadiness = mock(CurrentBalanceSnapshotReadiness::class.java)
+            `when`(currentBalanceSnapshotReadiness.isSnapshotAllowed(accountId)).thenReturn(false)
+            service = buildService()
+            `when`(ledgerSplitRepository.computeLifetimeBalance(accountId, SplitSide.DEBIT, SplitSide.CREDIT)).thenReturn(-1L)
+
+            val exception =
+                assertThrows(BadRequestException::class.java) {
+                    service.archiveAccount(accountId, ownerUser)
+                }
+
+            assertTrue(exception.message!!.contains("zero balance"))
+            verify(ledgerSplitRepository).computeLifetimeBalance(accountId, SplitSide.DEBIT, SplitSide.CREDIT)
+            verify(accountRepository, never()).save(any(Account::class.java))
+            verifyNoInteractions(accountCurrentBalanceRepository)
+        }
+
+        @Test
+        @DisplayName("should archive INCOME and EXPENSE accounts without balance checks")
+        fun archiveIncomeAndExpenseRegardlessOfBalance() {
+            listOf(AccountType.INCOME, AccountType.EXPENSE).forEach { accountType ->
+                val id = UUID.randomUUID()
+                val account =
+                    Account(id = id, owner = ownerUser, name = accountType.name, type = accountType, currency = eur)
+                `when`(accountRepository.findOneById(id)).thenReturn(Optional.of(account))
+
+                service.archiveAccount(id, ownerUser)
+
+                assertEquals(AccountStatus.ARCHIVED, account.status)
+                verify(accountRepository).save(account)
+            }
+            verifyNoInteractions(accountCurrentBalanceRepository, ledgerSplitRepository)
+        }
+
+        @Test
         @DisplayName("should be idempotent for an already archived account")
         fun alreadyArchivedIsIdempotent() {
             val archivedAccount =
@@ -489,6 +605,7 @@ class ManageAccountImplTest {
             service.archiveAccount(accountId, ownerUser)
 
             verify(accountRepository, never()).save(any(Account::class.java))
+            verifyNoInteractions(accountCurrentBalanceRepository, ledgerSplitRepository)
         }
 
         @Test
@@ -519,6 +636,7 @@ class ManageAccountImplTest {
 
             assertTrue(exception.message!!.contains("cannot be archived"))
             verify(accountRepository, never()).save(any(Account::class.java))
+            verifyNoInteractions(accountCurrentBalanceRepository, ledgerSplitRepository)
         }
 
         @Test

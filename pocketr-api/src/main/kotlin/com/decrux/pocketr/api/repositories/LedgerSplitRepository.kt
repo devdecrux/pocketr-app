@@ -20,6 +20,20 @@ interface LedgerSplitRepository : JpaRepository<LedgerSplit, UUID> {
              - COALESCE(SUM(CASE WHEN ls.side = :credit THEN ls.amountMinor ELSE 0 END), 0)
         FROM LedgerSplit ls
         WHERE ls.account.id = :accountId
+        """,
+    )
+    fun computeLifetimeBalance(
+        accountId: UUID,
+        debit: SplitSide,
+        credit: SplitSide,
+    ): Long
+
+    @Query(
+        """
+        SELECT COALESCE(SUM(CASE WHEN ls.side = :debit THEN ls.amountMinor ELSE 0 END), 0)
+             - COALESCE(SUM(CASE WHEN ls.side = :credit THEN ls.amountMinor ELSE 0 END), 0)
+        FROM LedgerSplit ls
+        WHERE ls.account.id = :accountId
           AND ls.transaction.txnDate <= :asOf
         """,
     )
