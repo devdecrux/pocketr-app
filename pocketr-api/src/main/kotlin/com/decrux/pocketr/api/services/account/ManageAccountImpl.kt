@@ -199,7 +199,7 @@ class ManageAccountImpl(
 
     private fun resolveArchiveBalance(accountId: UUID): Long {
         if (!currentBalanceSnapshotReadiness.isSnapshotAllowed(accountId)) {
-            return ledgerSplitRepository.computeLifetimeBalance(accountId, SplitSide.DEBIT, SplitSide.CREDIT)
+            return ledgerSplitRepository.computeBalanceAcrossAllTransactions(accountId, SplitSide.DEBIT, SplitSide.CREDIT)
         }
 
         return accountCurrentBalanceRepository

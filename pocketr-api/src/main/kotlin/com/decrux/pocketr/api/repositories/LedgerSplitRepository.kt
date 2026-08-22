@@ -22,7 +22,7 @@ interface LedgerSplitRepository : JpaRepository<LedgerSplit, UUID> {
         WHERE ls.account.id = :accountId
         """,
     )
-    fun computeLifetimeBalance(
+    fun computeBalanceAcrossAllTransactions(
         accountId: UUID,
         debit: SplitSide,
         credit: SplitSide,

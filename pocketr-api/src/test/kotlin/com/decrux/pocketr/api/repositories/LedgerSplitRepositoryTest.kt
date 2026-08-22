@@ -27,8 +27,8 @@ class LedgerSplitRepositoryTest
         private val testEntityManager: TestEntityManager,
     ) {
         @Test
-        @DisplayName("computeLifetimeBalance includes future-dated ledger entries")
-        fun computeLifetimeBalanceIncludesFutureEntries() {
+        @DisplayName("computeBalanceAcrossAllTransactions includes future-dated ledger entries")
+        fun computeBalanceAcrossAllTransactionsIncludesFutureEntries() {
             val currency = persistCurrency()
             val user = persistUser()
             val account = persistAccount(user, currency)
@@ -58,7 +58,7 @@ class LedgerSplitRepositoryTest
             testEntityManager.clear()
 
             val balance =
-                ledgerSplitRepository.computeLifetimeBalance(
+                ledgerSplitRepository.computeBalanceAcrossAllTransactions(
                     requireNotNull(account.id),
                     SplitSide.DEBIT,
                     SplitSide.CREDIT,

@@ -532,19 +532,19 @@ class ManageAccountImplTest {
 
         @Test
         @DisplayName("should compute lifetime balance once when the snapshot is unreliable")
-        fun computeLifetimeBalanceForUnreliableSnapshot() {
+        fun computeBalanceAcrossAllTransactionsForUnreliableSnapshot() {
             val account =
                 Account(id = accountId, owner = ownerUser, name = "Checking", type = AccountType.ASSET, currency = eur)
             `when`(accountRepository.findOneById(accountId)).thenReturn(Optional.of(account))
             currentBalanceSnapshotReadiness = mock(CurrentBalanceSnapshotReadiness::class.java)
             `when`(currentBalanceSnapshotReadiness.isSnapshotAllowed(accountId)).thenReturn(false)
             service = buildService()
-            `when`(ledgerSplitRepository.computeLifetimeBalance(accountId, SplitSide.DEBIT, SplitSide.CREDIT)).thenReturn(0L)
+            `when`(ledgerSplitRepository.computeBalanceAcrossAllTransactions(accountId, SplitSide.DEBIT, SplitSide.CREDIT)).thenReturn(0L)
 
             service.archiveAccount(accountId, ownerUser)
 
             assertEquals(AccountStatus.ARCHIVED, account.status)
-            verify(ledgerSplitRepository).computeLifetimeBalance(accountId, SplitSide.DEBIT, SplitSide.CREDIT)
+            verify(ledgerSplitRepository).computeBalanceAcrossAllTransactions(accountId, SplitSide.DEBIT, SplitSide.CREDIT)
             verifyNoInteractions(accountCurrentBalanceRepository)
         }
 
@@ -557,7 +557,7 @@ class ManageAccountImplTest {
             currentBalanceSnapshotReadiness = mock(CurrentBalanceSnapshotReadiness::class.java)
             `when`(currentBalanceSnapshotReadiness.isSnapshotAllowed(accountId)).thenReturn(false)
             service = buildService()
-            `when`(ledgerSplitRepository.computeLifetimeBalance(accountId, SplitSide.DEBIT, SplitSide.CREDIT)).thenReturn(-1L)
+            `when`(ledgerSplitRepository.computeBalanceAcrossAllTransactions(accountId, SplitSide.DEBIT, SplitSide.CREDIT)).thenReturn(-1L)
 
             val exception =
                 assertThrows(BadRequestException::class.java) {
@@ -565,7 +565,7 @@ class ManageAccountImplTest {
                 }
 
             assertTrue(exception.message!!.contains("zero balance"))
-            verify(ledgerSplitRepository).computeLifetimeBalance(accountId, SplitSide.DEBIT, SplitSide.CREDIT)
+            verify(ledgerSplitRepository).computeBalanceAcrossAllTransactions(accountId, SplitSide.DEBIT, SplitSide.CREDIT)
             verify(accountRepository, never()).save(any(Account::class.java))
             verifyNoInteractions(accountCurrentBalanceRepository)
         }
