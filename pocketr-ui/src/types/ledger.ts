@@ -5,6 +5,7 @@ export interface Currency {
 }
 
 export type AccountType = 'ASSET' | 'LIABILITY' | 'INCOME' | 'EXPENSE' | 'EQUITY'
+export type AccountStatus = 'ACTIVE' | 'ARCHIVED'
 
 export interface Account {
   id: string
@@ -13,6 +14,8 @@ export interface Account {
   type: AccountType
   currency: string
   createdAt: string
+  status: AccountStatus
+  archivedAt: string | null
 }
 
 export interface CreateAccountRequest {
@@ -126,6 +129,7 @@ export interface AccountBalance {
 export interface MonthlyReportEntry {
   expenseAccountId: string
   expenseAccountName: string
+  expenseAccountStatus: AccountStatus
   categoryTagId: string | null
   categoryTagName: string | null
   categoryTagColor: string | null

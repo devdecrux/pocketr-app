@@ -85,6 +85,8 @@ function account(override: Partial<Account>): Account {
     type: 'ASSET',
     currency: 'USD',
     createdAt: '2026-02-24T00:00:00Z',
+    status: 'ACTIVE',
+    archivedAt: null,
     ...override,
   }
 }
@@ -191,6 +193,25 @@ describe('TransactionsPage currency exchange behavior', () => {
     )
   })
 
+  it('includes archived accounts only in the history filter and filters by the selected ID', async () => {
+    const wrapper = mountPage()
+    await flushPromises()
+
+    const selectors = wrapper.findAllComponents({ name: 'AccountSelector' })
+    const historyFilter = selectors.find((selector) => !selector.props('allowedTypes'))!
+    expect(historyFilter.props('includeArchived')).toBe(true)
+    expect(
+      selectors
+        .filter((selector) => selector.props('allowedTypes'))
+        .every((selector) => !selector.props('includeArchived')),
+    ).toBe(true)
+
+    historyFilter.vm.$emit('update:modelValue', 'archived-account')
+    await flushPromises()
+
+    expect(ledgerStore.load).toHaveBeenLastCalledWith({ accountId: 'archived-account' }, 0, 10)
+  })
+
   it('displays expanded split amounts using accountCurrency from the response', async () => {
     ledgerStore.transactions = [
       transaction({
@@ -222,5 +243,30 @@ describe('TransactionsPage currency exchange behavior', () => {
 
     expect(wrapper.text()).toContain('-$10.00')
     expect(wrapper.text()).toContain('+€9.20')
+  })
+
+  it('displays the ledger snapshot name when a split account is no longer active', async () => {
+    ledgerStore.transactions = [
+      transaction({
+        splits: [
+          {
+            id: 'split-archived',
+            accountId: 'archived-account',
+            accountName: 'Old Checking',
+            accountCurrency: 'USD',
+            side: 'CREDIT',
+            amountMinor: 1000,
+            exchangeRate: '1',
+          },
+        ],
+      }),
+    ]
+
+    const wrapper = mountPage()
+    await flushPromises()
+
+    expect(accountStore.accountMap.has('archived-account')).toBe(false)
+    expect(wrapper.text()).toContain('Old Checking')
+    expect(wrapper.text()).not.toContain('archived-account')
   })
 })

@@ -68,7 +68,12 @@ function statusBadgeVariant(status: string) {
 const myAccounts = computed(() => {
   const userId = authStore.user?.id
   if (userId == null) return []
-  return accountStore.activeAccounts.filter((a) => a.ownerUserId === userId)
+  return accountStore.accounts.filter(
+    (a) =>
+      a.ownerUserId === userId &&
+      a.type !== 'EQUITY' &&
+      (a.status === 'ACTIVE' || sharedAccountIds.value.has(a.id)),
+  )
 })
 
 const myAccountsByType = computed(() => {
@@ -373,6 +378,9 @@ async function saveRolloverDay(): Promise<void> {
                       <div class="flex items-center gap-2">
                         <span class="text-sm font-medium">{{ account.name }}</span>
                         <span class="text-xs text-muted-foreground">({{ account.currency }})</span>
+                        <Badge v-if="account.status === 'ARCHIVED'" variant="outline">
+                          {{ $t('common.states.archived') }}
+                        </Badge>
                         <Badge
                           v-if="isAccountShared(account.id)"
                           variant="default"

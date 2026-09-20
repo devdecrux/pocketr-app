@@ -73,6 +73,7 @@
       "selectMode": "Select mode"
     },
     "states": {
+      "archived": "Archived",
       "noData": "No data.",
       "unknownUser": "Unknown user"
     },
@@ -147,6 +148,13 @@
     "accounts": {
       "actions": {
         "new": "New Account"
+      },
+      "archive": {
+        "actionLabel": "Archive account {name}",
+        "archiving": "Archiving...",
+        "confirm": "Archive account",
+        "description": "Archive \"{name}\"? It will no longer be available for new transactions, but its existing transaction history will be preserved. This action cannot currently be undone.",
+        "title": "Archive Account"
       },
       "create": {
         "descriptions": {
@@ -411,6 +419,7 @@
   },
   "errors": {
     "accounts": {
+      "archive": "Failed to archive account.",
       "create": "Failed to create account.",
       "load": "Failed to load accounts.",
       "rename": "Failed to rename account."

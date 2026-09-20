@@ -223,6 +223,7 @@ class GenerateReportImpl(
                 accountId = accountId,
                 accountName = account.name,
                 accountType = account.type.name,
+                accountStatus = account.status.name,
                 currency = requireNotNull(account.currency?.code),
                 balanceMinor = balanceMinor,
             )
@@ -289,6 +290,7 @@ class GenerateReportImpl(
             accountId = requireNotNull(account.id),
             accountName = account.name,
             accountType = account.type.name,
+            accountStatus = account.status.name,
             currency = requireNotNull(account.currency?.code),
             points = points,
         )
@@ -309,6 +311,7 @@ class GenerateReportImpl(
                 categoryTagColor = categoryTagColor,
                 currency = currency,
                 netMinor = netMinor,
+                expenseAccountStatus = expenseAccountStatus.name,
             )
 
         fun LiabilityPaymentProjection.toDebtPaymentDto() =
@@ -320,6 +323,7 @@ class GenerateReportImpl(
                 categoryTagColor = null,
                 currency = currency,
                 netMinor = netMinor,
+                expenseAccountStatus = liabilityAccountStatus.name,
             )
     }
 }

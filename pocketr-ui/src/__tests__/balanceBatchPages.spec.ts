@@ -82,6 +82,10 @@ vi.mock('@/stores/account', () => ({
   useAccountStore: () => accountStore,
 }))
 
+vi.mock('@/stores/auth', () => ({
+  useAuthStore: () => ({ user: { id: 1 } }),
+}))
+
 vi.mock('@/stores/currency', () => ({
   useCurrencyStore: () => currencyStore,
 }))
@@ -182,6 +186,8 @@ describe('batch balances page wiring', () => {
         type: 'ASSET',
         currency: 'EUR',
         createdAt: '2026-02-01T00:00:00Z',
+        status: 'ACTIVE',
+        archivedAt: null,
       },
       {
         id: 'acc-2',
@@ -190,6 +196,8 @@ describe('batch balances page wiring', () => {
         type: 'ASSET',
         currency: 'EUR',
         createdAt: '2026-02-01T00:00:00Z',
+        status: 'ACTIVE',
+        archivedAt: null,
       },
     ]
     accountStore.accounts = [...accountStore.activeAccounts]
@@ -220,6 +228,8 @@ describe('batch balances page wiring', () => {
         type: 'ASSET',
         currency: 'EUR',
         createdAt: '2026-02-01T00:00:00Z',
+        status: 'ACTIVE',
+        archivedAt: null,
       },
       {
         id: 'acc-private',
@@ -228,6 +238,8 @@ describe('batch balances page wiring', () => {
         type: 'ASSET',
         currency: 'EUR',
         createdAt: '2026-02-01T00:00:00Z',
+        status: 'ACTIVE',
+        archivedAt: null,
       },
       {
         id: 'acc-liability',
@@ -236,6 +248,8 @@ describe('batch balances page wiring', () => {
         type: 'LIABILITY',
         currency: 'EUR',
         createdAt: '2026-02-01T00:00:00Z',
+        status: 'ACTIVE',
+        archivedAt: null,
       },
       {
         id: 'acc-expense',
@@ -244,6 +258,8 @@ describe('batch balances page wiring', () => {
         type: 'EXPENSE',
         currency: 'EUR',
         createdAt: '2026-02-01T00:00:00Z',
+        status: 'ACTIVE',
+        archivedAt: null,
       },
     ]
     accountStore.accounts = [...accountStore.activeAccounts]

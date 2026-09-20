@@ -7,6 +7,7 @@ import com.decrux.pocketr.api.entities.db.household.HouseholdMember
 import com.decrux.pocketr.api.entities.db.household.HouseholdRole
 import com.decrux.pocketr.api.entities.db.household.MemberStatus
 import com.decrux.pocketr.api.entities.db.ledger.Account
+import com.decrux.pocketr.api.entities.db.ledger.AccountStatus
 import com.decrux.pocketr.api.entities.db.ledger.AccountType
 import com.decrux.pocketr.api.entities.db.ledger.Currency
 import com.decrux.pocketr.api.entities.dtos.CreateHouseholdDto
@@ -272,6 +273,35 @@ class HouseholdAccountShareIntegrationTest {
             assertEquals("Checking", shares[0].accountName)
             assertEquals("alice@example.com", shares[0].ownerEmail)
         }
+
+        @Test
+        @DisplayName("archived shares remain manageable but are hidden from active account lists")
+        fun archivedSharesRemainManageable() {
+            stubActiveMember(userB, HouseholdRole.MEMBER)
+            val archivedAccount =
+                Account(
+                    id = checkingId,
+                    owner = userA,
+                    name = "Checking",
+                    type = AccountType.ASSET,
+                    currency = eur,
+                    status = AccountStatus.ARCHIVED,
+                    archivedAt = Instant.parse("2026-07-12T10:00:00Z"),
+                )
+            val share = HouseholdAccountShare(household = household, account = archivedAccount, sharedBy = userA)
+            `when`(shareRepository.findByHouseholdIdWithAccountAndOwner(householdId)).thenReturn(listOf(share))
+
+            assertTrue(service.listHouseholdAccounts(householdId, userB).isEmpty())
+            assertEquals(checkingId, service.listSharedAccounts(householdId, userB).single().accountId)
+
+            `when`(shareRepository.findByHouseholdIdAndAccountId(householdId, checkingId)).thenReturn(share)
+            assertThrows(ForbiddenException::class.java) {
+                service.unshareAccount(householdId, checkingId, userB)
+            }
+            stubActiveMember(userA, HouseholdRole.OWNER)
+            service.unshareAccount(householdId, checkingId, userA)
+            verify(shareRepository).delete(share)
+        }
     }
 
     @Nested
@@ -282,7 +312,7 @@ class HouseholdAccountShareIntegrationTest {
         fun ownerCanShareAccount() {
             stubActiveMember(userA, HouseholdRole.OWNER)
             `when`(householdRepository.findById(householdId)).thenReturn(Optional.of(household))
-            `when`(accountRepository.findById(checkingId)).thenReturn(Optional.of(checkingAccount))
+            `when`(accountRepository.findOneById(checkingId)).thenReturn(Optional.of(checkingAccount))
             `when`(shareRepository.existsByHouseholdIdAndAccountId(householdId, checkingId)).thenReturn(false)
             `when`(shareRepository.save(any(HouseholdAccountShare::class.java))).thenAnswer { it.arguments[0] }
 
@@ -294,11 +324,36 @@ class HouseholdAccountShareIntegrationTest {
         }
 
         @Test
+        @DisplayName("archived accounts cannot be newly shared")
+        fun archivedAccountCannotBeShared() {
+            val archivedAccount =
+                Account(
+                    id = checkingId,
+                    owner = userA,
+                    name = "Checking",
+                    type = AccountType.ASSET,
+                    currency = eur,
+                    status = AccountStatus.ARCHIVED,
+                    archivedAt = Instant.parse("2026-07-12T10:00:00Z"),
+                )
+            stubActiveMember(userA, HouseholdRole.OWNER)
+            `when`(householdRepository.findById(householdId)).thenReturn(Optional.of(household))
+            `when`(accountRepository.findOneById(checkingId)).thenReturn(Optional.of(archivedAccount))
+
+            val exception =
+                assertThrows(ResponseStatusException::class.java) {
+                    service.shareAccount(householdId, ShareAccountDto(checkingId), userA)
+                }
+
+            assertEquals(400, exception.statusCode.value())
+        }
+
+        @Test
         @DisplayName("non-owner cannot share someone else's account")
         fun nonOwnerCannotShare() {
             stubActiveMember(userB, HouseholdRole.MEMBER)
             `when`(householdRepository.findById(householdId)).thenReturn(Optional.of(household))
-            `when`(accountRepository.findById(checkingId)).thenReturn(Optional.of(checkingAccount))
+            `when`(accountRepository.findOneById(checkingId)).thenReturn(Optional.of(checkingAccount))
 
             val ex =
                 assertThrows(ForbiddenException::class.java) {
@@ -312,7 +367,7 @@ class HouseholdAccountShareIntegrationTest {
         fun duplicateShareThrowsConflict() {
             stubActiveMember(userA, HouseholdRole.OWNER)
             `when`(householdRepository.findById(householdId)).thenReturn(Optional.of(household))
-            `when`(accountRepository.findById(checkingId)).thenReturn(Optional.of(checkingAccount))
+            `when`(accountRepository.findOneById(checkingId)).thenReturn(Optional.of(checkingAccount))
             `when`(shareRepository.existsByHouseholdIdAndAccountId(householdId, checkingId)).thenReturn(true)
 
             val ex =

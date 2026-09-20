@@ -2,18 +2,24 @@ package com.decrux.pocketr.api.services.account
 
 import com.decrux.pocketr.api.entities.db.auth.User
 import com.decrux.pocketr.api.entities.db.ledger.Account
+import com.decrux.pocketr.api.entities.db.ledger.AccountCurrentBalance
+import com.decrux.pocketr.api.entities.db.ledger.AccountStatus
 import com.decrux.pocketr.api.entities.db.ledger.AccountType
 import com.decrux.pocketr.api.entities.db.ledger.Currency
+import com.decrux.pocketr.api.entities.db.ledger.SplitSide
 import com.decrux.pocketr.api.entities.dtos.CreateAccountDto
 import com.decrux.pocketr.api.entities.dtos.UpdateAccountDto
 import com.decrux.pocketr.api.exceptions.BadRequestException
 import com.decrux.pocketr.api.exceptions.ForbiddenException
 import com.decrux.pocketr.api.exceptions.NotFoundException
+import com.decrux.pocketr.api.repositories.AccountCurrentBalanceRepository
 import com.decrux.pocketr.api.repositories.AccountRepository
 import com.decrux.pocketr.api.repositories.CurrencyRepository
 import com.decrux.pocketr.api.repositories.HouseholdAccountShareRepository
+import com.decrux.pocketr.api.repositories.LedgerSplitRepository
 import com.decrux.pocketr.api.services.OwnershipGuard
 import com.decrux.pocketr.api.services.household.ManageHousehold
+import com.decrux.pocketr.api.services.ledger.CurrentBalanceSnapshotReadiness
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -22,13 +28,13 @@ import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.mockito.ArgumentMatchers.any
-import org.mockito.ArgumentMatchers.anyLong
 import org.mockito.Mockito.doReturn
 import org.mockito.Mockito.mock
 import org.mockito.Mockito.never
 import org.mockito.Mockito.verify
 import org.mockito.Mockito.verifyNoInteractions
 import org.mockito.Mockito.`when`
+import java.time.Instant
 import java.time.LocalDate
 import java.util.Optional
 import java.util.UUID
@@ -36,6 +42,9 @@ import java.util.UUID
 @DisplayName("ManageAccountImpl")
 class ManageAccountImplTest {
     private lateinit var accountRepository: AccountRepository
+    private lateinit var accountCurrentBalanceRepository: AccountCurrentBalanceRepository
+    private lateinit var ledgerSplitRepository: LedgerSplitRepository
+    private lateinit var currentBalanceSnapshotReadiness: CurrentBalanceSnapshotReadiness
     private lateinit var currencyRepository: CurrencyRepository
     private lateinit var openingBalanceService: CapturingOpeningBalanceService
     private lateinit var manageHousehold: ManageHousehold
@@ -62,23 +71,31 @@ class ManageAccountImplTest {
     @BeforeEach
     fun setUp() {
         accountRepository = mock(AccountRepository::class.java)
+        accountCurrentBalanceRepository = mock(AccountCurrentBalanceRepository::class.java)
+        ledgerSplitRepository = mock(LedgerSplitRepository::class.java)
+        currentBalanceSnapshotReadiness = CurrentBalanceSnapshotReadiness.AlwaysAllowed
         currencyRepository = mock(CurrencyRepository::class.java)
         openingBalanceService = CapturingOpeningBalanceService()
         manageHousehold = mock(ManageHousehold::class.java)
         householdAccountShareRepository = mock(HouseholdAccountShareRepository::class.java)
-        service =
-            ManageAccountImpl(
-                accountRepository,
-                currencyRepository,
-                openingBalanceService,
-                manageHousehold,
-                householdAccountShareRepository,
-                OwnershipGuard(),
-            )
+        service = buildService()
 
         `when`(currencyRepository.findById("EUR")).thenReturn(Optional.of(eur))
         `when`(currencyRepository.findById("USD")).thenReturn(Optional.of(usd))
     }
+
+    private fun buildService() =
+        ManageAccountImpl(
+            accountRepository,
+            accountCurrentBalanceRepository,
+            ledgerSplitRepository,
+            currentBalanceSnapshotReadiness,
+            currencyRepository,
+            openingBalanceService,
+            manageHousehold,
+            householdAccountShareRepository,
+            OwnershipGuard(),
+        )
 
     @Nested
     @DisplayName("createAccount")
@@ -339,7 +356,7 @@ class ManageAccountImplTest {
                         currency = eur,
                     ),
                 )
-            `when`(accountRepository.findByOwnerUserId(1L)).thenReturn(accounts)
+            `when`(accountRepository.findByOwnerUserIdAndStatus(1L, AccountStatus.ACTIVE)).thenReturn(accounts)
 
             val result = service.listIndividualAccounts(ownerUser)
             assertEquals(2, result.size)
@@ -347,13 +364,13 @@ class ManageAccountImplTest {
             assertEquals(1L, result[1].ownerUserId)
             assertEquals("Checking", result[0].name)
             assertEquals("Savings", result[1].name)
-            verify(accountRepository).findByOwnerUserId(1L)
+            verify(accountRepository).findByOwnerUserIdAndStatus(1L, AccountStatus.ACTIVE)
         }
 
         @Test
         @DisplayName("should return empty list when user has no accounts")
         fun returnEmptyListWhenNoAccounts() {
-            `when`(accountRepository.findByOwnerUserId(1L)).thenReturn(emptyList())
+            `when`(accountRepository.findByOwnerUserIdAndStatus(1L, AccountStatus.ACTIVE)).thenReturn(emptyList())
 
             val result = service.listIndividualAccounts(ownerUser)
             assertTrue(result.isEmpty())
@@ -376,7 +393,7 @@ class ManageAccountImplTest {
         @Test
         @DisplayName("should rename account")
         fun renameAccount() {
-            `when`(accountRepository.findById(accountId)).thenReturn(Optional.of(existingAccount))
+            `when`(accountRepository.findOneById(accountId)).thenReturn(Optional.of(existingAccount))
             `when`(accountRepository.save(any(Account::class.java))).thenAnswer { it.getArgument<Account>(0) }
 
             val result = service.updateAccount(accountId, UpdateAccountDto(name = "Main Checking"), ownerUser)
@@ -386,7 +403,7 @@ class ManageAccountImplTest {
         @Test
         @DisplayName("should reject update by non-owner")
         fun rejectUpdateByNonOwner() {
-            `when`(accountRepository.findById(accountId)).thenReturn(Optional.of(existingAccount))
+            `when`(accountRepository.findOneById(accountId)).thenReturn(Optional.of(existingAccount))
 
             assertThrows(ForbiddenException::class.java) {
                 service.updateAccount(accountId, UpdateAccountDto(name = "Stolen"), otherUser)
@@ -397,7 +414,7 @@ class ManageAccountImplTest {
         @DisplayName("should return 404 for non-existent account")
         fun notFoundForMissingAccount() {
             val missingId = UUID.randomUUID()
-            `when`(accountRepository.findById(missingId)).thenReturn(Optional.empty())
+            `when`(accountRepository.findOneById(missingId)).thenReturn(Optional.empty())
 
             assertThrows(NotFoundException::class.java) {
                 service.updateAccount(missingId, UpdateAccountDto(name = "X"), ownerUser)
@@ -407,7 +424,7 @@ class ManageAccountImplTest {
         @Test
         @DisplayName("should trim whitespace when renaming")
         fun trimWhitespaceOnRename() {
-            `when`(accountRepository.findById(accountId)).thenReturn(Optional.of(existingAccount))
+            `when`(accountRepository.findOneById(accountId)).thenReturn(Optional.of(existingAccount))
             `when`(accountRepository.save(any(Account::class.java))).thenAnswer { it.getArgument<Account>(0) }
 
             val result = service.updateAccount(accountId, UpdateAccountDto(name = "  Savings  "), ownerUser)
@@ -417,12 +434,219 @@ class ManageAccountImplTest {
         @Test
         @DisplayName("should not change fields when update dto has nulls")
         fun noChangeWhenDtoFieldsNull() {
-            `when`(accountRepository.findById(accountId)).thenReturn(Optional.of(existingAccount))
+            `when`(accountRepository.findOneById(accountId)).thenReturn(Optional.of(existingAccount))
             `when`(accountRepository.save(any(Account::class.java))).thenAnswer { it.getArgument<Account>(0) }
 
             val result = service.updateAccount(accountId, UpdateAccountDto(), ownerUser)
             assertEquals("Checking", result.name)
             assertEquals("ASSET", result.type)
+        }
+
+        @Test
+        @DisplayName("should reject updates to archived accounts")
+        fun rejectArchivedAccountUpdate() {
+            val archivedAccount =
+                Account(
+                    id = accountId,
+                    owner = ownerUser,
+                    name = "Checking",
+                    type = AccountType.ASSET,
+                    currency = eur,
+                    status = AccountStatus.ARCHIVED,
+                    archivedAt = Instant.parse("2026-07-12T10:00:00Z"),
+                )
+            `when`(accountRepository.findOneById(accountId)).thenReturn(Optional.of(archivedAccount))
+
+            val exception =
+                assertThrows(BadRequestException::class.java) {
+                    service.updateAccount(accountId, UpdateAccountDto(name = "Renamed"), ownerUser)
+                }
+
+            assertEquals("Archived accounts cannot be updated", exception.message)
+            verify(accountRepository, never()).save(any(Account::class.java))
+        }
+    }
+
+    @Nested
+    @DisplayName("archiveAccount")
+    inner class ArchiveAccount {
+        private val accountId = UUID.randomUUID()
+
+        @Test
+        @DisplayName("should archive an owned account")
+        fun archiveOwnedAccount() {
+            val account =
+                Account(id = accountId, owner = ownerUser, name = "Checking", type = AccountType.ASSET, currency = eur)
+            `when`(accountRepository.findOneById(accountId)).thenReturn(Optional.of(account))
+            `when`(accountRepository.save(any(Account::class.java))).thenAnswer { it.getArgument<Account>(0) }
+
+            service.archiveAccount(accountId, ownerUser)
+
+            assertEquals(AccountStatus.ARCHIVED, account.status)
+            assertTrue(account.archivedAt != null)
+            verify(accountRepository).save(account)
+        }
+
+        @Test
+        @DisplayName("should archive zero-balance ASSET and LIABILITY accounts using snapshots")
+        fun archiveZeroBalanceSheetAccountsUsingSnapshots() {
+            listOf(AccountType.ASSET, AccountType.LIABILITY).forEach { accountType ->
+                val id = UUID.randomUUID()
+                val account =
+                    Account(id = id, owner = ownerUser, name = accountType.name, type = accountType, currency = eur)
+                `when`(accountRepository.findOneById(id)).thenReturn(Optional.of(account))
+                `when`(accountCurrentBalanceRepository.findById(id))
+                    .thenReturn(Optional.of(AccountCurrentBalance(accountId = id, rawBalanceMinor = 0L)))
+
+                service.archiveAccount(id, ownerUser)
+
+                assertEquals(AccountStatus.ARCHIVED, account.status)
+                verify(accountCurrentBalanceRepository).findById(id)
+                verify(accountRepository).save(account)
+            }
+            verifyNoInteractions(ledgerSplitRepository)
+        }
+
+        @Test
+        @DisplayName("should reject non-zero ASSET and LIABILITY snapshot balances")
+        fun rejectNonZeroBalanceSheetAccountSnapshots() {
+            listOf(AccountType.ASSET, AccountType.LIABILITY).forEachIndexed { index, accountType ->
+                val id = UUID.randomUUID()
+                val account =
+                    Account(id = id, owner = ownerUser, name = accountType.name, type = accountType, currency = eur)
+                `when`(accountRepository.findOneById(id)).thenReturn(Optional.of(account))
+                `when`(accountCurrentBalanceRepository.findById(id))
+                    .thenReturn(Optional.of(AccountCurrentBalance(accountId = id, rawBalanceMinor = index + 1L)))
+
+                val exception =
+                    assertThrows(BadRequestException::class.java) {
+                        service.archiveAccount(id, ownerUser)
+                    }
+
+                assertTrue(exception.message!!.contains("zero balance"))
+                assertEquals(AccountStatus.ACTIVE, account.status)
+            }
+            verify(accountRepository, never()).save(any(Account::class.java))
+            verifyNoInteractions(ledgerSplitRepository)
+        }
+
+        @Test
+        @DisplayName("should compute lifetime balance once when the snapshot is unreliable")
+        fun computeBalanceAcrossAllTransactionsForUnreliableSnapshot() {
+            val account =
+                Account(id = accountId, owner = ownerUser, name = "Checking", type = AccountType.ASSET, currency = eur)
+            `when`(accountRepository.findOneById(accountId)).thenReturn(Optional.of(account))
+            currentBalanceSnapshotReadiness = mock(CurrentBalanceSnapshotReadiness::class.java)
+            `when`(currentBalanceSnapshotReadiness.isSnapshotAllowed(accountId)).thenReturn(false)
+            service = buildService()
+            `when`(ledgerSplitRepository.computeBalanceAcrossAllTransactions(accountId, SplitSide.DEBIT, SplitSide.CREDIT)).thenReturn(0L)
+
+            service.archiveAccount(accountId, ownerUser)
+
+            assertEquals(AccountStatus.ARCHIVED, account.status)
+            verify(ledgerSplitRepository).computeBalanceAcrossAllTransactions(accountId, SplitSide.DEBIT, SplitSide.CREDIT)
+            verifyNoInteractions(accountCurrentBalanceRepository)
+        }
+
+        @Test
+        @DisplayName("should reject a non-zero authoritative lifetime balance")
+        fun rejectNonZeroAuthoritativeLifetimeBalance() {
+            val account =
+                Account(id = accountId, owner = ownerUser, name = "Mortgage", type = AccountType.LIABILITY, currency = eur)
+            `when`(accountRepository.findOneById(accountId)).thenReturn(Optional.of(account))
+            currentBalanceSnapshotReadiness = mock(CurrentBalanceSnapshotReadiness::class.java)
+            `when`(currentBalanceSnapshotReadiness.isSnapshotAllowed(accountId)).thenReturn(false)
+            service = buildService()
+            `when`(ledgerSplitRepository.computeBalanceAcrossAllTransactions(accountId, SplitSide.DEBIT, SplitSide.CREDIT)).thenReturn(-1L)
+
+            val exception =
+                assertThrows(BadRequestException::class.java) {
+                    service.archiveAccount(accountId, ownerUser)
+                }
+
+            assertTrue(exception.message!!.contains("zero balance"))
+            verify(ledgerSplitRepository).computeBalanceAcrossAllTransactions(accountId, SplitSide.DEBIT, SplitSide.CREDIT)
+            verify(accountRepository, never()).save(any(Account::class.java))
+            verifyNoInteractions(accountCurrentBalanceRepository)
+        }
+
+        @Test
+        @DisplayName("should archive INCOME and EXPENSE accounts without balance checks")
+        fun archiveIncomeAndExpenseRegardlessOfBalance() {
+            listOf(AccountType.INCOME, AccountType.EXPENSE).forEach { accountType ->
+                val id = UUID.randomUUID()
+                val account =
+                    Account(id = id, owner = ownerUser, name = accountType.name, type = accountType, currency = eur)
+                `when`(accountRepository.findOneById(id)).thenReturn(Optional.of(account))
+
+                service.archiveAccount(id, ownerUser)
+
+                assertEquals(AccountStatus.ARCHIVED, account.status)
+                verify(accountRepository).save(account)
+            }
+            verifyNoInteractions(accountCurrentBalanceRepository, ledgerSplitRepository)
+        }
+
+        @Test
+        @DisplayName("should be idempotent for an already archived account")
+        fun alreadyArchivedIsIdempotent() {
+            val archivedAccount =
+                Account(
+                    id = accountId,
+                    owner = ownerUser,
+                    name = "Checking",
+                    type = AccountType.ASSET,
+                    currency = eur,
+                    status = AccountStatus.ARCHIVED,
+                    archivedAt = Instant.parse("2026-07-12T10:00:00Z"),
+                )
+            `when`(accountRepository.findOneById(accountId)).thenReturn(Optional.of(archivedAccount))
+
+            service.archiveAccount(accountId, ownerUser)
+
+            verify(accountRepository, never()).save(any(Account::class.java))
+            verifyNoInteractions(accountCurrentBalanceRepository, ledgerSplitRepository)
+        }
+
+        @Test
+        @DisplayName("should reject archive by a non-owner")
+        fun rejectArchiveByNonOwner() {
+            val account =
+                Account(id = accountId, owner = ownerUser, name = "Checking", type = AccountType.ASSET, currency = eur)
+            `when`(accountRepository.findOneById(accountId)).thenReturn(Optional.of(account))
+
+            assertThrows(ForbiddenException::class.java) {
+                service.archiveAccount(accountId, otherUser)
+            }
+
+            verify(accountRepository, never()).save(any(Account::class.java))
+        }
+
+        @Test
+        @DisplayName("should reject archiving a system-managed equity account")
+        fun rejectEquityAccount() {
+            val account =
+                Account(id = accountId, owner = ownerUser, name = "Opening Equity", type = AccountType.EQUITY, currency = eur)
+            `when`(accountRepository.findOneById(accountId)).thenReturn(Optional.of(account))
+
+            val exception =
+                assertThrows(BadRequestException::class.java) {
+                    service.archiveAccount(accountId, ownerUser)
+                }
+
+            assertTrue(exception.message!!.contains("cannot be archived"))
+            verify(accountRepository, never()).save(any(Account::class.java))
+            verifyNoInteractions(accountCurrentBalanceRepository, ledgerSplitRepository)
+        }
+
+        @Test
+        @DisplayName("should return 404 for a missing account")
+        fun missingAccount() {
+            `when`(accountRepository.findOneById(accountId)).thenReturn(Optional.empty())
+
+            assertThrows(NotFoundException::class.java) {
+                service.archiveAccount(accountId, ownerUser)
+            }
         }
     }
 
@@ -438,14 +662,57 @@ class ManageAccountImplTest {
                 listOf(
                     Account(id = UUID.randomUUID(), owner = ownerUser, name = "Checking", type = AccountType.ASSET, currency = eur),
                 )
-            `when`(accountRepository.findByOwnerUserId(1L)).thenReturn(accounts)
+            `when`(accountRepository.findByOwnerUserIdAndStatus(1L, AccountStatus.ACTIVE)).thenReturn(accounts)
 
             val result = service.listAccountsByMode(ownerUser, "INDIVIDUAL", null)
             assertEquals(1, result.size)
             assertEquals("Checking", result[0].name)
-            verify(accountRepository).findByOwnerUserId(1L)
+            verify(accountRepository).findByOwnerUserIdAndStatus(1L, AccountStatus.ACTIVE)
             verifyNoInteractions(manageHousehold)
             verifyNoInteractions(householdAccountShareRepository)
+        }
+
+        @Test
+        @DisplayName("INDIVIDUAL mode can include archived owner accounts for history")
+        fun individualModeIncludesArchivedAccounts() {
+            val archivedAccount =
+                Account(id = UUID.randomUUID(), owner = ownerUser, name = "Checking", type = AccountType.ASSET, currency = eur)
+            archivedAccount.archive(Instant.parse("2026-07-12T10:00:00Z"))
+            val replacementAccount =
+                Account(id = UUID.randomUUID(), owner = ownerUser, name = "Checking", type = AccountType.ASSET, currency = eur)
+            `when`(accountRepository.findByOwnerUserId(1L)).thenReturn(listOf(archivedAccount, replacementAccount))
+
+            val result = service.listAccountsByMode(ownerUser, "INDIVIDUAL", null, includeArchived = true)
+
+            assertEquals(listOf(archivedAccount.id, replacementAccount.id), result.map { it.id })
+            assertEquals(listOf("ARCHIVED", "ACTIVE"), result.map { it.status })
+            assertEquals(archivedAccount.archivedAt, result.first().archivedAt)
+            assertTrue(result.all { it.ownerUserId == 1L })
+            verifyNoInteractions(manageHousehold, householdAccountShareRepository)
+        }
+
+        @Test
+        @DisplayName("HOUSEHOLD mode includes archived owned and shared accounts only when requested")
+        fun householdModeIncludesArchivedAccountsOnRequest() {
+            val ownedAccount =
+                Account(id = UUID.randomUUID(), owner = ownerUser, name = "Checking", type = AccountType.ASSET, currency = eur)
+            val archivedOwnedAccount =
+                Account(id = UUID.randomUUID(), owner = ownerUser, name = "Old Checking", type = AccountType.ASSET, currency = eur)
+            val archivedSharedAccount =
+                Account(id = UUID.randomUUID(), owner = otherUser, name = "Bob Savings", type = AccountType.ASSET, currency = eur)
+            listOf(archivedOwnedAccount, archivedSharedAccount).forEach { it.archive(Instant.parse("2026-07-12T10:00:00Z")) }
+            val sharedIds = setOf(requireNotNull(archivedOwnedAccount.id), requireNotNull(archivedSharedAccount.id))
+            `when`(manageHousehold.isActiveMember(householdId, 1L)).thenReturn(true)
+            `when`(accountRepository.findByOwnerUserIdAndStatus(1L, AccountStatus.ACTIVE)).thenReturn(listOf(ownedAccount))
+            `when`(accountRepository.findByOwnerUserId(1L)).thenReturn(listOf(ownedAccount, archivedOwnedAccount))
+            `when`(householdAccountShareRepository.findSharedAccountIdsByHouseholdId(householdId)).thenReturn(sharedIds)
+            `when`(accountRepository.findAllById(sharedIds)).thenReturn(listOf(archivedOwnedAccount, archivedSharedAccount))
+
+            val activeOnly = service.listAccountsByMode(ownerUser, "HOUSEHOLD", householdId)
+            val withArchived = service.listAccountsByMode(ownerUser, "HOUSEHOLD", householdId, includeArchived = true)
+
+            assertEquals(listOf(ownedAccount.id), activeOnly.map { it.id })
+            assertEquals(listOf(ownedAccount.id, archivedOwnedAccount.id, archivedSharedAccount.id), withArchived.map { it.id })
         }
 
         @Test
@@ -457,7 +724,7 @@ class ManageAccountImplTest {
                 Account(id = UUID.randomUUID(), owner = otherUser, name = "Bob Savings", type = AccountType.ASSET, currency = eur)
 
             `when`(manageHousehold.isActiveMember(householdId, 1L)).thenReturn(true)
-            `when`(accountRepository.findByOwnerUserId(1L)).thenReturn(listOf(ownedAccount))
+            `when`(accountRepository.findByOwnerUserIdAndStatus(1L, AccountStatus.ACTIVE)).thenReturn(listOf(ownedAccount))
             `when`(householdAccountShareRepository.findSharedAccountIdsByHouseholdId(householdId))
                 .thenReturn(setOf(sharedAccount.id!!))
             doReturn(listOf(sharedAccount)).`when`(accountRepository).findAllById(any())
@@ -476,7 +743,7 @@ class ManageAccountImplTest {
                 Account(id = UUID.randomUUID(), owner = ownerUser, name = "Shared Checking", type = AccountType.ASSET, currency = eur)
 
             `when`(manageHousehold.isActiveMember(householdId, 1L)).thenReturn(true)
-            `when`(accountRepository.findByOwnerUserId(1L)).thenReturn(listOf(sharedOwnedAccount))
+            `when`(accountRepository.findByOwnerUserIdAndStatus(1L, AccountStatus.ACTIVE)).thenReturn(listOf(sharedOwnedAccount))
             `when`(householdAccountShareRepository.findSharedAccountIdsByHouseholdId(householdId))
                 .thenReturn(setOf(sharedOwnedAccount.id!!))
             doReturn(listOf(sharedOwnedAccount)).`when`(accountRepository).findAllById(any())
@@ -493,7 +760,7 @@ class ManageAccountImplTest {
                 Account(id = UUID.randomUUID(), owner = ownerUser, name = "Checking", type = AccountType.ASSET, currency = eur)
 
             `when`(manageHousehold.isActiveMember(householdId, 1L)).thenReturn(true)
-            `when`(accountRepository.findByOwnerUserId(1L)).thenReturn(listOf(ownedAccount))
+            `when`(accountRepository.findByOwnerUserIdAndStatus(1L, AccountStatus.ACTIVE)).thenReturn(listOf(ownedAccount))
             `when`(householdAccountShareRepository.findSharedAccountIdsByHouseholdId(householdId))
                 .thenReturn(emptySet())
 
@@ -507,10 +774,12 @@ class ManageAccountImplTest {
         fun householdModeRejectsNonMember() {
             `when`(manageHousehold.isActiveMember(householdId, 1L)).thenReturn(false)
 
-            assertThrows(ForbiddenException::class.java) {
-                service.listAccountsByMode(ownerUser, "HOUSEHOLD", householdId)
+            listOf(false, true).forEach { includeArchived ->
+                assertThrows(ForbiddenException::class.java) {
+                    service.listAccountsByMode(ownerUser, "HOUSEHOLD", householdId, includeArchived)
+                }
             }
-            verify(accountRepository, never()).findByOwnerUserId(anyLong())
+            verifyNoInteractions(accountRepository, householdAccountShareRepository)
         }
 
         @Test

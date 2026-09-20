@@ -10,4 +10,5 @@ data class MonthlyExpenseDto(
     val categoryTagColor: String?,
     val currency: String,
     val netMinor: Long,
+    val expenseAccountStatus: String,
 )

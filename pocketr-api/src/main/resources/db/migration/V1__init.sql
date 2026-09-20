@@ -1,10 +1,14 @@
 CREATE TABLE public.account (
     currency character varying(3) NOT NULL,
+    archived_at timestamp(6) with time zone,
     created_at timestamp(6) with time zone NOT NULL,
     owner_user_id bigint NOT NULL,
     id uuid NOT NULL,
     name character varying(255) NOT NULL,
+    status character varying(255) DEFAULT 'ACTIVE' NOT NULL,
     type character varying(255) NOT NULL,
+    CONSTRAINT account_status_archived_at_check CHECK ((((status)::text = 'ACTIVE'::text) AND (archived_at IS NULL)) OR (((status)::text = 'ARCHIVED'::text) AND (archived_at IS NOT NULL))),
+    CONSTRAINT account_status_check CHECK (((status)::text = ANY ((ARRAY['ACTIVE'::character varying, 'ARCHIVED'::character varying])::text[]))),
     CONSTRAINT account_type_check CHECK (((type)::text = ANY ((ARRAY['ASSET'::character varying, 'LIABILITY'::character varying, 'INCOME'::character varying, 'EXPENSE'::character varying, 'EQUITY'::character varying])::text[])))
 );
 
@@ -164,9 +168,6 @@ ALTER TABLE ONLY public.ledger_split
 ALTER TABLE ONLY public.ledger_txn
     ADD CONSTRAINT ledger_txn_pkey PRIMARY KEY (id);
 
-ALTER TABLE ONLY public.account
-    ADD CONSTRAINT uk_account_owner_type_currency_name UNIQUE (owner_user_id, type, currency, name);
-
 ALTER TABLE ONLY public.user_roles
     ADD CONSTRAINT user_roles_pkey PRIMARY KEY (id);
 
@@ -179,6 +180,10 @@ ALTER TABLE ONLY public.users
 CREATE INDEX idx_account_current_balance_updated_at ON public.account_current_balance USING btree (updated_at);
 
 CREATE INDEX idx_account_owner ON public.account USING btree (owner_user_id);
+
+CREATE UNIQUE INDEX uk_account_active_owner_type_currency_name
+    ON public.account USING btree (owner_user_id, type, currency, name)
+    WHERE ((status)::text = 'ACTIVE'::text);
 
 CREATE INDEX idx_ledger_txn_creator ON public.ledger_txn USING btree (created_by_user_id);
 

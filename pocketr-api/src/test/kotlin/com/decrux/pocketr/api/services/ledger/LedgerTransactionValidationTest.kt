@@ -3,6 +3,7 @@ package com.decrux.pocketr.api.services.ledger
 import com.decrux.pocketr.api.entities.db.auth.User
 import com.decrux.pocketr.api.entities.db.ledger.Account
 import com.decrux.pocketr.api.entities.db.ledger.AccountCurrentBalance
+import com.decrux.pocketr.api.entities.db.ledger.AccountStatus
 import com.decrux.pocketr.api.entities.db.ledger.AccountType
 import com.decrux.pocketr.api.entities.db.ledger.CategoryTag
 import com.decrux.pocketr.api.entities.db.ledger.Currency
@@ -167,7 +168,7 @@ class LedgerTransactionValidationTest {
 
     private fun stubAccounts(vararg accounts: Account) {
         val ids = accounts.map { requireNotNull(it.id) }
-        `when`(accountRepository.findAllById(ids)).thenReturn(accounts.toList())
+        `when`(accountRepository.findAllByIdInOrderByIdAsc(ids)).thenReturn(accounts.toList())
     }
 
     private fun validExpenseDto() =
@@ -535,6 +536,31 @@ class LedgerTransactionValidationTest {
         }
 
         @Test
+        @DisplayName("should reject posting to an archived account")
+        fun rejectPostingToArchivedAccount() {
+            val archivedChecking =
+                Account(
+                    id = checkingId,
+                    owner = userA,
+                    name = "Checking",
+                    type = AccountType.ASSET,
+                    currency = eur,
+                    status = AccountStatus.ARCHIVED,
+                    archivedAt = Instant.parse("2026-07-12T10:00:00Z"),
+                )
+            stubAccounts(archivedChecking, expenseAcct)
+
+            val exception =
+                assertThrows(BadRequestException::class.java) {
+                    service.createTransaction(validExpenseDto(), userA)
+                }
+
+            assertEquals("Archived accounts cannot be used in new transactions", exception.message)
+            verify(ledgerTxnRepository, never()).save(any(LedgerTxn::class.java))
+            verifyNoInteractions(accountCurrentBalanceRepository)
+        }
+
+        @Test
         @DisplayName("should allow posting to own accounts in individual mode")
         fun allowPostingToOwnAccounts() {
             stubAccounts(checking, expenseAcct)
@@ -603,7 +629,7 @@ class LedgerTransactionValidationTest {
         @DisplayName("should reject transaction with non-existent account")
         fun rejectNonExistentAccount() {
             val missingId = UUID.randomUUID()
-            `when`(accountRepository.findAllById(listOf(checkingId, missingId))).thenReturn(listOf(checking))
+            `when`(accountRepository.findAllByIdInOrderByIdAsc(listOf(checkingId, missingId))).thenReturn(listOf(checking))
 
             val dto =
                 CreateTransactionDto(
@@ -992,6 +1018,12 @@ class LedgerTransactionValidationTest {
     @Nested
     @DisplayName("Transaction deletion")
     inner class TransactionDeletion {
+        private fun stubLockedAccounts(vararg accounts: Account) {
+            val orderedAccounts = accounts.sortedBy { requireNotNull(it.id) }
+            val orderedIds = orderedAccounts.map { requireNotNull(it.id) }
+            `when`(accountRepository.findAllByIdInOrderByIdAsc(orderedIds)).thenReturn(orderedAccounts)
+        }
+
         @Test
         @DisplayName("should reverse projection deltas and delete the transaction")
         fun reverseProjectionDeltasAndDeleteTransaction() {
@@ -1026,13 +1058,71 @@ class LedgerTransactionValidationTest {
                     ),
                 )
             `when`(ledgerTxnRepository.findOneById(txnId)).thenReturn(Optional.of(txn))
+            stubLockedAccounts(upperAccount, lowerAccount)
 
             service.deleteTransaction(txnId, userA)
 
+            verify(accountRepository).findAllByIdInOrderByIdAsc(listOf(lowerId, upperId))
             val inOrder = inOrder(accountCurrentBalanceRepository, ledgerTxnRepository)
             inOrder.verify(accountCurrentBalanceRepository).addDelta(lowerId, -1_000L)
             inOrder.verify(accountCurrentBalanceRepository).addDelta(upperId, 1_000L)
             inOrder.verify(ledgerTxnRepository).delete(txn)
+        }
+
+        @Test
+        @DisplayName("should reject deleting a transaction touching an archived account")
+        fun rejectTransactionTouchingArchivedAccount() {
+            val activeId = UUID.fromString("00000000-0000-0000-0000-000000000001")
+            val archivedId = UUID.fromString("00000000-0000-0000-0000-000000000010")
+            val activeAccount = Account(id = activeId, owner = userA, name = "Active", type = AccountType.ASSET, currency = eur)
+            val archivedAccount =
+                Account(
+                    id = archivedId,
+                    owner = userA,
+                    name = "Archived",
+                    type = AccountType.EXPENSE,
+                    currency = eur,
+                    status = AccountStatus.ARCHIVED,
+                    archivedAt = Instant.parse("2026-02-19T00:00:00Z"),
+                )
+            val txnId = UUID.randomUUID()
+            val txn =
+                LedgerTxn(
+                    id = txnId,
+                    createdBy = userA,
+                    txnDate = LocalDate.of(2026, 2, 18),
+                    description = "Immutable history",
+                    currency = eur,
+                )
+            txn.splits =
+                mutableListOf(
+                    LedgerSplit(
+                        id = UUID.randomUUID(),
+                        transaction = txn,
+                        account = archivedAccount,
+                        side = SplitSide.DEBIT,
+                        amountMinor = 1_000,
+                    ),
+                    LedgerSplit(
+                        id = UUID.randomUUID(),
+                        transaction = txn,
+                        account = activeAccount,
+                        side = SplitSide.CREDIT,
+                        amountMinor = 1_000,
+                    ),
+                )
+            `when`(ledgerTxnRepository.findOneById(txnId)).thenReturn(Optional.of(txn))
+            stubLockedAccounts(archivedAccount, activeAccount)
+
+            val exception =
+                assertThrows(BadRequestException::class.java) {
+                    service.deleteTransaction(txnId, userA)
+                }
+
+            assertTrue(exception.message!!.contains("archived accounts"))
+            verify(accountRepository).findAllByIdInOrderByIdAsc(listOf(activeId, archivedId))
+            verifyNoInteractions(accountCurrentBalanceRepository)
+            verify(ledgerTxnRepository, never()).delete(any(LedgerTxn::class.java))
         }
 
         @Test
@@ -1053,6 +1143,7 @@ class LedgerTransactionValidationTest {
         @DisplayName("should reject deleting a non-owned individual transaction")
         fun rejectNonOwnedIndividualTransaction() {
             val txnId = UUID.randomUUID()
+            val liability = bobLiability()
             val txn =
                 LedgerTxn(
                     id = txnId,
@@ -1073,12 +1164,13 @@ class LedgerTransactionValidationTest {
                     LedgerSplit(
                         id = UUID.randomUUID(),
                         transaction = txn,
-                        account = bobLiability(),
+                        account = liability,
                         side = SplitSide.CREDIT,
                         amountMinor = 1_000,
                     ),
                 )
             `when`(ledgerTxnRepository.findOneById(txnId)).thenReturn(Optional.of(txn))
+            stubLockedAccounts(userBSavings, liability)
 
             assertThrows(ForbiddenException::class.java) {
                 service.deleteTransaction(txnId, userA)
@@ -1120,6 +1212,7 @@ class LedgerTransactionValidationTest {
                     ),
                 )
             `when`(ledgerTxnRepository.findOneById(txnId)).thenReturn(Optional.of(txn))
+            stubLockedAccounts(checking, userBSavings)
             `when`(manageHousehold.isActiveMember(householdId, userA.userId!!)).thenReturn(true)
             `when`(manageHousehold.isAccountShared(householdId, userBSavingsId)).thenReturn(true)
 

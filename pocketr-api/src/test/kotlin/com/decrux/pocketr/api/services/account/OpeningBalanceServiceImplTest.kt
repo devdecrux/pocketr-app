@@ -2,6 +2,7 @@ package com.decrux.pocketr.api.services.account
 
 import com.decrux.pocketr.api.entities.db.auth.User
 import com.decrux.pocketr.api.entities.db.ledger.Account
+import com.decrux.pocketr.api.entities.db.ledger.AccountStatus
 import com.decrux.pocketr.api.entities.db.ledger.AccountType
 import com.decrux.pocketr.api.entities.db.ledger.Currency
 import com.decrux.pocketr.api.entities.dtos.BalanceDto
@@ -65,11 +66,12 @@ class OpeningBalanceServiceImplTest {
 
         `when`(userRepository.findByUserIdForUpdate(1L)).thenReturn(Optional.of(owner))
         `when`(
-            accountRepository.findByOwnerUserIdAndTypeAndCurrencyCodeAndName(
+            accountRepository.findByOwnerUserIdAndTypeAndCurrencyCodeAndNameAndStatus(
                 1L,
                 AccountType.EQUITY,
                 "EUR",
                 "Opening Equity",
+                AccountStatus.ACTIVE,
             ),
         ).thenReturn(null)
         `when`(accountRepository.save(any(Account::class.java))).thenAnswer { invocation ->
@@ -118,11 +120,12 @@ class OpeningBalanceServiceImplTest {
 
         `when`(userRepository.findByUserIdForUpdate(1L)).thenReturn(Optional.of(owner))
         `when`(
-            accountRepository.findByOwnerUserIdAndTypeAndCurrencyCodeAndName(
+            accountRepository.findByOwnerUserIdAndTypeAndCurrencyCodeAndNameAndStatus(
                 1L,
                 AccountType.EQUITY,
                 "EUR",
                 "Opening Equity",
+                AccountStatus.ACTIVE,
             ),
         ).thenReturn(equityAccount)
 
@@ -164,11 +167,12 @@ class OpeningBalanceServiceImplTest {
 
         `when`(userRepository.findByUserIdForUpdate(1L)).thenReturn(Optional.of(owner))
         `when`(
-            accountRepository.findByOwnerUserIdAndTypeAndCurrencyCodeAndName(
+            accountRepository.findByOwnerUserIdAndTypeAndCurrencyCodeAndNameAndStatus(
                 1L,
                 AccountType.EQUITY,
                 "EUR",
                 "Opening Equity",
+                AccountStatus.ACTIVE,
             ),
         ).thenReturn(equityAccount)
 

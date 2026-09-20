@@ -2,6 +2,7 @@ package com.decrux.pocketr.api.services.account
 
 import com.decrux.pocketr.api.entities.db.auth.User
 import com.decrux.pocketr.api.entities.db.ledger.Account
+import com.decrux.pocketr.api.entities.db.ledger.AccountStatus
 import com.decrux.pocketr.api.entities.db.ledger.AccountType
 import com.decrux.pocketr.api.entities.db.ledger.Currency
 import com.decrux.pocketr.api.entities.dtos.CreateSplitDto
@@ -155,11 +156,12 @@ class OpeningBalanceServiceImpl(
             .orElseThrow { NotFoundException("User not found") }
 
         accountRepository
-            .findByOwnerUserIdAndTypeAndCurrencyCodeAndName(
+            .findByOwnerUserIdAndTypeAndCurrencyCodeAndNameAndStatus(
                 userId = ownerId,
                 type = AccountType.EQUITY,
                 currencyCode = currencyCode,
                 name = OPENING_EQUITY_NAME,
+                status = AccountStatus.ACTIVE,
             )?.let { return it }
 
         return accountRepository.save(

@@ -6,6 +6,7 @@ data class AccountBalanceTimeseriesDto(
     val accountId: UUID,
     val accountName: String,
     val accountType: String,
+    val accountStatus: String,
     val currency: String,
     val points: List<BalanceTimeseriesPointDto>,
 )

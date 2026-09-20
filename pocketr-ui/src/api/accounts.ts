@@ -6,10 +6,14 @@ const BASE = '/api/v1/accounts'
 export function listAccounts(params: {
   mode: 'INDIVIDUAL' | 'HOUSEHOLD'
   householdId?: string
+  includeArchived?: boolean
 }): Promise<Account[]> {
   const searchParams: Record<string, string> = { mode: params.mode }
   if (params.householdId) {
     searchParams.householdId = params.householdId
+  }
+  if (params.includeArchived) {
+    searchParams.includeArchived = 'true'
   }
   return api.get(BASE, { searchParams }).json<Account[]>()
 }
@@ -20,4 +24,8 @@ export function createAccount(req: CreateAccountRequest): Promise<Account> {
 
 export function updateAccount(id: string, req: UpdateAccountRequest): Promise<Account> {
   return api.patch(`${BASE}/${id}`, { json: req }).json<Account>()
+}
+
+export function archiveAccount(id: string): Promise<void> {
+  return api.delete(`${BASE}/${id}`).then(() => undefined)
 }
