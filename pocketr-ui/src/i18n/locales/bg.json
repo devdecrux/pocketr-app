@@ -5,6 +5,9 @@
   "common": {
     "amounts": {
       "mixedCurrencies": "Смесени валути"
+    },
+    "states": {
+      "archived": "Архивирана"
     }
   },
   "views": {

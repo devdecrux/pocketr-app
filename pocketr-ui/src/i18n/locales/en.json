@@ -73,6 +73,7 @@
       "selectMode": "Select mode"
     },
     "states": {
+      "archived": "Archived",
       "noData": "No data.",
       "unknownUser": "Unknown user"
     },

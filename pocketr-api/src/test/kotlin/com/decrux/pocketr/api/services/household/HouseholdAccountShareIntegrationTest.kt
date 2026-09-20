@@ -275,8 +275,8 @@ class HouseholdAccountShareIntegrationTest {
         }
 
         @Test
-        @DisplayName("archived shares remain stored but are hidden from active account lists")
-        fun archivedSharesAreHidden() {
+        @DisplayName("archived shares remain manageable but are hidden from active account lists")
+        fun archivedSharesRemainManageable() {
             stubActiveMember(userB, HouseholdRole.MEMBER)
             val archivedAccount =
                 Account(
@@ -292,7 +292,15 @@ class HouseholdAccountShareIntegrationTest {
             `when`(shareRepository.findByHouseholdIdWithAccountAndOwner(householdId)).thenReturn(listOf(share))
 
             assertTrue(service.listHouseholdAccounts(householdId, userB).isEmpty())
-            assertTrue(service.listSharedAccounts(householdId, userB).isEmpty())
+            assertEquals(checkingId, service.listSharedAccounts(householdId, userB).single().accountId)
+
+            `when`(shareRepository.findByHouseholdIdAndAccountId(householdId, checkingId)).thenReturn(share)
+            assertThrows(ForbiddenException::class.java) {
+                service.unshareAccount(householdId, checkingId, userB)
+            }
+            stubActiveMember(userA, HouseholdRole.OWNER)
+            service.unshareAccount(householdId, checkingId, userA)
+            verify(shareRepository).delete(share)
         }
     }
 

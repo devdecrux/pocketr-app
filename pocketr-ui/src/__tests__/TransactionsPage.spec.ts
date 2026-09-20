@@ -193,6 +193,25 @@ describe('TransactionsPage currency exchange behavior', () => {
     )
   })
 
+  it('includes archived accounts only in the history filter and filters by the selected ID', async () => {
+    const wrapper = mountPage()
+    await flushPromises()
+
+    const selectors = wrapper.findAllComponents({ name: 'AccountSelector' })
+    const historyFilter = selectors.find((selector) => !selector.props('allowedTypes'))!
+    expect(historyFilter.props('includeArchived')).toBe(true)
+    expect(
+      selectors
+        .filter((selector) => selector.props('allowedTypes'))
+        .every((selector) => !selector.props('includeArchived')),
+    ).toBe(true)
+
+    historyFilter.vm.$emit('update:modelValue', 'archived-account')
+    await flushPromises()
+
+    expect(ledgerStore.load).toHaveBeenLastCalledWith({ accountId: 'archived-account' }, 0, 10)
+  })
+
   it('displays expanded split amounts using accountCurrency from the response', async () => {
     ledgerStore.transactions = [
       transaction({

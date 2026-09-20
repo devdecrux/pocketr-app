@@ -5,6 +5,9 @@
   "common": {
     "amounts": {
       "mixedCurrencies": "Gemischte Währungen"
+    },
+    "states": {
+      "archived": "Archiviert"
     }
   },
   "views": {

@@ -20,12 +20,14 @@ const props = withDefaults(
     allowedTypes?: AccountType[]
     currency?: string
     placeholder?: string
+    includeArchived?: boolean
   }>(),
   {
     modelValue: undefined,
     allowedTypes: undefined,
     currency: undefined,
     placeholder: undefined,
+    includeArchived: false,
   },
 )
 
@@ -37,7 +39,9 @@ const accountStore = useAccountStore()
 const modeStore = useModeStore()
 
 const filteredAccounts = computed(() => {
-  let list = accountStore.activeAccounts
+  let list = props.includeArchived
+    ? accountStore.accounts.filter((account) => account.type !== 'EQUITY')
+    : accountStore.activeAccounts
   if (props.allowedTypes) {
     const allowed = new Set(props.allowedTypes)
     list = list.filter((a) => allowed.has(a.type))
@@ -93,6 +97,9 @@ const groupedAccounts = computed(() => {
         <SelectLabel>{{ group.label }}</SelectLabel>
         <SelectItem v-for="account in group.accounts" :key="account.id" :value="account.id">
           {{ account.name }} ({{ account.currency }})
+          <template v-if="account.status === 'ARCHIVED'">
+            ({{ $t('common.states.archived') }})
+          </template>
         </SelectItem>
       </SelectGroup>
     </SelectContent>

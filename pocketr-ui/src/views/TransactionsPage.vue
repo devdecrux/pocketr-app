@@ -776,6 +776,7 @@ async function deleteTransaction(txn: LedgerTxn): Promise<void> {
             <div class="w-48">
               <AccountSelector
                 v-model="filterAccountId"
+                include-archived
                 :placeholder="$t('views.transactions.formHints.allAccounts')"
               />
             </div>

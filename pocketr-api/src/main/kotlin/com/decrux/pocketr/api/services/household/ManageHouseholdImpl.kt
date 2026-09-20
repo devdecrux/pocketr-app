@@ -309,7 +309,6 @@ class ManageHouseholdImpl(
 
         return shareRepository
             .findByHouseholdIdWithAccountAndOwner(householdId)
-            .filter { requireNotNull(it.account).status == AccountStatus.ACTIVE }
             .map { it.toDto() }
     }
 

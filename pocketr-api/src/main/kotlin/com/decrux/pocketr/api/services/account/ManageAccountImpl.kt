@@ -38,9 +38,12 @@ class ManageAccountImpl(
     private val ownershipGuard: OwnershipGuard,
 ) : ManageAccount {
     @Transactional(readOnly = true)
-    override fun listIndividualAccounts(owner: User): List<AccountDto> {
+    override fun listIndividualAccounts(
+        owner: User,
+        includeArchived: Boolean,
+    ): List<AccountDto> {
         val userId = requireNotNull(owner.userId) { "User ID must not be null" }
-        val accounts = accountRepository.findByOwnerUserIdAndStatus(userId, AccountStatus.ACTIVE)
+        val accounts = findOwnedAccounts(userId, includeArchived)
         return accounts.map { it.toDto() }
     }
 
@@ -49,12 +52,13 @@ class ManageAccountImpl(
         user: User,
         mode: String,
         householdId: UUID?,
+        includeArchived: Boolean,
     ): List<AccountDto> {
         val userId = requireNotNull(user.userId) { "User ID must not be null" }
 
         return when (mode) {
-            "INDIVIDUAL" -> listIndividualAccounts(user)
-            "HOUSEHOLD" -> listHouseholdAccounts(userId, householdId)
+            "INDIVIDUAL" -> listIndividualAccounts(user, includeArchived)
+            "HOUSEHOLD" -> listHouseholdAccounts(userId, householdId, includeArchived)
             else -> throw BadRequestException("Invalid mode: $mode")
         }
     }
@@ -62,6 +66,7 @@ class ManageAccountImpl(
     private fun listHouseholdAccounts(
         userId: Long,
         householdId: UUID?,
+        includeArchived: Boolean,
     ): List<AccountDto> {
         val hhId =
             householdId
@@ -71,11 +76,11 @@ class ManageAccountImpl(
             throw ForbiddenException("Not an active member of this household")
         }
 
-        val ownedAccounts = accountRepository.findByOwnerUserIdAndStatus(userId, AccountStatus.ACTIVE)
+        val ownedAccounts = findOwnedAccounts(userId, includeArchived)
         val sharedAccountIds = householdAccountShareRepository.findSharedAccountIdsByHouseholdId(hhId)
         val sharedAccounts =
             if (sharedAccountIds.isNotEmpty()) {
-                accountRepository.findAllById(sharedAccountIds).filter { it.status == AccountStatus.ACTIVE }
+                accountRepository.findAllById(sharedAccountIds).filter { includeArchived || it.status == AccountStatus.ACTIVE }
             } else {
                 emptyList()
             }
@@ -88,6 +93,16 @@ class ManageAccountImpl(
 
         return uniqueAccounts.map { it.toDto() }
     }
+
+    private fun findOwnedAccounts(
+        userId: Long,
+        includeArchived: Boolean,
+    ): List<Account> =
+        if (includeArchived) {
+            accountRepository.findByOwnerUserId(userId)
+        } else {
+            accountRepository.findByOwnerUserIdAndStatus(userId, AccountStatus.ACTIVE)
+        }
 
     @Transactional
     override fun createAccount(

@@ -29,7 +29,8 @@ class AccountController(
         @AuthenticationPrincipal user: User,
         @RequestParam(defaultValue = "INDIVIDUAL") mode: String,
         @RequestParam(required = false) householdId: UUID?,
-    ): List<AccountDto> = manageAccount.listAccountsByMode(user, mode, householdId)
+        @RequestParam(defaultValue = "false") includeArchived: Boolean,
+    ): List<AccountDto> = manageAccount.listAccountsByMode(user, mode, householdId, includeArchived)
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)

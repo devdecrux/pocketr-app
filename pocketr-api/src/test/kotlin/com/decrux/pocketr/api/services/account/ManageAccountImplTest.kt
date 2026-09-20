@@ -673,6 +673,49 @@ class ManageAccountImplTest {
         }
 
         @Test
+        @DisplayName("INDIVIDUAL mode can include archived owner accounts for history")
+        fun individualModeIncludesArchivedAccounts() {
+            val archivedAccount =
+                Account(id = UUID.randomUUID(), owner = ownerUser, name = "Checking", type = AccountType.ASSET, currency = eur)
+            archivedAccount.archive(Instant.parse("2026-07-12T10:00:00Z"))
+            val replacementAccount =
+                Account(id = UUID.randomUUID(), owner = ownerUser, name = "Checking", type = AccountType.ASSET, currency = eur)
+            `when`(accountRepository.findByOwnerUserId(1L)).thenReturn(listOf(archivedAccount, replacementAccount))
+
+            val result = service.listAccountsByMode(ownerUser, "INDIVIDUAL", null, includeArchived = true)
+
+            assertEquals(listOf(archivedAccount.id, replacementAccount.id), result.map { it.id })
+            assertEquals(listOf("ARCHIVED", "ACTIVE"), result.map { it.status })
+            assertEquals(archivedAccount.archivedAt, result.first().archivedAt)
+            assertTrue(result.all { it.ownerUserId == 1L })
+            verifyNoInteractions(manageHousehold, householdAccountShareRepository)
+        }
+
+        @Test
+        @DisplayName("HOUSEHOLD mode includes archived owned and shared accounts only when requested")
+        fun householdModeIncludesArchivedAccountsOnRequest() {
+            val ownedAccount =
+                Account(id = UUID.randomUUID(), owner = ownerUser, name = "Checking", type = AccountType.ASSET, currency = eur)
+            val archivedOwnedAccount =
+                Account(id = UUID.randomUUID(), owner = ownerUser, name = "Old Checking", type = AccountType.ASSET, currency = eur)
+            val archivedSharedAccount =
+                Account(id = UUID.randomUUID(), owner = otherUser, name = "Bob Savings", type = AccountType.ASSET, currency = eur)
+            listOf(archivedOwnedAccount, archivedSharedAccount).forEach { it.archive(Instant.parse("2026-07-12T10:00:00Z")) }
+            val sharedIds = setOf(requireNotNull(archivedOwnedAccount.id), requireNotNull(archivedSharedAccount.id))
+            `when`(manageHousehold.isActiveMember(householdId, 1L)).thenReturn(true)
+            `when`(accountRepository.findByOwnerUserIdAndStatus(1L, AccountStatus.ACTIVE)).thenReturn(listOf(ownedAccount))
+            `when`(accountRepository.findByOwnerUserId(1L)).thenReturn(listOf(ownedAccount, archivedOwnedAccount))
+            `when`(householdAccountShareRepository.findSharedAccountIdsByHouseholdId(householdId)).thenReturn(sharedIds)
+            `when`(accountRepository.findAllById(sharedIds)).thenReturn(listOf(archivedOwnedAccount, archivedSharedAccount))
+
+            val activeOnly = service.listAccountsByMode(ownerUser, "HOUSEHOLD", householdId)
+            val withArchived = service.listAccountsByMode(ownerUser, "HOUSEHOLD", householdId, includeArchived = true)
+
+            assertEquals(listOf(ownedAccount.id), activeOnly.map { it.id })
+            assertEquals(listOf(ownedAccount.id, archivedOwnedAccount.id, archivedSharedAccount.id), withArchived.map { it.id })
+        }
+
+        @Test
         @DisplayName("HOUSEHOLD mode returns owned + shared accounts")
         fun householdModeReturnsOwnedAndSharedAccounts() {
             val ownedAccount =
@@ -731,10 +774,12 @@ class ManageAccountImplTest {
         fun householdModeRejectsNonMember() {
             `when`(manageHousehold.isActiveMember(householdId, 1L)).thenReturn(false)
 
-            assertThrows(ForbiddenException::class.java) {
-                service.listAccountsByMode(ownerUser, "HOUSEHOLD", householdId)
+            listOf(false, true).forEach { includeArchived ->
+                assertThrows(ForbiddenException::class.java) {
+                    service.listAccountsByMode(ownerUser, "HOUSEHOLD", householdId, includeArchived)
+                }
             }
-            verify(accountRepository, never()).findByOwnerUserIdAndStatus(1L, AccountStatus.ACTIVE)
+            verifyNoInteractions(accountRepository, householdAccountShareRepository)
         }
 
         @Test

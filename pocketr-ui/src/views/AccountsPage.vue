@@ -78,7 +78,7 @@ const filteredAccounts = computed(() => {
 })
 
 const availableCurrencies = computed(() => {
-  const codes = new Set(accountStore.accounts.map((a) => a.currency))
+  const codes = new Set(accountStore.activeAccounts.map((a) => a.currency))
   return [...codes].sort()
 })
 

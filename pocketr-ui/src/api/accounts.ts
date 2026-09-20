@@ -6,10 +6,14 @@ const BASE = '/api/v1/accounts'
 export function listAccounts(params: {
   mode: 'INDIVIDUAL' | 'HOUSEHOLD'
   householdId?: string
+  includeArchived?: boolean
 }): Promise<Account[]> {
   const searchParams: Record<string, string> = { mode: params.mode }
   if (params.householdId) {
     searchParams.householdId = params.householdId
+  }
+  if (params.includeArchived) {
+    searchParams.includeArchived = 'true'
   }
   return api.get(BASE, { searchParams }).json<Account[]>()
 }

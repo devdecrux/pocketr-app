@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
+import { shallowMount } from '@vue/test-utils'
+import { i18n } from '@/i18n'
 import type { Account } from '@/types/ledger'
 
 const listAccounts = vi.fn()
@@ -15,6 +17,7 @@ vi.mock('@/stores/mode', () => ({
 }))
 
 const { useAccountStore } = await import('@/stores/account')
+const { default: AccountSelector } = await import('@/components/AccountSelector.vue')
 
 function account(override: Partial<Account>): Account {
   return {
@@ -50,6 +53,50 @@ describe('account store archiving', () => {
     ]
 
     expect(store.activeAccounts.map((item) => item.id)).toEqual(['active'])
+  })
+
+  it('loads archived accounts for history while keeping posting choices active-only', async () => {
+    const store = useAccountStore()
+    const accounts = [
+      account({ id: 'active' }),
+      account({ id: 'archived', status: 'ARCHIVED', archivedAt: '2026-07-12T08:00:00Z' }),
+    ]
+    listAccounts.mockResolvedValue(accounts)
+
+    await store.load()
+
+    expect(listAccounts).toHaveBeenCalledWith({
+      mode: 'INDIVIDUAL',
+      householdId: undefined,
+      includeArchived: true,
+    })
+    expect(store.accounts.map((item) => item.id)).toEqual(['active', 'archived'])
+    expect(store.activeAccounts.map((item) => item.id)).toEqual(['active'])
+  })
+
+  it('distinguishes same-name archived accounts only in selectors that opt into history', async () => {
+    const store = useAccountStore()
+    store.accounts = [
+      account({ id: 'active' }),
+      account({ id: 'archived', status: 'ARCHIVED', archivedAt: '2026-07-12T08:00:00Z' }),
+      account({ id: 'equity', type: 'EQUITY' }),
+    ]
+    const wrapper = shallowMount(AccountSelector, {
+      global: { plugins: [i18n], renderStubDefaultSlot: true },
+    })
+
+    expect(
+      wrapper.findAllComponents({ name: 'SelectItem' }).map((item) => item.props('value')),
+    ).toEqual(['active'])
+    expect(wrapper.text()).not.toContain('Archived')
+
+    await wrapper.setProps({ includeArchived: true })
+
+    const options = wrapper.findAllComponents({ name: 'SelectItem' })
+    expect(options.map((item) => item.props('value'))).toEqual(['active', 'archived'])
+    expect(options[0]?.text()).toBe('Checking (EUR)')
+    expect(options[1]?.text()).toContain('Checking (EUR)')
+    expect(options[1]?.text()).toContain('(Archived)')
   })
 
   it('removes an account from local state only after the archive request succeeds', async () => {

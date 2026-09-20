@@ -46,6 +46,7 @@ export const useAccountStore = defineStore('account', () => {
       accounts.value = await listAccounts({
         mode: viewModeStore.modeParam,
         householdId: viewModeStore.householdId ?? undefined,
+        includeArchived: true,
       })
     } catch {
       error.value = translate('errors.accounts.load')
