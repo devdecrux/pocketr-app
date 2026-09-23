@@ -152,8 +152,16 @@ const columns = computed<ColumnDef<Account>[]>(() => {
   cols.push({
     id: 'actions',
     header: '',
-    cell: ({ row }) =>
-      h('div', { class: 'flex items-center justify-end gap-1' }, [
+    cell: ({ row }) => {
+      if (!isOwnedAccount(row.original)) {
+        return h(
+          'span',
+          { class: 'inline-block max-w-44 whitespace-normal text-xs text-muted-foreground' },
+          translate('views.accounts.sharedFromOtherMember'),
+        )
+      }
+
+      return h('div', { class: 'flex items-center justify-end gap-1' }, [
         h(
           Button,
           {
@@ -164,26 +172,25 @@ const columns = computed<ColumnDef<Account>[]>(() => {
           },
           () => h(Pencil, { class: 'size-4' }),
         ),
-        canArchive(row.original)
-          ? h(
-              Button,
-              {
-                variant: 'ghost',
-                size: 'icon',
-                'data-table-action': 'delete',
-                'aria-label': translate('views.accounts.archive.actionLabel', {
-                  name: row.original.name,
-                }),
-                title: translate('views.accounts.archive.actionLabel', {
-                  name: row.original.name,
-                }),
-                disabled: isArchiving.value && archiveTarget.value?.id === row.original.id,
-                onClick: () => startArchive(row.original),
-              },
-              () => h(Trash2, { class: 'size-4' }),
-            )
-          : null,
-      ]),
+        h(
+          Button,
+          {
+            variant: 'ghost',
+            size: 'icon',
+            'data-table-action': 'delete',
+            'aria-label': translate('views.accounts.archive.actionLabel', {
+              name: row.original.name,
+            }),
+            title: translate('views.accounts.archive.actionLabel', {
+              name: row.original.name,
+            }),
+            disabled: isArchiving.value && archiveTarget.value?.id === row.original.id,
+            onClick: () => startArchive(row.original),
+          },
+          () => h(Trash2, { class: 'size-4' }),
+        ),
+      ])
+    },
   })
 
   return cols
@@ -201,11 +208,7 @@ const table = useVueTable({
 
 async function loadBalances(): Promise<void> {
   balances.value = new Map()
-  const accountIds = modeStore.isHousehold
-    ? accountStore.activeAccounts
-        .map((account) => account.id)
-        .filter((accountId) => sharedAccountIds.value.has(accountId))
-    : accountStore.activeAccounts.map((account) => account.id)
+  const accountIds = accountStore.activeAccounts.map((account) => account.id)
 
   try {
     const result = await getAccountBalances(
@@ -253,8 +256,8 @@ const archiveDescription = computed(() =>
   translate('views.accounts.archive.description', { name: archiveTarget.value?.name ?? '' }),
 )
 
-function canArchive(account: Account): boolean {
-  return !modeStore.isHousehold || account.ownerUserId === authStore.user?.id
+function isOwnedAccount(account: Account): boolean {
+  return account.ownerUserId === authStore.user?.id
 }
 
 function startArchive(account: Account): void {

@@ -1,29 +1,595 @@
 {
   "app": {
-    "name": "Pocketr"
+    "name": "Pocketr",
+    "tagline": "Твоят път към финансово спокойствие"
   },
   "common": {
+    "actions": {
+      "accept": "Приеми",
+      "backToDashboard": "Обратно към таблото",
+      "browse": "Избери файл",
+      "cancel": "Отказ",
+      "clear": "Изчисти",
+      "close": "Затвори",
+      "create": "Създай",
+      "delete": "Изтрий",
+      "leave": "Напусни",
+      "logOut": "Изход",
+      "manage": "Управление",
+      "rename": "Преименувай",
+      "save": "Запази",
+      "settings": "Настройки",
+      "share": "Сподели",
+      "signIn": "Вход",
+      "signUp": "Регистрация",
+      "unshare": "Спри споделянето",
+      "upload": "Качи"
+    },
     "amounts": {
       "mixedCurrencies": "Смесени валути"
     },
+    "feedback": {
+      "creating": "Създаване...",
+      "creatingAccount": "Създаване на сметка...",
+      "leaving": "Напускане...",
+      "loading": "Зареждане...",
+      "loggingIn": "Влизане...",
+      "saving": "Запазване...",
+      "sending": "Изпращане...",
+      "uploading": "Качване..."
+    },
+    "fields": {
+      "account": "Сметка",
+      "amount": "Сума",
+      "category": "Категория",
+      "color": "Цвят",
+      "confirmPassword": "Потвърди паролата",
+      "currency": "Валута",
+      "date": "Дата",
+      "dateRange": "Период",
+      "description": "Описание",
+      "email": "Имейл",
+      "firstName": "Име",
+      "householdName": "Име на домакинството",
+      "lastName": "Фамилия",
+      "name": "Име",
+      "openingDate": "Начална дата",
+      "password": "Парола",
+      "search": "Търсене",
+      "type": "Тип"
+    },
+    "formHints": {
+      "accountName": "Име на сметката",
+      "categoryExamples": "напр. Хранителни стоки, Комунални услуги",
+      "email": "email{'@'}example.com",
+      "filterCurrency": "Филтрирай по валута",
+      "filterType": "Филтрирай по тип",
+      "householdName": "Име на домакинството (поне 3 знака)",
+      "money": "0.00",
+      "personFirstName": "Иван",
+      "personLastName": "Иванов",
+      "selectAccount": "Избери сметка",
+      "selectCategory": "Избери категория...",
+      "selectMode": "Избери режим"
+    },
     "states": {
-      "archived": "Архивирана"
+      "archived": "Архивирана",
+      "noData": "Няма данни.",
+      "unknownUser": "Непознат потребител"
+    },
+    "table": {
+      "amount": "Сума",
+      "balance": "Салдо",
+      "category": "Категория",
+      "created": "Създадена",
+      "currency": "Валута",
+      "date": "Дата",
+      "description": "Описание",
+      "member": "Член",
+      "name": "Име",
+      "pageOf": "Страница {page} от {totalPages}",
+      "rowsPerPage": "Редове на страница",
+      "shared": "Споделена",
+      "total": "Общо: {totalElements}",
+      "type": "Тип"
+    }
+  },
+  "components": {
+    "accountSelector": {
+      "ownerGroup": "Собственик: {ownerId}"
+    },
+    "categoryColorPicker": {
+      "noColor": "Без цвят"
+    },
+    "categoryTagSelector": {
+      "empty": "Няма намерени категории.",
+      "searchPlaceholder": "Търси категории..."
+    },
+    "dateRangePicker": {
+      "clearAriaLabel": "Изчисти периода"
+    },
+    "sidebar": {
+      "household": "Домакинство",
+      "routes": {
+        "accounts": "Сметки",
+        "categories": "Категории",
+        "dashboard": "Табло",
+        "subscriptions": "Абонаменти",
+        "transactions": "Транзакции"
+      }
+    },
+    "theme": {
+      "label": "Тема",
+      "modes": {
+        "auto": "Системна",
+        "dark": "Тъмна",
+        "light": "Светла"
+      },
+      "presets": {
+        "pocketr": "Pocketr"
+      }
+    },
+    "ui": {
+      "commandPalette": {
+        "description": "Търси команда за изпълнение...",
+        "title": "Команди"
+      },
+      "sidebar": {
+        "description": "Показва страничното меню на мобилно устройство.",
+        "title": "Странично меню",
+        "toggle": "Превключи страничното меню"
+      }
+    },
+    "viewMode": {
+      "individual": "Личен"
     }
   },
   "views": {
     "accounts": {
+      "actions": {
+        "new": "Нова сметка"
+      },
       "archive": {
         "actionLabel": "Архивиране на сметка {name}",
         "archiving": "Архивиране...",
         "confirm": "Архивирай сметката",
         "description": "Да се архивира ли „{name}“? Тя вече няма да може да се използва за нови транзакции, но съществуващата ѝ история ще бъде запазена. Това действие засега не може да бъде отменено.",
         "title": "Архивиране на сметка"
+      },
+      "create": {
+        "descriptions": {
+          "assetOpeningBalance": "Началното салдо се записва като счетоводна операция срещу начален собствен капитал. Началната дата се използва само когато салдото не е нула.",
+          "liabilityOpeningBalance": "Началният дълг се записва срещу начален собствен капитал. Сумата трябва да е положителна.",
+          "main": "Добави нова сметка към счетоводния регистър."
+        },
+        "fields": {
+          "initialBalance": "Начално салдо",
+          "openingDate": "Начална дата"
+        },
+        "formHints": {
+          "assetName": "напр. Разплащателна сметка, Спестявания",
+          "expenseName": "напр. Хранителни стоки, Комунални услуги",
+          "incomeName": "напр. Заплата, Свободна практика",
+          "liabilityName": "напр. Ипотека, Автомобилен кредит"
+        },
+        "title": "Създаване на сметка"
+      },
+      "empty": "Няма намерени сметки.",
+      "filters": {
+        "allCurrencies": "Всички валути",
+        "allTypes": "Всички типове"
+      },
+      "loading": "Зареждане на сметките...",
+      "rename": {
+        "description": "Въведи ново име за „{name}“.",
+        "title": "Преименуване на сметка"
+      },
+      "sharedFromOtherMember": "Не е твоя сметка · Споделена от друг член на домакинството",
+      "title": "Сметки"
+    },
+    "auth": {
+      "login": {
+        "description": "Въведи имейла си, за да влезеш в профила си",
+        "errors": {
+          "invalidCredentials": "Невалиден имейл или парола. Опитай отново.",
+          "sessionExpired": "Сесията ти е изтекла. Влез отново."
+        },
+        "links": {
+          "registerPrompt": "Нямаш профил?"
+        },
+        "submit": "Вход",
+        "title": "Вход"
+      },
+      "registration": {
+        "description": "Въведи данните си, за да създадеш профил",
+        "errors": {
+          "passwordsMismatch": "Паролите не съвпадат",
+          "unableToRegister": "Неуспешна регистрация"
+        },
+        "links": {
+          "loginPrompt": "Вече имаш профил?"
+        },
+        "submit": "Създай профил",
+        "title": "Регистрация"
       }
+    },
+    "categories": {
+      "actions": {
+        "new": "Нова категория"
+      },
+      "confirmDelete": "Да се изтрие ли категория „{name}“?",
+      "create": {
+        "description": "Добави категория за обозначаване на транзакции.",
+        "title": "Създаване на категория"
+      },
+      "empty": "Все още няма категории. Създай първата си категория.",
+      "loading": "Зареждане на категориите...",
+      "rename": {
+        "description": "Промени името на категорията.",
+        "title": "Преименуване на категория"
+      },
+      "title": "Категории"
+    },
+    "dashboard": {
+      "cards": {
+        "accountBalances": "Салда по сметки",
+        "availableMoney": "Налични средства",
+        "recentTransactions": "Последни транзакции",
+        "recentExpenses": "Последни разходи",
+        "spendingByAccount": "Разходи по сметки",
+        "spendingByCategory": "Разходи по категории",
+        "spendingsForMonth": "Разходи за месец {month}",
+        "spendingThisPeriod": "Разходи за периода",
+        "spendingTrend": "Тенденция на разходите",
+        "topSpendingCategories": "Категории с най-много разходи"
+      },
+      "debtPayment": "Погасяване на дълг",
+      "empty": {
+        "accounts": "Все още няма сметки.",
+        "monthlySpending": "Няма данни за разходи през този месец.",
+        "transactions": "Все още няма транзакции."
+      },
+      "periodViews": {
+        "lifetime": "От началото",
+        "rollover": "Месечен период"
+      },
+      "subtitle": {
+        "household": "Преглед на домакинството",
+        "individual": "Твоят личен преглед"
+      },
+      "title": "Табло",
+      "uncategorized": "Без категория"
+    },
+    "householdSettings": {
+      "accounts": {
+        "emptyMine": "Нямаш сметки за споделяне. Първо създай сметка.",
+        "sharedAt": "Споделена на {date}",
+        "sharedBadge": "Споделена",
+        "sharedBy": "Споделена от {name}",
+        "sharedDescription": "Сметки, споделени в това домакинство.",
+        "sharedEmpty": "Все още няма споделени сметки.",
+        "sharedTitle": "Споделени сметки",
+        "yoursDescription": "Управлявай споделянето на собствените си сметки в това домакинство.",
+        "yoursTitle": "Твоите сметки"
+      },
+      "header": {
+        "created": "Създадено на {date}"
+      },
+      "invite": {
+        "description": "Изпрати покана за присъединяване към домакинството по имейл.",
+        "placeholder": "name{'@'}example.com",
+        "sendAction": "Изпрати покана",
+        "success": "Поканата е изпратена до {email}.",
+        "title": "Покани член"
+      },
+      "members": {
+        "description": "Управлявай членовете на домакинството и ролите им.",
+        "empty": "Няма намерени членове.",
+        "joined": "Присъединил се на {date}",
+        "loading": "Зареждане на членовете...",
+        "title": "Членове"
+      },
+      "rollover": {
+        "day": "Ден за начало на отчетния период",
+        "help": "Салдата на разходните сметки и отчетите на домакинството използват този ден за всички членове.",
+        "updated": "Денят за начало на отчетния период на домакинството е обновен."
+      }
+    },
+    "notFound": {
+      "description": "Търсената страница не съществува.",
+      "title": "Страницата не е намерена"
+    },
+    "settings": {
+      "household": {
+        "acceptInviteBlocked": "Напусни текущото домакинство, преди да приемеш друга покана.",
+        "createAction": "Създай домакинство",
+        "createDescription": "Все още не участваш в домакинство. Създай такова, за да споделяш сметки със семейството или съквартирантите си.",
+        "description": "Създай или управлявай домакинство, за да споделяте сметки и да следите разходите заедно.",
+        "invitedBadge": "Поканен",
+        "pendingInvitations": "Чакащи покани",
+        "title": "Бюджет на домакинството"
+      },
+      "profile": {
+        "acceptedFormats": "Допустими формати: JPEG, PNG, GIF, WEBP. Максимален размер: 5 MB.",
+        "description": "Качи снимка и персонализирай профила си.",
+        "language": "Език",
+        "languageUpdated": "Езикът е обновен.",
+        "noFileSelected": "Няма избран файл",
+        "rolloverDay": "Ден за начало на отчетния период",
+        "rolloverHelp": "Салдата на разходните сметки и отчетите започват отново на този ден всеки месец. За по-кратките месеци се използва последният ден.",
+        "rolloverUpdated": "Денят за начало на отчетния период е обновен.",
+        "title": "Настройки на профила"
+      }
+    },
+    "transactions": {
+      "actions": {
+        "new": "Нова транзакция"
+      },
+      "confirmDelete": "Да се изтрие ли транзакция „{description}“?",
+      "create": {
+        "description": "Запиши разход, приход, превод или погасяване на дълг.",
+        "tabs": {
+          "debtPayment": "Погасяване на дълг",
+          "expense": "Разход",
+          "income": "Приход",
+          "transfer": "Превод"
+        },
+        "title": "Създаване на транзакция"
+      },
+      "empty": "Няма намерени транзакции. Създай първата си транзакция.",
+      "fields": {
+        "debtPaymentLiabilityAccount": "Сметка за задължение",
+        "depositTo": "Постъпление по (актив)",
+        "expenseAccount": "Разходна сметка",
+        "fromAccount": "От сметка (актив)",
+        "incomeAccount": "Приходна сметка",
+        "payFromAsset": "Плащане от (актив)",
+        "payFromAssetOrLiability": "Плащане от (актив/пасив)",
+        "toAccount": "Към сметка (актив)"
+      },
+      "loading": "Зареждане на транзакциите...",
+      "notices": {
+        "crossUserTransfer": "Това е превод между членове на домакинството.",
+        "householdTransfers": "Преводите между сметки на домакинството са разрешени. Не можеш да записваш разходи по сметки на други потребители."
+      },
+      "formHints": {
+        "allAccounts": "Всички сметки",
+        "debtPaymentNote": "Бележка за погасяването",
+        "incomeSource": "Източник на прихода",
+        "searchDescriptions": "Търси описания...",
+        "selectAssetAccount": "Избери сметка за актив",
+        "selectDepositAccount": "Избери сметка за постъпление",
+        "selectDestinationAccount": "Избери сметка получател",
+        "selectExpenseAccount": "Избери разходна сметка",
+        "selectIncomeAccount": "Избери приходна сметка",
+        "selectLiabilityAccount": "Избери сметка за задължение",
+        "selectPayFromAccount": "Избери сметка за плащане",
+        "selectSourceAccount": "Избери сметка източник",
+        "transferReason": "Причина за превода",
+        "whatWasThisFor": "За какво беше това?"
+      },
+      "title": "Транзакции"
+    }
+  },
+  "display": {
+    "accountTypes": {
+      "ASSET": "Актив",
+      "EQUITY": "Собствен капитал",
+      "EXPENSE": "Разход",
+      "INCOME": "Приход",
+      "LIABILITY": "Пасив"
+    },
+    "householdRoles": {
+      "ADMIN": "Администратор",
+      "MEMBER": "Член",
+      "OWNER": "Собственик"
+    },
+    "memberStatuses": {
+      "ACTIVE": "Активен",
+      "INVITED": "Поканен"
+    },
+    "splitSides": {
+      "CREDIT": "Кредит",
+      "DEBIT": "Дебит"
+    },
+    "transactionKinds": {
+      "DEBT_PAYMENT": "Погасяване на дълг",
+      "EXPENSE": "Разход",
+      "INCOME": "Приход",
+      "OPENING_BALANCE": "Начално салдо",
+      "OPENING_DEBT": "Начален дълг",
+      "TRANSFER": "Превод"
+    }
+  },
+  "validation": {
+    "category": {
+      "duplicate": "Категорията „{name}“ вече съществува.",
+      "nameRequired": "Името на категорията е задължително."
+    },
+    "household": {
+      "emailRequired": "Имейлът е задължителен.",
+      "nameMinLength": "Името на домакинството трябва да е поне 3 знака."
+    },
+    "rollover": {
+      "dayRange": "Денят трябва да е между 1 и 31."
+    },
+    "transactions": {
+      "requiredPositiveAmount": "Попълни всички задължителни полета и въведи положителна сума.",
+      "unknownTab": "Непознат раздел."
     }
   },
   "errors": {
     "accounts": {
-      "archive": "Сметката не можа да бъде архивирана."
+      "archive": "Сметката не можа да бъде архивирана.",
+      "create": "Сметката не можа да бъде създадена.",
+      "load": "Сметките не можаха да бъдат заредени.",
+      "rename": "Сметката не можа да бъде преименувана."
+    },
+    "avatar": {
+      "chooseImage": "Избери изображение преди качване.",
+      "upload": "Изображението не можа да бъде качено. Опитай отново."
+    },
+    "language": {
+      "update": "Езикът не можа да бъде обновен."
+    },
+    "rollover": {
+      "update": "Денят за начало на отчетния период не можа да бъде обновен."
+    },
+    "categories": {
+      "create": "Категорията не можа да бъде създадена.",
+      "delete": "Категорията не можа да бъде изтрита.",
+      "load": "Категориите не можаха да бъдат заредени.",
+      "rename": "Категорията не можа да бъде преименувана."
+    },
+    "currencies": {
+      "load": "Валутите не можаха да бъдат заредени."
+    },
+    "households": {
+      "acceptInvite": "Поканата не можа да бъде приета.",
+      "create": "Домакинството не можа да бъде създадено.",
+      "inviteMember": "Членът не можа да бъде поканен.",
+      "leave": "Домакинството не можа да бъде напуснато.",
+      "load": "Домакинствата не можаха да бъдат заредени.",
+      "loadDetails": "Данните за домакинството не можаха да бъдат заредени.",
+      "loadSharedAccounts": "Споделените сметки не можаха да бъдат заредени.",
+      "sendInvitation": "Поканата не можа да бъде изпратена.",
+      "shareAccount": "Сметката не можа да бъде споделена.",
+      "updateRollover": "Денят за начало на отчетния период на домакинството не можа да бъде обновен.",
+      "unshareAccount": "Споделянето на сметката не можа да бъде спряно."
+    },
+    "transactions": {
+      "create": "Транзакцията не можа да бъде създадена.",
+      "delete": "Транзакцията не можа да бъде изтрита.",
+      "load": "Транзакциите не можаха да бъдат заредени."
     }
+  },
+  "success": {
+    "avatar": {
+      "updated": "Снимката е обновена."
+    }
+  },
+  "api": {
+    "auth": {
+      "authenticatedUserIdMissing": "Липсва идентификаторът на влезлия потребител",
+      "authenticatedUserIdRequired": "Изисква се идентификатор на влезлия потребител",
+      "userNotFound": "Потребителят не е намерен",
+      "userWithEmailNotFound": "Не е намерен потребител с имейл {email}"
+    },
+    "accounts": {
+      "equitySystemManaged": "Сметките за собствен капитал се управляват от системата и не могат да се създават ръчно",
+      "invalidAccountType": "Невалиден тип сметка: {type}",
+      "invalidCurrency": "Невалидна валута: {currency}",
+      "notFound": "Сметката не е намерена",
+      "notOwner": "Не си собственик на тази сметка",
+      "openingBalanceDateRequiresAmount": "Началната дата изисква ненулево начално салдо",
+      "openingBalanceOnlyAssetLiability": "Начално салдо се поддържа само за сметки за активи и пасиви",
+      "openingBalanceOutOfRange": "Началното салдо е извън допустимия диапазон",
+      "openingBalanceRequired": "Началното салдо не може да е нула",
+      "openingBalanceUnsupportedType": "Неподдържан тип сметка за начално салдо",
+      "openingBalanceValidation": "Начално салдо се поддържа само за сметки за активи и пасиви",
+      "openingDebtPositive": "Началният дълг трябва да е положителен за сметка за пасив",
+      "systemOpeningEquityName": "Начален собствен капитал"
+    },
+    "avatar": {
+      "contentTypeRequired": "Изисква се тип на файла за снимката",
+      "fileRequired": "Изисква се файл за снимка",
+      "fileTooLarge": "Снимката е твърде голяма. Максимален размер: 5 MB",
+      "invalidPath": "Невалиден път до снимката",
+      "invalidRequest": "Невалидна заявка за качване на снимка",
+      "storeFailed": "Снимката не можа да бъде запазена",
+      "unsupportedFormat": "Неподдържан формат на снимката",
+      "unsupportedFormatAllowed": "Неподдържан формат на снимката. Допустими формати: JPEG, PNG, GIF, WEBP"
+    },
+    "categories": {
+      "duplicate": "Категорията „{name}“ вече съществува",
+      "inUse": "Категорията се използва и не може да бъде изтрита",
+      "notFound": "Категорията не е намерена",
+      "notOwner": "Не си собственик на тази категория",
+      "tagNotOwned": "Категорията „{name}“ не ти принадлежи",
+      "tagsNotFound": "Категориите не са намерени: {ids}"
+    },
+    "households": {
+      "accountAlreadyShared": "Сметката вече е споделена с това домакинство",
+      "accountNotShared": "Сметката не е споделена с това домакинство",
+      "cannotCreateWhileMember": "Не можеш да създадеш домакинство, докато участваш в друго",
+      "inviteeAlreadyMember": "Потребителят вече е член или има чакаща покана",
+      "inviteeInAnotherHousehold": "Потребителят вече е активен член на друго домакинство",
+      "leaveBeforeAcceptingInvite": "Напусни текущото домакинство, преди да приемеш друга покана",
+      "membershipNotActive": "Членството не е активно",
+      "noInviteFound": "Няма намерена покана за това домакинство",
+      "noPendingInvite": "Няма чакаща покана за приемане",
+      "notActiveMember": "Не си активен член на това домакинство",
+      "notMember": "Не си член на това домакинство",
+      "notFound": "Домакинството не е намерено",
+      "onlyAccountOwnerCanShare": "Само собственикът може да сподели сметката",
+      "onlyAccountOwnerCanUnshare": "Само собственикът може да спре споделянето на сметката",
+      "onlyActiveMembersCanLeave": "Само активните членове могат да напуснат домакинството",
+      "onlyOwnerOrAdminCanInvite": "Само собственикът или администраторът могат да канят членове",
+      "userNotFoundWithEmail": "Не е намерен потребител с имейл: {email}"
+    },
+    "internal": {
+      "accountIdNull": "Липсва идентификатор на сметката",
+      "accountNameNull": "Липсва име на сметката",
+      "accountNull": "Липсва сметка",
+      "accountTypeNull": "Липсва тип на сметката",
+      "categoryIdNull": "Липсва идентификатор на категорията",
+      "currencyNull": "Липсва валута",
+      "householdIdNull": "Липсва идентификатор на домакинството",
+      "householdNull": "Липсва домакинство",
+      "openingEquityAccountIdNull": "Липсва идентификатор на сметката за начален собствен капитал",
+      "ownerEmailNull": "Липсва имейл на собственика",
+      "ownerUserIdNull": "Липсва идентификатор на собственика",
+      "splitAccountIdNull": "Липсва идентификатор на сметката в разпределението",
+      "splitAccountNull": "Липсва сметка в разпределението",
+      "splitIdNull": "Липсва идентификатор на разпределението",
+      "transactionIdNull": "Липсва идентификатор на транзакцията",
+      "userEmailNull": "Липсва имейл на потребителя",
+      "userIdNull": "Липсва идентификатор на потребителя"
+    },
+    "ledger": {
+      "accountNotSharedIntoHousehold": "Сметката „{accountName}“ не е споделена с домакинството",
+      "accountsNotFound": "Сметките не са намерени: {ids}",
+      "allSplitAmountsPositive": "Всички суми в разпределението трябва да са по-големи от нула",
+      "crossUserPostingsRestricted": "Операциите между членове на домакинството са разрешени само по сметки за активи, освен при погасяване на споделен дълг от собствена сметка за активи",
+      "dateFromBeforeDateTo": "Началната дата трябва да е преди или на крайната дата",
+      "doubleEntryViolation": "Нарушено е двойното счетоводство: дебити ({debits}) и кредити ({credits}) не са равни",
+      "householdIdRequired": "Изисква се идентификатор на домакинството в режим домакинство",
+      "householdIdRequiredUppercase": "Изисква се идентификатор на домакинството в режим ДОМАКИНСТВО",
+      "invalidMode": "Невалиден режим: {mode}",
+      "invalidModeAllowed": "Невалиден режим: {mode}. Допустими са ЛИЧЕН или ДОМАКИНСТВО",
+      "invalidSplitSide": "Невалидна страна на разпределението: {side}",
+      "notOwnerOfTransaction": "Не си собственик на тази транзакция",
+      "notOwnedIndividualMode": "В личен режим не можеш да записваш операции по сметки на други потребители",
+      "transactionNotFound": "Транзакцията не е намерена",
+      "twoSplitsRequired": "Транзакцията трябва да има поне две разпределения"
+    },
+    "reports": {
+      "debtPaymentCategory": "Погасяване на дълг"
+    }
+  },
+  "generatedData": {
+    "openingDescriptions": {
+      "balance": "Начално салдо",
+      "balanceForAccount": "Начално салдо - {accountName}",
+      "debt": "Начален дълг",
+      "debtForAccount": "Начален дълг - {accountName}"
+    }
+  },
+  "currencies": {
+    "AUD": "Австралийски долар",
+    "BHD": "Бахрейнски динар",
+    "CAD": "Канадски долар",
+    "CHF": "Швейцарски франк",
+    "CZK": "Чешка крона",
+    "DKK": "Датска крона",
+    "EUR": "Евро",
+    "GBP": "Британска лира",
+    "HUF": "Унгарски форинт",
+    "JPY": "Японска йена",
+    "NOK": "Норвежка крона",
+    "PLN": "Полска злота",
+    "RON": "Румънска лея",
+    "SEK": "Шведска крона",
+    "USD": "Щатски долар"
   }
 }

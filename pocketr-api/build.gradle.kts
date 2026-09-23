@@ -7,6 +7,7 @@ plugins {
     id("io.spring.dependency-management") version "1.1.7"
     kotlin("plugin.jpa") version "2.3.10"
     id("org.jlleitschuh.gradle.ktlint") version "12.1.1"
+    kotlin("plugin.lombok") version "2.3.10"
 }
 
 group = "com.decrux"
@@ -50,6 +51,7 @@ dependencies {
     testImplementation("org.testcontainers:junit-jupiter:1.21.4")
     testImplementation("org.testcontainers:postgresql:1.21.4")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+    testImplementation(kotlin("test"))
 }
 
 kotlin {

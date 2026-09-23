@@ -110,22 +110,35 @@ class FrankfurterClientTest {
     }
 
     @Test
-    fun missingCurrencySymbolFailsClearly() {
+    fun missingNullOrBlankCurrencySymbolFallsBackToCode() {
         server
             .expect(requestTo("https://provider.test/v2/currencies"))
             .andRespond(
                 withSuccess(
-                    """[{"iso_code":"EUR","name":"Euro"}]""",
+                    """
+                    [
+                      {"iso_code":"EUR","name":"Euro"},
+                      {"iso_code":"XDR","name":"Special Drawing Rights","symbol":null},
+                      {"iso_code":"JPY","name":"Japanese Yen","symbol":" "},
+                      {"iso_code":"USD","name":"US Dollar","symbol":"$"}
+                    ]
+                    """.trimIndent(),
                     MediaType.APPLICATION_JSON,
                 ),
             )
 
-        val ex =
-            assertThrows(IllegalArgumentException::class.java) {
-                client.fetchCurrencies()
-            }
+        val result = client.fetchCurrencies()
 
-        assertEquals("Missing Frankfurter field: symbol", ex.message)
+        assertEquals(
+            listOf(
+                Currency(code = "EUR", name = "Euro", symbol = "EUR"),
+                Currency(code = "XDR", name = "Special Drawing Rights", symbol = "XDR"),
+                Currency(code = "JPY", name = "Japanese Yen", symbol = "JPY"),
+                Currency(code = "USD", name = "US Dollar", symbol = "$"),
+            ),
+            result,
+        )
+        server.verify()
     }
 
     @Test

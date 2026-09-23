@@ -55,13 +55,11 @@ private data class FrankfurterCurrencyResponse(
     fun toDomain(): Currency {
         require(isoCode.isNotBlank()) { "Missing Frankfurter field: iso_code" }
         require(name.isNotBlank()) { "Missing Frankfurter field: name" }
-        require(!symbol.isNullOrBlank()) { "Missing Frankfurter field: symbol" }
-
         val code = isoCode.uppercase()
         return Currency(
             code = code,
             name = name,
-            symbol = symbol,
+            symbol = symbol?.takeIf { it.isNotBlank() } ?: code,
         )
     }
 }

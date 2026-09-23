@@ -1304,11 +1304,29 @@ class LedgerTransactionValidationTest {
         }
 
         @Test
-        @DisplayName("should reject household batch query when any account is not shared")
-        fun rejectHouseholdBatchWhenAnyAccountNotShared() {
+        @DisplayName("should include an owner's private account in a household batch")
+        fun householdBatchAllowsOwnedPrivateAccount() {
             val householdId = UUID.randomUUID()
-            val ids = listOf(checkingId, savingsId)
-            `when`(accountRepository.findAllById(ids)).thenReturn(listOf(checking, savings))
+            val asOf = LocalDate.of(2026, 2, 20)
+            val ids = listOf(checkingId, incomeId)
+            `when`(accountRepository.findAllById(ids)).thenReturn(listOf(checking, incomeAcct))
+            `when`(manageHousehold.isActiveMember(householdId, userA.userId!!)).thenReturn(true)
+            `when`(manageHousehold.getSharedAccountIds(householdId)).thenReturn(setOf(checkingId))
+            `when`(ledgerSplitRepository.computeRawBalancesByAccountIds(ids, asOf, SplitSide.DEBIT, SplitSide.CREDIT))
+                .thenReturn(listOf(AccountRawBalanceProjection(incomeId, -400000L)))
+
+            val result = service.getAccountBalances(ids, asOf, userA, householdId)
+
+            assertEquals(0L, result[0].balanceMinor)
+            assertEquals(400000L, result[1].balanceMinor)
+        }
+
+        @Test
+        @DisplayName("should reject another member's unshared account in a household batch")
+        fun householdBatchRejectsOtherMembersPrivateAccount() {
+            val householdId = UUID.randomUUID()
+            val ids = listOf(checkingId, userBSavingsId)
+            `when`(accountRepository.findAllById(ids)).thenReturn(listOf(checking, userBSavings))
             `when`(manageHousehold.isActiveMember(householdId, userA.userId!!)).thenReturn(true)
             `when`(manageHousehold.getSharedAccountIds(householdId)).thenReturn(setOf(checkingId))
 
@@ -1424,6 +1442,36 @@ class LedgerTransactionValidationTest {
             assertThrows(ForbiddenException::class.java) {
                 service.getAccountBalance(checkingId, LocalDate.now(), userB, null)
             }
+        }
+
+        @Test
+        @DisplayName("should allow the owner to see a private account balance in household mode")
+        fun householdBalanceAllowsOwnedPrivateAccount() {
+            val householdId = UUID.randomUUID()
+            val asOf = LocalDate.of(2026, 2, 20)
+            `when`(accountRepository.findById(incomeId)).thenReturn(Optional.of(incomeAcct))
+            `when`(manageHousehold.isActiveMember(householdId, userA.userId!!)).thenReturn(true)
+            `when`(manageHousehold.isAccountShared(householdId, incomeId)).thenReturn(false)
+            `when`(ledgerSplitRepository.computeBalance(incomeId, asOf, SplitSide.DEBIT, SplitSide.CREDIT))
+                .thenReturn(-400000L)
+
+            val result = service.getAccountBalance(incomeId, asOf, userA, householdId)
+
+            assertEquals(400000L, result.balanceMinor)
+        }
+
+        @Test
+        @DisplayName("should reject another member's private account balance in household mode")
+        fun householdBalanceRejectsOtherMembersPrivateAccount() {
+            val householdId = UUID.randomUUID()
+            `when`(accountRepository.findById(userBSavingsId)).thenReturn(Optional.of(userBSavings))
+            `when`(manageHousehold.isActiveMember(householdId, userA.userId!!)).thenReturn(true)
+            `when`(manageHousehold.isAccountShared(householdId, userBSavingsId)).thenReturn(false)
+
+            assertThrows(ForbiddenException::class.java) {
+                service.getAccountBalance(userBSavingsId, LocalDate.now(), userA, householdId)
+            }
+            verifyNoInteractions(ledgerSplitRepository)
         }
 
         @Test

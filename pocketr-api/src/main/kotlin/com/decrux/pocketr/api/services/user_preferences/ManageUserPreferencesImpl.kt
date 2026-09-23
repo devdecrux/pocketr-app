@@ -29,7 +29,9 @@ class ManageUserPreferencesImpl(
                 .orElseThrow { ResponseStatusException(HttpStatus.NOT_FOUND, "User not found") }
 
         persistedUser.language = language
-        return userAvatarService.toUserDto(userRepository.save(persistedUser))
+        val updatedUser = userAvatarService.toUserDto(userRepository.save(persistedUser))
+        user.language = updatedUser.language
+        return updatedUser
     }
 
     @Transactional
@@ -48,6 +50,8 @@ class ManageUserPreferencesImpl(
                 .orElseThrow { ResponseStatusException(HttpStatus.NOT_FOUND, "User not found") }
 
         persistedUser.rolloverDay = dto.rolloverDay
-        return userAvatarService.toUserDto(userRepository.save(persistedUser))
+        val updatedUser = userAvatarService.toUserDto(userRepository.save(persistedUser))
+        user.rolloverDay = updatedUser.rolloverDay
+        return updatedUser
     }
 }

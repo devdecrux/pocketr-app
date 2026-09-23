@@ -325,7 +325,7 @@ class ManageLedgerImpl(
                 throw ForbiddenException("Not an active member of this household")
             }
             val sharedAccountIds = manageHousehold.getSharedAccountIds(householdId)
-            if (uniqueAccountIds.any { it !in sharedAccountIds }) {
+            if (accounts.any { it.owner?.userId != userId && it.id !in sharedAccountIds }) {
                 throw ForbiddenException("Account is not shared into this household")
             }
         } else if (accounts.any { it.owner?.userId != userId }) {
@@ -369,12 +369,12 @@ class ManageLedgerImpl(
                 .findById(accountId)
                 .orElseThrow { NotFoundException("Account not found") }
 
-        // In household mode, allow viewing shared accounts; otherwise require ownership
+        // In household mode, allow owned or shared accounts after membership is verified.
         if (householdId != null) {
             if (!manageHousehold.isActiveMember(householdId, userId)) {
                 throw ForbiddenException("Not an active member of this household")
             }
-            if (!manageHousehold.isAccountShared(householdId, accountId)) {
+            if (account.owner?.userId != userId && !manageHousehold.isAccountShared(householdId, accountId)) {
                 throw ForbiddenException("Account is not shared into this household")
             }
         } else if (account.owner?.userId != userId) {

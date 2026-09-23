@@ -106,7 +106,9 @@ const DataTableStub = defineComponent({
       return h(
         'div',
         table.data.map((account) =>
-          actions?.cell ? actions.cell({ row: { original: account } }) : null,
+          h('div', { 'data-account-id': account.id }, [
+            actions?.cell ? actions.cell({ row: { original: account } }) : null,
+          ]),
         ),
       )
     }
@@ -131,7 +133,7 @@ function mountPage() {
   })
 }
 
-describe('AccountsPage account archiving', () => {
+describe('AccountsPage account actions', () => {
   beforeEach(() => {
     archiveAccount.mockReset()
     archiveAccount.mockResolvedValue(undefined)
@@ -149,6 +151,19 @@ describe('AccountsPage account archiving', () => {
     const archiveActions = wrapper.findAll('[data-table-action="delete"]')
     expect(archiveActions).toHaveLength(1)
     expect(archiveActions[0]?.attributes('aria-label')).toBe('Archive account Checking')
+  })
+
+  it('shows edit only for owned accounts and identifies accounts shared by another member', async () => {
+    const wrapper = mountPage()
+    await flushPromises()
+
+    const ownedRow = wrapper.find('[data-account-id="owned-account"]')
+    const sharedRow = wrapper.find('[data-account-id="shared-account"]')
+    expect(ownedRow.find('[data-table-action="edit"]').exists()).toBe(true)
+    expect(ownedRow.find('[data-table-action="delete"]').exists()).toBe(true)
+    expect(sharedRow.find('[data-table-action="edit"]').exists()).toBe(false)
+    expect(sharedRow.find('[data-table-action="delete"]').exists()).toBe(false)
+    expect(sharedRow.text()).toContain('Not your account · Shared by another household member')
   })
 
   it('archives only after confirmation and reloads dependent account data', async () => {

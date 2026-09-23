@@ -184,6 +184,7 @@
         "description": "Enter a new name for \"{name}\".",
         "title": "Rename Account"
       },
+      "sharedFromOtherMember": "Not your account · Shared by another household member",
       "title": "Accounts"
     },
     "auth": {

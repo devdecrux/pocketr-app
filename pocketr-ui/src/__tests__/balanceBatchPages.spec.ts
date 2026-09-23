@@ -214,6 +214,61 @@ describe('batch balances page wiring', () => {
     wrapper.unmount()
   })
 
+  it('AccountsPage requests owned private balances alongside shared balances in household mode', async () => {
+    modeStore.isHousehold = true
+    modeStore.householdId = 'hh-1'
+    modeStore.modeParam = 'HOUSEHOLD'
+    modeStore.viewMode = { kind: 'HOUSEHOLD', householdId: 'hh-1' }
+
+    const ownedPrivate: Account = {
+      id: 'owned-private',
+      ownerUserId: 1,
+      name: 'Private Income',
+      type: 'INCOME',
+      currency: 'EUR',
+      createdAt: '2026-02-01T00:00:00Z',
+      status: 'ACTIVE',
+      archivedAt: null,
+    }
+    const ownedShared: Account = { ...ownedPrivate, id: 'owned-shared', name: 'Shared Income' }
+    const otherShared: Account = {
+      ...ownedPrivate,
+      id: 'other-shared',
+      ownerUserId: 2,
+      name: 'Other Member Income',
+    }
+    accountStore.activeAccounts = [ownedPrivate, ownedShared, otherShared]
+    accountStore.accounts = [...accountStore.activeAccounts]
+    householdStore.sharedAccounts = [
+      {
+        accountId: 'owned-shared',
+        accountName: 'Shared Income',
+        ownerEmail: 'user@test.com',
+        ownerFirstName: null,
+        ownerLastName: null,
+        sharedAt: '2026-02-01T00:00:00Z',
+      },
+      {
+        accountId: 'other-shared',
+        accountName: 'Other Member Income',
+        ownerEmail: 'other@test.com',
+        ownerFirstName: null,
+        ownerLastName: null,
+        sharedAt: '2026-02-01T00:00:00Z',
+      },
+    ]
+
+    const wrapper = shallowMount(AccountsPage, { global: { plugins: [i18n] } })
+    await flushPromises()
+
+    expect(getAccountBalances).toHaveBeenCalledWith(
+      ['owned-private', 'owned-shared', 'other-shared'],
+      undefined,
+      'hh-1',
+    )
+    wrapper.unmount()
+  })
+
   it('DashboardPage calls batch balances once and filters to shared ids in household mode', async () => {
     modeStore.isHousehold = true
     modeStore.householdId = 'hh-1'
