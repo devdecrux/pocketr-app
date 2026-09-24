@@ -245,7 +245,7 @@ async function handleLeaveHousehold(householdId: string): Promise<void> {
 </script>
 
 <template>
-  <section class="grid w-full grid-cols-1 gap-4 md:grid-cols-4">
+  <section class="grid w-full grid-cols-1 gap-4 md:grid-cols-2">
     <Card>
       <CardHeader>
         <CardTitle class="text-2xl">{{ $t('views.settings.profile.title') }}</CardTitle>
