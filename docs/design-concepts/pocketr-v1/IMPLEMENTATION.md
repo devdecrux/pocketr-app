@@ -29,6 +29,9 @@ Rebuild `pocketr-ui` **mobile first** to match `docs/design-concepts/pocketr-v1/
 - Invoke the `nuxt-ui` skill for every implementation phase. Use the Nuxt UI MCP server for current component APIs, props, slots, events and examples; never rely on memory or guess an API.
 - Use `https://ui.nuxt.com/llms.txt` only as a documentation fallback. Never load `llms-full.txt` in full; retrieve only the specific information needed.
 - Use Playwright CLI to inspect the running UI, exercise workflows and capture review screenshots. Keep `@playwright/test` for repeatable E2E and approved visual-regression tests.
+- Use Firefox as the primary Playwright CLI and phase-review browser through `pocketr-ui/.playwright/cli.config.json`. Keep Chromium and WebKit for final cross-browser verification.
+- Run Playwright CLI and Playwright Test **headlessly by default**. Never pass `--headed` or run `playwright-cli show` unless the user explicitly requests a visible browser session; use snapshots and screenshots for review.
+- Use the project-locked `@playwright/test` and its browsers for E2E tests; keep them separate from the user-global Homebrew Playwright CLI. Do not change Node as a browser-install workaround.
 - If any required integration is unavailable, stop and report exactly what is missing. Do not substitute another UI or browser-automation tool.
 
 ## Visual rules
@@ -69,7 +72,7 @@ The main agent must complete this once before spawning the Phase 0 subagent:
 - Run only one phase subagent at a time. The main agent monitors it, reviews its diff, verifies tests/visual checks and sends phase-specific corrections back to the same subagent.
 - After the phase passes, the main agent reports to the user and waits. Spawn a new subagent for the next phase only after explicit user approval.
 
-0. **Foundation only** — install/configure Nuxt UI; add global Pocketr tokens/theme, approved logo/favicon assets and the temporary per-route migration switch. Establish the build-size baseline. No page redesign and no legacy deletion.
+0. **Foundation only** — install/configure Nuxt UI; configure Playwright Test to run headlessly by default while retaining explicit `--headed` debugging; add global Pocketr tokens/theme, approved logo/favicon assets and the temporary per-route migration switch. Establish the build-size baseline. No page redesign and no legacy deletion.
 1. **Dashboard + authenticated shell** — `pocketr-*.png`; sidebar/header/mobile navigation and dashboard only.
 2. **Sign in** — `pages/sign-in-*.png`.
 3. **Registration** — `pages/registration-*.png`.
@@ -84,7 +87,7 @@ The main agent must complete this once before spawning the Phase 0 subagent:
 ## Required gate after every phase
 
 - Use Playwright CLI to compare light/dark screenshots at exactly `352x856` and `1174x856` against the target PNGs. Never update a baseline to hide a mismatch.
-- Run relevant unit and Playwright tests, then `npm run type-check` and `npm run build`.
+- Run relevant unit and Firefox Playwright tests, then `npm run type-check` and `npm run build`. Run all configured browsers in Phase 10.
 - Report production JS/CSS sizes versus the previous approved phase.
 - Verify keyboard/focus behavior and the phase's complete user workflow.
 - Report tests, changed files, and any mismatch; **stop and wait for approval**.
