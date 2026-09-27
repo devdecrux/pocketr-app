@@ -20,7 +20,7 @@ const routes = [
     path: '/login',
     name: 'login',
     component: LoginPage,
-    meta: { layout: 'auth', guestOnly: true },
+    meta: { layout: 'auth', guestOnly: true, uiV2: true },
   },
   {
     path: '/registration',
@@ -32,7 +32,7 @@ const routes = [
     path: '/dashboard',
     name: 'dashboard',
     component: DashboardPage,
-    meta: { requiresAuth: true },
+    meta: { requiresAuth: true, uiV2: true },
   },
   {
     path: '/transactions',

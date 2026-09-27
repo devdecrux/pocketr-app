@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted } from 'vue'
+import { onMounted } from 'vue'
 import { UserRound, Users } from 'lucide-vue-next'
 import {
   Select,
@@ -8,39 +8,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { useModeStore } from '@/stores/mode'
-import { useAccountStore } from '@/stores/account'
-import { useLedgerStore } from '@/stores/ledger'
 import { useHouseholdStore } from '@/stores/household'
+import { useViewModeSelection } from '@/composables/useViewModeSelection'
 
-const modeStore = useModeStore()
-const accountStore = useAccountStore()
-const ledgerStore = useLedgerStore()
 const householdStore = useHouseholdStore()
+const { currentValue, selectMode: onSelect } = useViewModeSelection()
 
 onMounted(() => householdStore.loadHouseholds())
-
-const currentValue = computed(() => {
-  if (modeStore.viewMode.kind === 'HOUSEHOLD') {
-    return `household:${modeStore.viewMode.householdId}`
-  }
-  return 'individual'
-})
-
-// reka-ui Select emits AcceptableValue (string | number | bigint | Record | null),
-// but our values are always strings, so we guard with typeof check
-async function onSelect(
-  value: string | number | bigint | Record<string, unknown> | null,
-): Promise<void> {
-  if (typeof value !== 'string') return
-  if (value === 'individual') {
-    modeStore.switchToIndividual()
-  } else if (value.startsWith('household:')) {
-    const id = value.slice('household:'.length)
-    modeStore.switchToHousehold(id)
-  }
-  await Promise.all([accountStore.load(), ledgerStore.load()])
-}
 </script>
 
 <template>

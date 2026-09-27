@@ -12,6 +12,11 @@ export function sanitizeInternalRedirect(redirect: unknown): string | null {
     return null
   }
 
+  // Reject backslashes: browsers treat a backslash like "/", so /\evil.example can act as //evil.example
+  if (redirect.includes('\\')) {
+    return null
+  }
+
   // Reject anything that looks like it contains a protocol
   if (/^[a-z]+:/i.test(redirect)) {
     return null

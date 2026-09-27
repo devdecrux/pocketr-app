@@ -10,9 +10,20 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   type SidebarProps,
-  SidebarSeparator
+  SidebarSeparator,
 } from '@/components/ui/sidebar'
-import { ArrowUpDown, ChevronsUpDown, LayoutDashboard, LogOut, Palette, RotateCw, Shapes, User, Users, WalletMinimal } from 'lucide-vue-next'
+import {
+  ArrowUpDown,
+  ChevronsUpDown,
+  LayoutDashboard,
+  LogOut,
+  Palette,
+  RotateCw,
+  Shapes,
+  User,
+  Users,
+  WalletMinimal,
+} from 'lucide-vue-next'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -22,7 +33,7 @@ import {
   DropdownMenuSub,
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
-  DropdownMenuTrigger
+  DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import ThemeMenu from '@/components/ThemeMenu.vue'
@@ -30,9 +41,8 @@ import ModeSwitcher from '@/components/ModeSwitcher.vue'
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
-import { useHouseholdStore } from '@/stores/household'
-import { useModeStore } from '@/stores/mode'
-import { api } from '@/api/http'
+import { useHouseholdSettingsPath } from '@/composables/useHouseholdSettingsPath'
+import { useLogout } from '@/composables/useLogout'
 import { initialsFromName } from '@/utils/initials'
 import pocketrLogo from '@/assets/logo.svg'
 import pocketrDarkLogo from '@/assets/logo-dark.svg'
@@ -70,15 +80,7 @@ const routes = [
   },
 ]
 
-const householdStore = useHouseholdStore()
-const modeStore = useModeStore()
-
-const householdSettingsPath = computed(() => {
-  if (!modeStore.isHousehold) return null
-  const membership = householdStore.households.find((h) => h.id === modeStore.householdId)
-  if (!membership || (membership.role !== 'OWNER' && membership.role !== 'ADMIN')) return null
-  return `/household/${modeStore.householdId}/settings`
-})
+const householdSettingsPath = useHouseholdSettingsPath()
 
 const props = withDefaults(defineProps<SidebarProps>(), {
   collapsible: 'icon',
@@ -89,17 +91,7 @@ const authStore = useAuthStore()
 const userInitials = computed(() =>
   initialsFromName(authStore.user?.firstName, authStore.user?.lastName),
 )
-
-async function logout(): Promise<void> {
-  try {
-    await api.post('/api/v1/user/logout', {
-      body: new URLSearchParams(),
-    })
-  } finally {
-    authStore.clearUser()
-    await router.push('/login')
-  }
-}
+const { logout } = useLogout()
 </script>
 
 <template>

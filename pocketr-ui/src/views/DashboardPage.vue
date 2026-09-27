@@ -1,83 +1,40 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { ArrowUpDown, TrendingDown, Wallet } from 'lucide-vue-next'
-import { use } from 'echarts/core'
-import { BarChart, LineChart } from 'echarts/charts'
-import { GridComponent, TooltipComponent } from 'echarts/components'
-import { CanvasRenderer } from 'echarts/renderers'
-import VChart from 'vue-echarts'
-import type { EChartsOption } from 'echarts'
-import { Card, CardContent } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { Skeleton } from '@/components/ui/skeleton'
-import { Switch } from '@/components/ui/switch'
+import { computed, defineAsyncComponent, onMounted, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
+import AppPagePanel from '@/components/layout/AppPagePanel.vue'
 import { useAccountStore } from '@/stores/account'
+import { useAuthStore } from '@/stores/auth'
 import { useCurrencyStore } from '@/stores/currency'
-import { useModeStore } from '@/stores/mode'
 import { useHouseholdStore } from '@/stores/household'
+import { useModeStore } from '@/stores/mode'
 import { getAccountBalances, listTxns } from '@/api/ledger'
 import { getLifetimeExpenseReport, getMonthlyReport } from '@/api/reports'
 import { formatMinor } from '@/utils/money'
+import { resolveSpendingAccountName } from '@/utils/txnDisplay'
+import {
+  buildReportPeriods,
+  currentRolloverPeriod,
+  daysAgo,
+  DEFAULT_REPORT_PERIOD_COUNT,
+  formatDayMonthYear,
+  formatPeriodAxisLabel,
+  formatPeriodLabel,
+  REPORT_PERIOD_COUNT_OPTIONS,
+  type ReportPeriodCount,
+  rolloverPeriodRange,
+  SELECTABLE_PERIOD_COUNT,
+} from '@/utils/dashboardPeriods'
 import type { LedgerTxn, MonthlyReportEntry, RolloverExpenseReport } from '@/types/ledger'
-import { AppCardHeader, AppPageHeader, AppStateMessage } from '@/components/app'
-import { useI18n } from 'vue-i18n'
 
-use([CanvasRenderer, BarChart, LineChart, GridComponent, TooltipComponent])
+// ECharts is page-only code: loaded with the chart, never by the app shell.
+const SpendingTrendChart = defineAsyncComponent(
+  () => import('@/components/charts/SpendingTrendChart.vue'),
+)
 
 const DASHBOARD_CURRENCY = 'EUR'
-const REPORT_PERIOD_COUNT = 6
-const SPENDING_CHART_THEMES = {
-  light: {
-    color: ['#dc2626'],
-    tooltip: {
-      backgroundColor: '#ffffff',
-      borderColor: 'rgba(220, 38, 38, 0.28)',
-      textStyle: { color: '#111827' },
-    },
-    line: {
-      symbolSize: 6,
-      lineStyle: { width: 3 },
-      areaStyle: { color: 'rgba(220, 38, 38, 0.16)' },
-    },
-    bar: {
-      label: { color: '#4b5563' },
-    },
-    categoryAxis: {
-      axisLine: { lineStyle: { color: '#d1d5db' } },
-      axisLabel: { color: '#4b5563' },
-    },
-    valueAxis: {
-      axisLabel: { color: '#4b5563' },
-      splitLine: { lineStyle: { color: '#e5e7eb' } },
-    },
-  },
-  dark: {
-    color: ['#f87171'],
-    tooltip: {
-      backgroundColor: '#111827',
-      borderColor: 'rgba(248, 113, 113, 0.35)',
-      textStyle: { color: '#f9fafb' },
-    },
-    line: {
-      symbolSize: 6,
-      lineStyle: { width: 3 },
-      areaStyle: { color: 'rgba(248, 113, 113, 0.24)' },
-    },
-    bar: {
-      label: { color: '#cbd5e1' },
-    },
-    categoryAxis: {
-      axisLine: { lineStyle: { color: 'rgba(148, 163, 184, 0.36)' } },
-      axisLabel: { color: '#cbd5e1' },
-    },
-    valueAxis: {
-      axisLabel: { color: '#cbd5e1' },
-      splitLine: { lineStyle: { color: 'rgba(148, 163, 184, 0.16)' } },
-    },
-  },
-} as const
 
 const accountStore = useAccountStore()
+const authStore = useAuthStore()
 const currencyStore = useCurrencyStore()
 const modeStore = useModeStore()
 const householdStore = useHouseholdStore()
@@ -92,14 +49,38 @@ const recentExpensesLoading = ref(false)
 const lifetimeReport = ref<MonthlyReportEntry[]>([])
 const lifetimeReportLoading = ref(false)
 const categoryChartView = ref<'rollover' | 'lifetime'>('rollover')
-const isLifetimeCategoryView = computed({
-  get: () => categoryChartView.value === 'lifetime',
-  set: (value: boolean) => {
-    categoryChartView.value = value ? 'lifetime' : 'rollover'
-  },
+const periodCount = ref<ReportPeriodCount>(DEFAULT_REPORT_PERIOD_COUNT)
+
+/** Rollover day of the active scope: the household's in household mode, otherwise the user's. */
+const rolloverDay = computed(() => {
+  if (modeStore.isHousehold) {
+    return householdStore.households?.find((h) => h.id === modeStore.householdId)?.rolloverDay
+  }
+  return authStore.user?.rolloverDay
 })
-const isDarkMode = ref(false)
-let themeObserver: MutationObserver | null = null
+
+const currentPeriod = computed(() => currentRolloverPeriod(new Date(), rolloverDay.value))
+const selectedPeriod = ref(currentPeriod.value)
+
+const periodItems = computed(() =>
+  buildReportPeriods(currentPeriod.value, SELECTABLE_PERIOD_COUNT)
+    .reverse()
+    .map((period) => {
+      const { start, end } = rolloverPeriodRange(period, rolloverDay.value)
+      return {
+        value: period,
+        label: formatPeriodLabel(period),
+        description: `${formatDayMonthYear(start)} - ${formatDayMonthYear(end)}`,
+      }
+    }),
+)
+
+const periodCountItems = computed(() =>
+  REPORT_PERIOD_COUNT_OPTIONS.map((count) => ({
+    value: count,
+    label: t('views.dashboard.overview.lastMonths', { count }),
+  })),
+)
 
 const sharedAccountIds = computed(
   () => new Set(householdStore.sharedAccounts.map((share) => share.accountId)),
@@ -127,54 +108,19 @@ const availableByCurrency = computed(() => {
 const currentSpendingByCurrency = computed(() => sumEntriesByCurrency(currentEntries.value))
 
 const spendingChartPoints = computed(() => {
-  return reports.value.map(({ period, report }) => ({
-    period,
-    label: formatPeriodLabel(period),
-    amountMinor: sumReportCurrency(report.entries, DASHBOARD_CURRENCY),
-  }))
+  const minorUnit = currencyStore.getMinorUnit(DASHBOARD_CURRENCY)
+  return reports.value.map(({ period, report }) => {
+    const amountMinor = sumReportCurrency(report.entries, DASHBOARD_CURRENCY)
+    return {
+      label: formatPeriodAxisLabel(period),
+      amountMinor,
+      value: amountMinor / 10 ** minorUnit,
+    }
+  })
 })
 
 const hasSpendingChartData = computed(() => {
   return spendingChartPoints.value.some((point) => point.amountMinor > 0)
-})
-
-const spendingChartTheme = computed(() => {
-  return isDarkMode.value ? SPENDING_CHART_THEMES.dark : SPENDING_CHART_THEMES.light
-})
-
-const spendingChartOptions = computed(() => {
-  const minorUnit = currencyStore.getMinorUnit(DASHBOARD_CURRENCY)
-  return {
-    grid: { left: 8, right: 12, top: 20, bottom: 28, containLabel: true },
-    tooltip: {
-      trigger: 'axis',
-      valueFormatter: (value: number) =>
-        formatMinor(Math.round(value * 10 ** minorUnit), DASHBOARD_CURRENCY, minorUnit),
-    },
-    xAxis: {
-      type: 'category',
-      boundaryGap: false,
-      data: spendingChartPoints.value.map((point) => point.label),
-      axisTick: { show: false },
-    },
-    yAxis: {
-      type: 'value',
-      minInterval: 1,
-      axisLabel: {
-        formatter: (value: number) => formatCompactMajor(value, DASHBOARD_CURRENCY),
-      },
-    },
-    series: [
-      {
-        name: DASHBOARD_CURRENCY,
-        type: 'line',
-        smooth: true,
-        areaStyle: {},
-        emphasis: { focus: 'series' },
-        data: spendingChartPoints.value.map((point) => minorToMajor(point.amountMinor, minorUnit)),
-      },
-    ],
-  }
 })
 
 const topCategoryChartEntries = computed(() => {
@@ -189,10 +135,6 @@ const topCategoryChartCurrency = computed(() => {
   )
   if (currencies.has(DASHBOARD_CURRENCY)) return DASHBOARD_CURRENCY
   return [...currencies].sort()[0] ?? DASHBOARD_CURRENCY
-})
-
-const hasTopCategoryChartData = computed(() => {
-  return topCategoryChartItems.value.length > 0
 })
 
 const categoryChartLoading = computed(() => {
@@ -222,65 +164,15 @@ const topCategoryChartItems = computed(() => {
     .slice(0, 5)
 })
 
-const topCategoryChartOptions = computed(() => {
-  const chartCurrency = topCategoryChartCurrency.value
-  const minorUnit = currencyStore.getMinorUnit(chartCurrency)
-  const items = topCategoryChartItems.value
-  return {
-    grid: { left: 8, right: 40, top: 8, bottom: 12, containLabel: true },
-    tooltip: {
-      trigger: 'axis',
-      axisPointer: { type: 'shadow' },
-      valueFormatter: (value: number) =>
-        formatMinor(Math.round(value * 10 ** minorUnit), chartCurrency, minorUnit),
-    },
-    xAxis: {
-      type: 'value',
-      axisLabel: {
-        formatter: (value: number) => formatCompactMajor(value, chartCurrency),
-      },
-    },
-    yAxis: {
-      type: 'category',
-      inverse: true,
-      axisTick: { show: false },
-      data: items.map((item) => item.name),
-    },
-    series: [
-      {
-        type: 'bar',
-        realtimeSort: true,
-        barMaxWidth: 18,
-        label: {
-          show: true,
-          position: 'right',
-          formatter: ({ value }: { value: number }) =>
-            formatMinor(Math.round(value * 10 ** minorUnit), chartCurrency, minorUnit),
-        },
-        animationDuration: 300,
-        animationDurationUpdate: 600,
-        animationEasing: 'linear',
-        animationEasingUpdate: 'linear',
-        data: items.map((item) => ({
-          name: item.name,
-          value: minorToMajor(item.amountMinor, minorUnit),
-          itemStyle: { color: item.color },
-        })),
-      },
-    ],
-  } as unknown as EChartsOption
-})
+const topCategoryMax = computed(() => topCategoryChartItems.value[0]?.amountMinor ?? 0)
 
-const reportPeriodLabel = computed(() => {
-  if (!currentReport.value) return formatYearMonth(new Date())
-  return `${formatIsoDate(currentReport.value.periodStart)} - ${formatIsoDate(currentReport.value.periodEnd)}`
-})
-
-const currentMonthLabel = computed(() => {
-  const currentPeriod =
-    reports.value[reports.value.length - 1]?.period ?? formatYearMonth(new Date())
-  return formatPeriodMonthName(currentPeriod)
-})
+const spentLabel = computed(() =>
+  selectedPeriod.value === currentPeriod.value
+    ? t('views.dashboard.overview.spentThisMonth')
+    : t('views.dashboard.overview.spentInPeriod', {
+        period: formatPeriodLabel(selectedPeriod.value),
+      }),
+)
 
 async function loadBalances(): Promise<void> {
   balancesLoading.value = true
@@ -305,7 +197,7 @@ async function loadBalances(): Promise<void> {
 async function loadReports(): Promise<void> {
   reportLoading.value = true
   try {
-    const periods = buildReportPeriods(new Date())
+    const periods = buildReportPeriods(selectedPeriod.value, periodCount.value)
     const loadedReports = await Promise.all(
       periods.map(async (period) => ({
         period,
@@ -364,23 +256,29 @@ async function loadAll(): Promise<void> {
   await Promise.all([loadBalances(), loadReports(), loadRecentExpenses(), loadLifetimeReport()])
 }
 
-function syncDarkMode(): void {
-  isDarkMode.value = document.documentElement.classList.contains('dark')
+function onSelectPeriod(period: string): void {
+  selectedPeriod.value = period
+  void loadReports()
 }
 
-onMounted(() => {
-  loadAll()
-  syncDarkMode()
-  themeObserver = new MutationObserver(syncDarkMode)
-  themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] })
-})
+function onSelectPeriodCount(count: ReportPeriodCount): void {
+  periodCount.value = count
+  void loadReports()
+}
 
-onBeforeUnmount(() => {
-  themeObserver?.disconnect()
-  themeObserver = null
-})
+onMounted(loadAll)
 
-watch(() => modeStore.viewMode, loadAll, { deep: true })
+watch(
+  () => modeStore.viewMode,
+  () => {
+    // A mode's rollover day can differ; keep "current period" selected across the switch.
+    if (!periodItems.value.some((item) => item.value === selectedPeriod.value)) {
+      selectedPeriod.value = currentPeriod.value
+    }
+    void loadAll()
+  },
+  { deep: true },
+)
 
 function sumEntriesByCurrency(
   entries: MonthlyReportEntry[],
@@ -426,6 +324,30 @@ function formatMoney(amountMinor: number, currency: string): string {
   return formatMinor(amountMinor, currency, currencyStore.getMinorUnit(currency))
 }
 
+/** Category totals drop trailing zero cents (e.g. "€650"), keeping real cents ("€285.50"). */
+function formatCategoryAmount(amountMinor: number, currency: string): string {
+  const minorUnit = currencyStore.getMinorUnit(currency)
+  return new Intl.NumberFormat(undefined, {
+    style: 'currency',
+    currency,
+    minimumFractionDigits: amountMinor % 10 ** minorUnit === 0 ? 0 : minorUnit,
+    maximumFractionDigits: minorUnit,
+  }).format(amountMinor / 10 ** minorUnit)
+}
+
+function formatChartValue(value: number): string {
+  const minorUnit = currencyStore.getMinorUnit(DASHBOARD_CURRENCY)
+  return formatMinor(Math.round(value * 10 ** minorUnit), DASHBOARD_CURRENCY, minorUnit)
+}
+
+function formatChartAxis(value: number): string {
+  return new Intl.NumberFormat(undefined, {
+    style: 'currency',
+    currency: DASHBOARD_CURRENCY,
+    maximumFractionDigits: 0,
+  }).format(value)
+}
+
 function formatTxnAmount(txn: LedgerTxn): string {
   const targetType = txn.txnKind === 'DEBT_PAYMENT' ? 'LIABILITY' : 'EXPENSE'
   const targetSplits = txn.splits.filter(
@@ -434,7 +356,15 @@ function formatTxnAmount(txn: LedgerTxn): string {
   const splits =
     targetSplits.length > 0 ? targetSplits : txn.splits.filter((split) => split.side === 'DEBIT')
   const amountMinor = splits.reduce((sum, split) => sum + split.amountMinor, 0)
-  return formatMoney(amountMinor, txn.currency)
+  return `−${formatMoney(amountMinor, txn.currency)}`
+}
+
+/** Expense (or, for debt payments, liability) account name; the kind label when no name exists. */
+function txnAccountLabel(txn: LedgerTxn): string {
+  return (
+    resolveSpendingAccountName(txn, (accountId) => accountStore.accountMap.get(accountId)) ??
+    txnCategoryLabel(txn)
+  )
 }
 
 function txnCategoryLabel(txn: LedgerTxn): string {
@@ -445,6 +375,16 @@ function txnCategoryLabel(txn: LedgerTxn): string {
   return category?.categoryTagName ?? t('views.dashboard.uncategorized')
 }
 
+function txnDateLabel(txn: LedgerTxn): string {
+  const age = daysAgo(txn.txnDate, new Date())
+  if (age === 0) return t('views.dashboard.overview.today')
+  if (age === 1) return t('views.dashboard.overview.yesterday')
+  const [year = 0, month = 1, day = 1] = txn.txnDate.split('-').map(Number)
+  return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' }).format(
+    new Date(year, month - 1, day),
+  )
+}
+
 function resolveCategoryColor(categoryName: string | null, categoryColor: string | null): string {
   if (categoryColor && /^#[0-9a-f]{6}$/i.test(categoryColor)) {
     return categoryColor
@@ -452,234 +392,336 @@ function resolveCategoryColor(categoryName: string | null, categoryColor: string
   if (categoryName === t('views.dashboard.debtPayment')) {
     return '#ef4444'
   }
-  return '#64748b'
+  return 'var(--ui-primary)'
 }
 
-function buildReportPeriods(currentDate: Date): string[] {
-  return Array.from({ length: REPORT_PERIOD_COUNT }, (_, index) => {
-    const offset = REPORT_PERIOD_COUNT - index - 1
-    return formatYearMonth(new Date(currentDate.getFullYear(), currentDate.getMonth() - offset, 1))
-  })
-}
-
-function formatYearMonth(date: Date): string {
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
-}
-
-function formatPeriodLabel(period: string): string {
-  const [year = new Date().getFullYear(), month = 1] = period.split('-').map(Number)
-  return new Intl.DateTimeFormat(undefined, { month: 'short' }).format(new Date(year, month - 1, 1))
-}
-
-function formatPeriodMonthName(period: string): string {
-  const [year = new Date().getFullYear(), month = 1] = period.split('-').map(Number)
-  return new Intl.DateTimeFormat(undefined, { month: 'long' }).format(new Date(year, month - 1, 1))
-}
-
-function formatIsoDate(value: string): string {
-  const [year, month, day] = value.split('-')
-  return `${day}-${month}-${year}`
-}
-
-function minorToMajor(amountMinor: number, minorUnit: number): number {
-  return amountMinor / 10 ** minorUnit
-}
-
-function formatCompactMajor(amount: number, currency: string): string {
-  return new Intl.NumberFormat(undefined, {
-    style: 'currency',
-    currency,
-    notation: 'compact',
-    maximumFractionDigits: 1,
-  }).format(amount)
+const selectUi = {
+  base: 'rounded-lg bg-default text-[13px] ring-default',
+  trailingIcon: 'size-4 text-default',
 }
 </script>
 
 <template>
-  <section class="grid gap-4">
-    <AppPageHeader
-      :title="$t('views.dashboard.title')"
-      :subtitle="
-        modeStore.isHousehold
-          ? $t('views.dashboard.subtitle.household')
-          : $t('views.dashboard.subtitle.individual')
-      "
-    />
+  <AppPagePanel :title="$t('views.dashboard.title')">
+    <template #context>
+      <USelect
+        :model-value="selectedPeriod"
+        :items="periodItems"
+        icon="i-lucide-calendar"
+        :aria-label="$t('views.dashboard.overview.selectPeriod')"
+        color="neutral"
+        size="lg"
+        :ui="{
+          base: 'rounded-lg bg-default text-sm ring-default',
+          leadingIcon: 'text-default',
+          trailingIcon: 'size-4 text-default',
+          itemDescription: 'text-xs',
+        }"
+        @update:model-value="onSelectPeriod"
+      >
+        <template #default>
+          <span class="hidden truncate lg:inline">{{ formatPeriodLabel(selectedPeriod) }}</span>
+          <span class="truncate lg:hidden">{{ formatPeriodLabel(selectedPeriod, 'short') }}</span>
+        </template>
+      </USelect>
+    </template>
 
-    <div class="grid gap-3 md:grid-cols-2">
-      <Card class="gap-2 rounded-md py-3">
-        <AppCardHeader
-          :title="$t('views.dashboard.cards.availableMoney')"
-          class="justify-start gap-2 px-4 py-0"
-          title-class="text-sm"
+    <div class="flex items-start justify-between gap-4 lg:pb-1">
+      <div class="min-w-0">
+        <h1 class="text-[22px] font-bold leading-8 text-highlighted lg:hidden">
+          {{ $t('views.dashboard.title') }}
+        </h1>
+        <h2 class="hidden text-2xl font-bold leading-8 text-highlighted lg:block">
+          {{ $t('views.dashboard.overview.heading') }}
+        </h2>
+        <p class="text-base text-muted lg:hidden">
+          {{
+            modeStore.isHousehold
+              ? $t('views.dashboard.subtitle.household')
+              : $t('views.dashboard.overview.heading')
+          }}
+        </p>
+        <p class="hidden text-base text-muted lg:block">
+          {{
+            modeStore.isHousehold
+              ? $t('views.dashboard.subtitle.household')
+              : $t('views.dashboard.overview.subtitle')
+          }}
+        </p>
+      </div>
+      <UButton
+        to="/transactions"
+        icon="i-lucide-plus"
+        :label="$t('views.dashboard.overview.addTransaction')"
+        size="xl"
+        class="hidden h-10 shrink-0 rounded-lg px-4 text-sm lg:inline-flex"
+      />
+    </div>
+
+    <!-- Desktop: the two summary cards stack in column 1; the chart spans columns 2-5 and both rows. -->
+    <div class="grid gap-3 lg:grid-cols-5 lg:grid-rows-2 lg:gap-4">
+      <UCard
+        class="lg:col-start-1 lg:row-start-1"
+        :ui="{
+          root: 'rounded-xl',
+          body: 'flex items-center gap-4 p-3 sm:p-4 lg:grid lg:h-full lg:grid-cols-[minmax(0,1fr)_auto] lg:content-center lg:items-center lg:gap-x-1.5 lg:gap-y-1 lg:p-3',
+        }"
+      >
+        <span
+          class="flex size-[60px] shrink-0 items-center justify-center rounded-full bg-(--pocketr-icon-bg) lg:col-start-2 lg:row-start-1 lg:size-6"
         >
-          <template #leading>
-            <Wallet class="size-4 text-muted-foreground" />
+          <UIcon name="i-lucide-wallet" class="size-7 text-primary lg:size-3.5" />
+        </span>
+        <div class="min-w-0 space-y-0.5 lg:contents">
+          <p class="text-sm text-muted lg:col-start-1 lg:row-start-1 lg:truncate lg:text-[13px]">
+            {{ $t('views.dashboard.overview.availableBalance') }}
+          </p>
+          <template v-if="accountStore.isLoading || balancesLoading">
+            <USkeleton class="h-9 w-40 lg:col-span-2 lg:h-8 lg:w-full" />
+            <USkeleton class="h-4 w-28 lg:col-span-2" />
           </template>
-        </AppCardHeader>
-        <CardContent class="px-4">
-          <div v-if="accountStore.isLoading || balancesLoading" class="space-y-2">
-            <Skeleton class="h-6 w-32" />
-            <Skeleton class="h-5 w-44" />
-          </div>
-          <AppStateMessage v-else-if="visibleAssetAccounts.length === 0">
+          <p
+            v-else-if="visibleAssetAccounts.length === 0"
+            class="py-1 text-sm text-muted lg:col-span-2"
+          >
             {{ $t('views.dashboard.empty.accounts') }}
-          </AppStateMessage>
-          <div v-else class="space-y-2">
+          </p>
+          <template v-else>
             <p
-              class="text-xl font-semibold leading-7 text-[var(--app-transaction-amount-positive-fg)]"
+              class="text-[28px] font-bold leading-9 tabular-nums text-highlighted lg:col-span-2 lg:text-[22px] lg:leading-8 lg:[overflow-wrap:anywhere]"
             >
               {{ formatMoney(primaryAmount(availableByCurrency), DASHBOARD_CURRENCY) }}
             </p>
-            <div v-if="secondaryAmounts(availableByCurrency).length" class="flex flex-wrap gap-1.5">
-              <Badge
+            <p class="text-sm text-muted lg:col-span-2 lg:truncate">
+              {{ $t('views.dashboard.overview.acrossAccounts', visibleAssetAccounts.length) }}
+            </p>
+            <div
+              v-if="secondaryAmounts(availableByCurrency).length"
+              class="flex flex-wrap gap-1.5 pt-1 lg:col-span-2"
+            >
+              <UBadge
                 v-for="amount in secondaryAmounts(availableByCurrency)"
                 :key="amount.currency"
+                color="neutral"
                 variant="outline"
-                class="h-5 px-1.5 text-[11px]"
+                size="sm"
               >
                 {{ formatMoney(amount.amountMinor, amount.currency) }}
-              </Badge>
+              </UBadge>
             </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card class="gap-2 rounded-md py-3">
-        <AppCardHeader
-          :title="$t('views.dashboard.cards.spendingsForMonth', { month: currentMonthLabel })"
-          class="justify-start gap-2 px-4 py-0"
-          title-class="text-sm"
-        >
-          <template #leading>
-            <TrendingDown class="size-4 text-muted-foreground" />
           </template>
-        </AppCardHeader>
-        <CardContent class="px-4">
-          <div v-if="reportLoading" class="space-y-2">
-            <Skeleton class="h-6 w-32" />
-            <Skeleton class="h-5 w-44" />
-          </div>
-          <div v-else class="space-y-2">
+        </div>
+      </UCard>
+
+      <UCard
+        class="lg:col-start-1 lg:row-start-2"
+        :ui="{
+          root: 'rounded-xl',
+          body: 'flex items-center gap-4 p-3 sm:p-4 lg:grid lg:h-full lg:grid-cols-[minmax(0,1fr)_auto] lg:content-center lg:items-center lg:gap-x-1.5 lg:gap-y-1 lg:p-3',
+        }"
+      >
+        <span
+          class="flex size-[60px] shrink-0 items-center justify-center rounded-full bg-(--pocketr-icon-bg) lg:col-start-2 lg:row-start-1 lg:size-6"
+        >
+          <UIcon name="i-lucide-arrow-up-right" class="size-7 text-primary lg:size-3.5" />
+        </span>
+        <div class="min-w-0 space-y-0.5 lg:contents">
+          <p class="text-sm text-muted lg:col-start-1 lg:row-start-1 lg:truncate lg:text-[13px]">
+            {{ spentLabel }}
+          </p>
+          <template v-if="reportLoading">
+            <USkeleton class="h-9 w-40 lg:col-span-2 lg:h-8 lg:w-full" />
+            <USkeleton class="h-4 w-28 lg:col-span-2" />
+          </template>
+          <p
+            v-else-if="currentSpendingByCurrency.length === 0"
+            class="py-1 text-sm text-muted lg:col-span-2"
+          >
+            {{
+              reports.length === 0
+                ? $t('views.dashboard.empty.spendingData')
+                : $t('views.dashboard.empty.spendings')
+            }}
+          </p>
+          <template v-else>
             <p
-              class="text-xl font-semibold leading-7 text-[var(--app-transaction-amount-negative-fg)]"
+              class="text-[28px] font-bold leading-9 tabular-nums text-highlighted lg:col-span-2 lg:text-[22px] lg:leading-8 lg:[overflow-wrap:anywhere]"
             >
               {{ formatMoney(primaryAmount(currentSpendingByCurrency), DASHBOARD_CURRENCY) }}
             </p>
-            <div class="flex flex-wrap items-center gap-1.5">
-              <Badge variant="secondary" class="h-5 px-1.5 text-[11px]">{{
-                reportPeriodLabel
-              }}</Badge>
-              <Badge
+            <p class="text-sm text-muted lg:col-span-2 lg:truncate">
+              {{ formatPeriodLabel(selectedPeriod) }}
+            </p>
+            <div
+              v-if="secondaryAmounts(currentSpendingByCurrency).length"
+              class="flex flex-wrap gap-1.5 pt-1 lg:col-span-2"
+            >
+              <UBadge
                 v-for="amount in secondaryAmounts(currentSpendingByCurrency)"
                 :key="amount.currency"
+                color="neutral"
                 variant="outline"
-                class="h-5 px-1.5 text-[11px]"
+                size="sm"
               >
                 {{ formatMoney(amount.amountMinor, amount.currency) }}
-              </Badge>
+              </UBadge>
             </div>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-
-    <Card>
-      <AppCardHeader :title="$t('views.dashboard.cards.spendingTrend')" class="justify-start gap-2">
-        <template #leading>
-          <TrendingDown class="size-5 text-muted-foreground" />
-        </template>
-      </AppCardHeader>
-      <CardContent>
-        <div v-if="reportLoading" class="space-y-3">
-          <Skeleton class="h-64 w-full" />
+          </template>
         </div>
-        <AppStateMessage v-else-if="!hasSpendingChartData">
-          {{ $t('views.dashboard.empty.monthlySpending') }}
-        </AppStateMessage>
-        <div v-else class="h-64 min-h-64 w-full">
-          <VChart
-            class="w-full"
-            :style="{ height: '16rem', minHeight: '16rem' }"
-            :theme="spendingChartTheme"
-            :option="spendingChartOptions"
-            :autoresize="{ throttle: 50 }"
+      </UCard>
+
+      <UCard
+        class="mt-1 lg:col-span-4 lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:mt-0"
+        :ui="{ root: 'rounded-xl', body: 'p-3 sm:p-4 lg:px-4 lg:pb-4' }"
+      >
+        <div class="mb-2 flex items-center justify-between gap-3">
+          <h2 class="text-[15px] font-semibold text-highlighted">
+            {{ $t('views.dashboard.overview.spendingOverTime') }}
+          </h2>
+          <USelect
+            :model-value="periodCount"
+            :items="periodCountItems"
+            :aria-label="$t('views.dashboard.overview.chartPeriod')"
+            color="neutral"
+            size="sm"
+            :ui="selectUi"
+            @update:model-value="onSelectPeriodCount"
           />
         </div>
-      </CardContent>
-    </Card>
-
-    <div class="grid gap-4 lg:grid-cols-2">
-      <section class="space-y-2">
-        <div class="flex items-center gap-2">
-          <ArrowUpDown class="size-4 text-muted-foreground" />
-          <h2 class="text-base font-semibold">{{ $t('views.dashboard.cards.recentExpenses') }}</h2>
+        <USkeleton v-if="reportLoading" class="h-[164px] w-full lg:h-[200px]" />
+        <p v-else-if="!hasSpendingChartData" class="py-10 text-center text-sm text-muted">
+          {{ $t('views.dashboard.empty.monthlySpending') }}
+        </p>
+        <div v-else class="h-[164px] w-full lg:h-[200px]">
+          <SpendingTrendChart
+            :labels="spendingChartPoints.map((point) => point.label)"
+            :values="spendingChartPoints.map((point) => point.value)"
+            :format-value="formatChartValue"
+            :format-axis="formatChartAxis"
+          />
         </div>
-        <div>
-          <div v-if="recentExpensesLoading" class="space-y-1.5">
-            <Skeleton class="h-8 w-full" />
-            <Skeleton class="h-8 w-full" />
-            <Skeleton class="h-8 w-full" />
-          </div>
-          <AppStateMessage v-else-if="recentExpenses.length === 0">
-            {{ $t('views.dashboard.empty.transactions') }}
-          </AppStateMessage>
-          <ul v-else class="space-y-1.5">
-            <li v-for="txn in recentExpenses" :key="txn.id">
-              <Card class="gap-0 rounded-md py-0 shadow-none">
-                <CardContent class="px-2.5 py-2">
-                  <div class="flex items-center justify-between gap-2">
-                    <div class="min-w-0">
-                      <div class="flex min-w-0 items-center gap-1.5">
-                        <span class="truncate text-xs font-medium leading-5">{{
-                          txn.description
-                        }}</span>
-                        <Badge variant="outline" class="h-5 shrink-0 px-1.5 text-[11px]">
-                          {{ txnCategoryLabel(txn) }}
-                        </Badge>
-                      </div>
-                      <span class="text-[11px] leading-4 text-muted-foreground">{{
-                        txn.txnDate
-                      }}</span>
-                    </div>
-                    <span class="shrink-0 text-xs font-mono">{{ formatTxnAmount(txn) }}</span>
-                  </div>
-                </CardContent>
-              </Card>
-            </li>
-          </ul>
-        </div>
-      </section>
-
-      <section class="space-y-2">
-        <div class="flex flex-wrap items-center gap-3">
-          <TrendingDown class="size-4 text-muted-foreground" />
-          <h2 class="text-base font-semibold">
-            {{ $t('views.dashboard.cards.topSpendingCategories') }}
-          </h2>
-          <label class="flex items-center gap-2 text-xs text-muted-foreground">
-            <span>{{ $t('views.dashboard.periodViews.lifetime') }}</span>
-            <Switch v-model="isLifetimeCategoryView" />
-          </label>
-        </div>
-        <div>
-          <div v-if="categoryChartLoading" class="space-y-1.5">
-            <Skeleton class="h-64 w-full" />
-          </div>
-          <AppStateMessage v-else-if="!hasTopCategoryChartData">
-            {{ $t('views.dashboard.empty.monthlySpending') }}
-          </AppStateMessage>
-          <div v-else class="h-64 min-h-64 w-full">
-            <VChart
-              class="w-full"
-              :style="{ height: '16rem', minHeight: '16rem' }"
-              :theme="spendingChartTheme"
-              :option="topCategoryChartOptions"
-              :autoresize="{ throttle: 50 }"
-            />
-          </div>
-        </div>
-      </section>
+      </UCard>
     </div>
-  </section>
+
+    <!-- Desktop: same 5-column grid as the row above. Recent expenses sits under Available balance,
+         Top categories under Spent this month; columns 3-5 stay empty for now. -->
+    <div class="grid gap-4 lg:grid-cols-5">
+      <UCard :ui="{ root: 'rounded-xl', body: 'p-3 sm:p-4 lg:p-4' }">
+        <!-- Row-2 headers: title (truncates at 1/5 width) left, action right, one fixed desktop height. -->
+        <div class="flex items-center justify-between gap-3 pb-3 lg:mb-3 lg:h-7 lg:gap-2 lg:pb-0">
+          <h2 class="min-w-0 truncate text-[15px] font-semibold text-highlighted">
+            {{ $t('views.dashboard.overview.recentExpenses') }}
+          </h2>
+          <ULink
+            to="/transactions"
+            class="shrink-0 text-sm whitespace-nowrap text-primary hover:underline"
+          >
+            {{ $t('views.dashboard.overview.viewAll') }}
+          </ULink>
+        </div>
+        <div v-if="recentExpensesLoading" class="space-y-3">
+          <USkeleton v-for="index in 3" :key="index" class="h-12 w-full" />
+        </div>
+        <p v-else-if="recentExpenses.length === 0" class="py-6 text-center text-sm text-muted">
+          {{ $t('views.dashboard.empty.transactions') }}
+        </p>
+        <ul v-else class="divide-y divide-default border-t border-default">
+          <li
+            v-for="txn in recentExpenses"
+            :key="txn.id"
+            class="flex items-center gap-4 py-2 lg:grid lg:grid-cols-[minmax(0,1fr)_auto] lg:gap-x-2 lg:gap-y-0.5"
+          >
+            <span
+              class="flex size-11 shrink-0 items-center justify-center rounded-lg bg-(--pocketr-tile-bg) lg:hidden"
+            >
+              <UIcon name="i-lucide-receipt" class="size-5 text-highlighted dark:text-primary" />
+            </span>
+            <!-- Desktop (1/5 width): description on its own line, then category · date and amount. -->
+            <div class="min-w-0 flex-1 lg:contents">
+              <p class="truncate text-sm font-medium text-highlighted lg:col-span-2">
+                {{ txn.description }}
+              </p>
+              <p class="truncate text-[13px] text-muted">
+                {{ txnAccountLabel(txn) }} · {{ txnDateLabel(txn) }}
+              </p>
+            </div>
+            <span
+              class="shrink-0 text-right text-[15px] font-medium whitespace-nowrap tabular-nums text-error lg:self-center lg:text-sm"
+            >
+              {{ formatTxnAmount(txn) }}
+            </span>
+          </li>
+        </ul>
+      </UCard>
+
+      <UCard :ui="{ root: 'rounded-xl', body: 'p-3 sm:p-4 lg:p-4' }">
+        <div class="mb-3 flex items-center justify-between gap-3 lg:mb-3 lg:h-7 lg:gap-2 lg:pb-0">
+          <h2 class="min-w-0 truncate text-[15px] font-semibold text-highlighted">
+            {{ $t('views.dashboard.overview.topCategories') }}
+          </h2>
+          <!-- Off = current rollover period, on = lifetime (as the legacy dashboard switch). -->
+          <USwitch
+            v-model="categoryChartView"
+            true-value="lifetime"
+            false-value="rollover"
+            :label="$t('views.dashboard.periodViews.lifetime')"
+            size="sm"
+            class="shrink-0"
+            :ui="{
+              root: 'flex-row-reverse items-center gap-2',
+              // Unchecked track in the muted text colour: >= 3:1 against the card in both themes.
+              base: 'data-[state=unchecked]:bg-(--ui-text-muted)',
+              wrapper: 'ms-0',
+              label: 'text-xs font-normal whitespace-nowrap text-muted',
+            }"
+          />
+        </div>
+        <div v-if="categoryChartLoading" class="space-y-4">
+          <USkeleton v-for="index in 4" :key="index" class="h-8 w-full" />
+        </div>
+        <p
+          v-else-if="topCategoryChartItems.length === 0"
+          class="py-10 text-center text-sm text-muted lg:py-6"
+        >
+          {{ $t('views.dashboard.empty.monthlySpending') }}
+        </p>
+        <!-- One shared grid (rows use subgrid): the amount column is as wide as the widest amount,
+             so every bar track starts and ends at the same x and amounts right-align. -->
+        <ul v-else class="grid grid-cols-[minmax(0,1fr)_auto] gap-x-4 gap-y-3.5 lg:gap-x-2">
+          <li
+            v-for="item in topCategoryChartItems"
+            :key="item.name"
+            class="col-span-2 grid grid-cols-subgrid items-end"
+          >
+            <span class="truncate text-sm text-highlighted">{{ item.name }}</span>
+            <span
+              class="row-span-2 self-center text-right text-sm whitespace-nowrap tabular-nums text-highlighted"
+            >
+              {{ formatCategoryAmount(item.amountMinor, topCategoryChartCurrency) }}
+            </span>
+            <span class="mt-1.5 block h-2 overflow-hidden rounded-full bg-(--pocketr-track)">
+              <span
+                class="block h-full rounded-full"
+                :style="{
+                  width: `${topCategoryMax ? (item.amountMinor / topCategoryMax) * 100 : 0}%`,
+                  backgroundColor: item.color,
+                }"
+              />
+            </span>
+          </li>
+        </ul>
+      </UCard>
+    </div>
+
+    <template #footer>
+      <UButton
+        to="/transactions"
+        icon="i-lucide-plus"
+        :label="$t('views.dashboard.overview.addTransaction')"
+        size="xl"
+        block
+        class="h-10 rounded-lg text-[15px]"
+      />
+    </template>
+  </AppPagePanel>
 </template>

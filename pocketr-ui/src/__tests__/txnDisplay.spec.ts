@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import type { LedgerSplit, LedgerTxn } from '@/types/ledger'
-import { formatSplitAmount, formatTxnDisplayAmount } from '@/utils/txnDisplay'
+import {
+  formatSplitAmount,
+  formatTxnDisplayAmount,
+  resolveSpendingAccountName,
+} from '@/utils/txnDisplay'
 
 function split(override: Partial<LedgerSplit>): LedgerSplit {
   return {
@@ -87,5 +91,79 @@ describe('transaction display formatting', () => {
         minorUnit,
       ),
     ).toBe('+€9.20')
+  })
+})
+
+describe('resolveSpendingAccountName', () => {
+  const accounts = new Map([
+    ['exp-groceries', { name: 'Groceries (store)', type: 'EXPENSE' as const }],
+    ['liab-card', { name: 'Credit card', type: 'LIABILITY' as const }],
+    ['asset-checking', { name: 'Checking', type: 'ASSET' as const }],
+  ])
+  const lookup = (id: string) => accounts.get(id)
+
+  it('prefers the account store name (renames) for the EXPENSE debit split', () => {
+    const expense = txn({
+      txnKind: 'EXPENSE',
+      splits: [
+        split({ accountId: 'asset-checking', accountType: 'ASSET', side: 'CREDIT' }),
+        split({
+          accountId: 'exp-groceries',
+          accountType: 'EXPENSE',
+          side: 'DEBIT',
+          accountName: 'Groceries (old name)',
+        }),
+      ],
+    })
+    expect(resolveSpendingAccountName(expense, lookup)).toBe('Groceries (store)')
+  })
+
+  it('uses the LIABILITY debit split account for debt payments', () => {
+    const debtPayment = txn({
+      txnKind: 'DEBT_PAYMENT',
+      splits: [
+        split({ accountId: 'asset-checking', accountType: 'ASSET', side: 'CREDIT' }),
+        split({
+          accountId: 'liab-card',
+          accountType: 'LIABILITY',
+          side: 'DEBIT',
+          accountName: 'Visa',
+        }),
+      ],
+    })
+    expect(resolveSpendingAccountName(debtPayment, lookup)).toBe('Credit card')
+  })
+
+  it('falls back to the split account name, then to null', () => {
+    const notInStore = txn({
+      txnKind: 'EXPENSE',
+      splits: [
+        split({ accountId: 'asset-checking', side: 'CREDIT' }),
+        split({
+          accountId: 'exp-archived',
+          accountType: 'EXPENSE',
+          side: 'DEBIT',
+          accountName: 'Pets',
+        }),
+      ],
+    })
+    expect(resolveSpendingAccountName(notInStore, lookup)).toBe('Pets')
+
+    const unknownAccount = txn({
+      txnKind: 'EXPENSE',
+      splits: [split({ accountId: 'exp-unknown', accountType: 'EXPENSE', side: 'DEBIT' })],
+    })
+    expect(resolveSpendingAccountName(unknownAccount, lookup)).toBeNull()
+  })
+
+  it('takes the first EXPENSE debit split when several exist', () => {
+    const multi = txn({
+      txnKind: 'EXPENSE',
+      splits: [
+        split({ accountId: 'a', accountType: 'EXPENSE', side: 'DEBIT', accountName: 'First' }),
+        split({ accountId: 'b', accountType: 'EXPENSE', side: 'DEBIT', accountName: 'Second' }),
+      ],
+    })
+    expect(resolveSpendingAccountName(multi, lookup)).toBe('First')
   })
 })

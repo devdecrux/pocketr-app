@@ -55,6 +55,17 @@ describe('sanitizeInternalRedirect', () => {
     expect(sanitizeInternalRedirect('/accounts#section')).toBe('/accounts#section')
   })
 
+  it.each(['/\\evil.example', '\\\\evil.example', '/foo\\bar'])(
+    'rejects redirects containing a backslash: %s',
+    (redirect) => {
+      expect(sanitizeInternalRedirect(redirect)).toBeNull()
+    },
+  )
+
+  it('still accepts internal routes with query params after the backslash check', () => {
+    expect(sanitizeInternalRedirect('/transactions?page=1')).toBe('/transactions?page=1')
+  })
+
   it('rejects relative path without leading slash', () => {
     expect(sanitizeInternalRedirect('dashboard')).toBeNull()
   })

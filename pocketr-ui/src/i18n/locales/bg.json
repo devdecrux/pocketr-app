@@ -98,6 +98,9 @@
     "accountSelector": {
       "ownerGroup": "Собственик: {ownerId}"
     },
+    "authLayout": {
+      "motto": "Просто на повърхността. Солидно отдолу."
+    },
     "categoryColorPicker": {
       "noColor": "Без цвят"
     },
@@ -110,6 +113,7 @@
     },
     "sidebar": {
       "household": "Домакинство",
+      "mainNavigation": "Основна навигация",
       "routes": {
         "accounts": "Сметки",
         "categories": "Категории",
@@ -129,6 +133,11 @@
         "pocketr": "Pocketr"
       }
     },
+    "themeToggle": {
+      "auto": "Тема: Системна. Превключи на Светла",
+      "dark": "Тема: Тъмна. Превключи на Системна",
+      "light": "Тема: Светла. Превключи на Тъмна"
+    },
     "ui": {
       "commandPalette": {
         "description": "Търси команда за изпълнение...",
@@ -140,8 +149,15 @@
         "toggle": "Превключи страничното меню"
       }
     },
+    "userMenu": {
+      "appearance": "Външен вид",
+      "openProfileMenu": "Отвори менюто на профила",
+      "signOut": "Изход"
+    },
     "viewMode": {
-      "individual": "Личен"
+      "individual": "Личен",
+      "personal": "Лично",
+      "selectMode": "Изберете режим на преглед"
     }
   },
   "views": {
@@ -189,16 +205,17 @@
     },
     "auth": {
       "login": {
-        "description": "Въведи имейла си, за да влезеш в профила си",
+        "emailPlaceholder": "alex{'@'}example.com",
         "errors": {
           "invalidCredentials": "Невалиден имейл или парола. Опитай отново.",
           "sessionExpired": "Сесията ти е изтекла. Влез отново."
         },
         "links": {
-          "registerPrompt": "Нямаш профил?"
+          "register": "Създай профил",
+          "registerPrompt": "Нов си в Pocketr?"
         },
         "submit": "Вход",
-        "title": "Вход"
+        "title": "Добре дошъл отново!"
       },
       "registration": {
         "description": "Въведи данните си, за да създадеш профил",
@@ -247,7 +264,27 @@
       "empty": {
         "accounts": "Все още няма сметки.",
         "monthlySpending": "Няма данни за разходи през този месец.",
+        "spendingData": "Няма налични данни.",
+        "spendings": "Все още няма разходи.",
         "transactions": "Все още няма транзакции."
+      },
+      "overview": {
+        "acrossAccounts": "В {count} сметка | В {count} сметки",
+        "addTransaction": "Добави транзакция",
+        "availableBalance": "Наличен баланс",
+        "chartPeriod": "Период на графиката на разходите",
+        "heading": "Парите ви с един поглед",
+        "lastMonths": "Последните {count} месеца",
+        "recentExpenses": "Последни разходи",
+        "selectPeriod": "Изберете период",
+        "spendingOverTime": "Разходи във времето",
+        "spentInPeriod": "Похарчено за {period}",
+        "spentThisMonth": "Похарчено този месец",
+        "subtitle": "Малко яснота за ежедневните ви финанси.",
+        "today": "Днес",
+        "topCategories": "Топ категории",
+        "viewAll": "Виж всички",
+        "yesterday": "Вчера"
       },
       "periodViews": {
         "lifetime": "От началото",

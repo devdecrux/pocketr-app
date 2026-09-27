@@ -1,3 +1,4 @@
+import { computed } from 'vue'
 import { useColorMode } from '@vueuse/core'
 
 export const APP_THEME_OPTIONS = [
@@ -28,8 +29,22 @@ export function useAppTheme() {
 
   applyThemePreset(DEFAULT_THEME_PRESET)
 
+  /** The stored choice. `mode.value` resolves "auto" to the system theme, so read `mode.store`. */
+  const selectedMode = computed<AppThemeMode>({
+    get: () => {
+      const stored = mode.store.value
+      return APP_THEME_OPTIONS.some((option) => option.value === stored)
+        ? (stored as AppThemeMode)
+        : 'auto'
+    },
+    set: (value) => {
+      mode.value = value
+    },
+  })
+
   return {
     mode,
+    selectedMode,
     options: APP_THEME_OPTIONS,
     preset: DEFAULT_THEME_PRESET,
     presets: APP_THEME_PRESETS,

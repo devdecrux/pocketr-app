@@ -72,8 +72,9 @@
  * Pocketr v2 design tokens for Nuxt UI (docs/design-concepts/pocketr-v1 IMPLEMENTATION.md, "Visual rules").
  * Only migrated (Nuxt UI) pages consume `--ui-*` and `--pocketr-*`. Unlayered so they override the
  * defaults Nuxt UI generates in `@layer theme`.
- * Unmapped Nuxt UI tokens (neutral palette, bg-muted/accented, dimmed/toned text) are Phase 0
- * fallbacks (Nuxt UI slate defaults) and must be matched to the Phase 1 PNGs.
+ * Phase 1 matched every neutral token the migrated shell and dashboard use to the dashboard PNGs:
+ * runbook values where one exists, otherwise prompts.md values (dark nav/icon tiles, button text)
+ * or values sampled from the PNGs (light tints, avatar, progress track, dark Appearance choice).
  */
 :root {
   --ui-primary: #0891b2;
@@ -84,10 +85,30 @@
   --ui-text: #172124;
   --ui-text-highlighted: #172124;
   --ui-text-muted: #67747c;
+  --ui-text-dimmed: #67747c;
+  --ui-text-toned: #67747c;
+  --ui-text-inverted: #ffffff;
+  --ui-bg-muted: #fafafa;
+  --ui-bg-elevated: #f0f2f5;
+  --ui-bg-accented: #e5e7eb;
+  --ui-border-accented: #e5e7eb;
 
   --pocketr-bg-canvas: #fafafa;
   --pocketr-bg-main: #fafafa;
   --pocketr-bg-shell: #ffffff;
+  /* Desktop sidebar header and page header share one height, so their bottom borders line up. */
+  --pocketr-header-height: 73px;
+  --pocketr-nav-active: #e5f5f9;
+  --pocketr-icon-bg: #eef9fc;
+  --pocketr-tile-bg: #e8f7fb;
+  --pocketr-choice-active: #dff3f8;
+  --pocketr-avatar-bg: #dee3e8;
+  --pocketr-track: #f0f2f5;
+  --pocketr-chart-grid: #e5e7eb;
+  /* Public sign-in / registration frame and form fields. */
+  --pocketr-auth-header-bg: #ffffff;
+  --pocketr-field-bg: #ffffff;
+  --pocketr-auth-mark-bg: #e7f7fd;
 }
 
 .dark {
@@ -100,10 +121,26 @@
   --ui-text: #edf2f5;
   --ui-text-highlighted: #edf2f5;
   --ui-text-muted: #a0acb7;
+  --ui-text-dimmed: #a0acb7;
+  --ui-text-toned: #a0acb7;
+  --ui-text-inverted: #082f3a;
+  --ui-bg-muted: #15191d;
+  --ui-bg-accented: #30383f;
+  --ui-border-accented: #30383f;
 
   --pocketr-bg-canvas: #101214;
   --pocketr-bg-main: #15191d;
   --pocketr-bg-shell: #111518;
+  --pocketr-nav-active: #11333e;
+  --pocketr-icon-bg: #17313b;
+  --pocketr-tile-bg: #17313b;
+  --pocketr-choice-active: #093644;
+  --pocketr-avatar-bg: #2e3941;
+  --pocketr-track: #28323a;
+  --pocketr-chart-grid: #30383f;
+  --pocketr-auth-header-bg: #161b20;
+  --pocketr-field-bg: #1f262c;
+  --pocketr-auth-mark-bg: #1c2b32;
 }
 
 /* Theme definitions: Pocketr light preset */

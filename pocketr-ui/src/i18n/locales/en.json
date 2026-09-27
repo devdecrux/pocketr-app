@@ -33,7 +33,7 @@
       "creatingAccount": "Creating account...",
       "leaving": "Leaving...",
       "loading": "Loading...",
-      "loggingIn": "Logging in...",
+      "loggingIn": "Signing in...",
       "saving": "Saving...",
       "sending": "Sending...",
       "uploading": "Uploading..."
@@ -98,6 +98,9 @@
     "accountSelector": {
       "ownerGroup": "Owner: {ownerId}"
     },
+    "authLayout": {
+      "motto": "Simple on the surface. Solid underneath."
+    },
     "categoryColorPicker": {
       "noColor": "No color"
     },
@@ -110,6 +113,7 @@
     },
     "sidebar": {
       "household": "Household",
+      "mainNavigation": "Main navigation",
       "routes": {
         "accounts": "Accounts",
         "categories": "Categories",
@@ -129,6 +133,11 @@
         "pocketr": "Pocketr"
       }
     },
+    "themeToggle": {
+      "auto": "Theme: System. Switch to Light",
+      "dark": "Theme: Dark. Switch to System",
+      "light": "Theme: Light. Switch to Dark"
+    },
     "ui": {
       "commandPalette": {
         "description": "Search for a command to run...",
@@ -140,8 +149,15 @@
         "toggle": "Toggle Sidebar"
       }
     },
+    "userMenu": {
+      "appearance": "Appearance",
+      "openProfileMenu": "Open profile menu",
+      "signOut": "Sign out"
+    },
     "viewMode": {
-      "individual": "Individual"
+      "individual": "Individual",
+      "personal": "Personal",
+      "selectMode": "Select view mode"
     }
   },
   "views": {
@@ -189,16 +205,17 @@
     },
     "auth": {
       "login": {
-        "description": "Enter your email below to login to your account",
+        "emailPlaceholder": "alex{'@'}example.com",
         "errors": {
           "invalidCredentials": "Invalid email or password. Please try again.",
           "sessionExpired": "Your session has expired. Please log in again."
         },
         "links": {
-          "registerPrompt": "Don't have an account?"
+          "register": "Create an account",
+          "registerPrompt": "New to Pocketr?"
         },
-        "submit": "Login",
-        "title": "Login"
+        "submit": "Sign in",
+        "title": "Welcome back!"
       },
       "registration": {
         "description": "Enter your information to create an account",
@@ -247,7 +264,27 @@
       "empty": {
         "accounts": "No accounts yet.",
         "monthlySpending": "No spending data for this month.",
+        "spendingData": "No data available.",
+        "spendings": "No spendings yet.",
         "transactions": "No transactions yet."
+      },
+      "overview": {
+        "acrossAccounts": "Across {count} account | Across {count} accounts",
+        "addTransaction": "Add transaction",
+        "availableBalance": "Available balance",
+        "chartPeriod": "Spending chart period",
+        "heading": "Your money, at a glance",
+        "lastMonths": "Last {count} months",
+        "recentExpenses": "Recent expenses",
+        "selectPeriod": "Select period",
+        "spendingOverTime": "Spending over time",
+        "spentInPeriod": "Spent in {period}",
+        "spentThisMonth": "Spent this month",
+        "subtitle": "A little clarity for your everyday finances.",
+        "today": "Today",
+        "topCategories": "Top categories",
+        "viewAll": "View all",
+        "yesterday": "Yesterday"
       },
       "periodViews": {
         "lifetime": "Lifetime",

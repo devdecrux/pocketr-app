@@ -20,11 +20,72 @@
         "title": "Konto archivieren"
       },
       "sharedFromOtherMember": "Nicht dein Konto · Von einem anderen Haushaltsmitglied geteilt"
+    },
+    "auth": {
+      "login": {
+        "emailPlaceholder": "alex{'@'}example.com",
+        "errors": {
+          "invalidCredentials": "Ungültige E-Mail-Adresse oder ungültiges Passwort. Bitte versuche es erneut.",
+          "sessionExpired": "Deine Sitzung ist abgelaufen. Bitte melde dich erneut an."
+        },
+        "links": {
+          "register": "Konto erstellen",
+          "registerPrompt": "Neu bei Pocketr?"
+        },
+        "submit": "Anmelden",
+        "title": "Willkommen zurück!"
+      }
+    },
+    "dashboard": {
+      "empty": {
+        "spendingData": "Keine Daten verfügbar.",
+        "spendings": "Noch keine Ausgaben."
+      },
+      "overview": {
+        "acrossAccounts": "Über {count} Konto | Über {count} Konten",
+        "addTransaction": "Transaktion hinzufügen",
+        "availableBalance": "Verfügbarer Saldo",
+        "chartPeriod": "Zeitraum des Ausgabendiagramms",
+        "heading": "Ihr Geld auf einen Blick",
+        "lastMonths": "Letzte {count} Monate",
+        "recentExpenses": "Letzte Ausgaben",
+        "selectPeriod": "Zeitraum wählen",
+        "spendingOverTime": "Ausgaben im Zeitverlauf",
+        "spentInPeriod": "Ausgegeben im {period}",
+        "spentThisMonth": "Diesen Monat ausgegeben",
+        "subtitle": "Ein wenig Klarheit für Ihre täglichen Finanzen.",
+        "today": "Heute",
+        "topCategories": "Top-Kategorien",
+        "viewAll": "Alle anzeigen",
+        "yesterday": "Gestern"
+      }
     }
   },
   "errors": {
     "accounts": {
       "archive": "Das Konto konnte nicht archiviert werden."
+    }
+  },
+  "components": {
+    "authLayout": {
+      "motto": "Einfach an der Oberfläche. Solide im Kern."
+    },
+    "sidebar": {
+      "mainNavigation": "Hauptnavigation"
+    },
+    "themeToggle": {
+      "auto": "Design: System. Zu Hell wechseln",
+      "dark": "Design: Dunkel. Zu System wechseln",
+      "light": "Design: Hell. Zu Dunkel wechseln"
+    },
+    "userMenu": {
+      "appearance": "Darstellung",
+      "openProfileMenu": "Profilmenü öffnen",
+      "signOut": "Abmelden"
+    },
+    "viewMode": {
+      "personal": "Persönlich",
+      "selectMode": "Ansichtsmodus wählen"
     }
   }
 }

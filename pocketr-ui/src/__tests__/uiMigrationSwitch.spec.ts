@@ -33,6 +33,7 @@ async function mountAppAt(path: string) {
       { path: '/legacy', component: LegacyPage },
       { path: '/login', component: LoginScreen, meta: { layout: 'auth' } },
       { path: '/migrated', component: MigratedPage, meta: { uiV2: true } },
+      { path: '/migrated-auth', component: LoginScreen, meta: { uiV2: true, layout: 'auth' } },
     ],
   })
 
@@ -43,7 +44,11 @@ async function mountAppAt(path: string) {
     attachTo: document.body,
     global: {
       plugins: [createPinia(), router, i18n],
-      stubs: { Sidebar: { template: '<aside data-test="legacy-sidebar" />' } },
+      stubs: {
+        Sidebar: { template: '<aside data-test="legacy-sidebar" />' },
+        // The Nuxt UI sidebar has its own spec (AppSidebar.spec.ts).
+        AppSidebar: { template: '<aside data-test="v2-sidebar" />' },
+      },
     },
   })
   await flushPromises()
@@ -63,10 +68,10 @@ describe('UI migration switch (temporary)', () => {
     expect(isUiV2Route({ meta: { uiV2: true } })).toBe(true)
   })
 
-  it('does not flag any application route in Phase 0', () => {
+  it('flags only the sign-in and dashboard routes (Phases 1-2)', () => {
     const flagged = appRouter.getRoutes().filter((route) => isUiV2Route(route))
 
-    expect(flagged.map((route) => route.path)).toEqual([])
+    expect(flagged.map((route) => route.path)).toEqual(['/login', '/dashboard'])
   })
 
   it('renders unflagged routes through the legacy shell', async () => {
@@ -97,6 +102,7 @@ describe('UI migration switch (temporary)', () => {
     const uiRoot = wrapper.findComponent(UiV2Root)
     expect(uiRoot.exists()).toBe(true)
     expect(uiRoot.text()).toContain('Migrated page')
+    expect(uiRoot.find('[data-test="v2-sidebar"]').exists()).toBe(true)
     // `UApp` wraps the page in Reka UI's ConfigProvider.
     expect(uiRoot.findComponent({ name: 'ConfigProvider' }).exists()).toBe(true)
     expect(wrapper.find('[data-test="legacy-sidebar"]').exists()).toBe(false)
@@ -109,6 +115,18 @@ describe('UI migration switch (temporary)', () => {
     expect(wrapper.findComponent(UiV2Root).exists()).toBe(false)
     expect(wrapper.find('[data-test="legacy-sidebar"]').exists()).toBe(true)
     expect(document.body.hasAttribute(UI_MIGRATION_ATTRIBUTE)).toBe(false)
+
+    wrapper.unmount()
+  })
+
+  it('renders flagged auth-layout routes on the Nuxt UI path without the sidebar', async () => {
+    const { wrapper } = await mountAppAt('/migrated-auth')
+
+    const uiRoot = wrapper.findComponent(UiV2Root)
+    expect(uiRoot.exists()).toBe(true)
+    expect(uiRoot.text()).toContain('Login screen')
+    expect(uiRoot.find('[data-test="v2-sidebar"]').exists()).toBe(false)
+    expect(wrapper.find('[data-test="legacy-sidebar"]').exists()).toBe(false)
 
     wrapper.unmount()
   })
