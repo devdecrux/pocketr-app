@@ -23,6 +23,14 @@ Rebuild `pocketr-ui` **mobile first** to match `docs/design-concepts/pocketr-v1/
 - Replace tables with `UTable`, desktop dialogs with `UModal`, mobile form sheets with `UDrawer`, and use Nuxt UI form/navigation/input components.
 - Enable Nuxt UI Vite component detection and bundle only icons actually used by Pocketr.
 
+## Required agent tooling
+
+- The official **Nuxt UI skill**, **Nuxt UI MCP server** and **Playwright CLI skill** are user-global prerequisites. The agent must verify they are available before repository preflight, but must not install or reconfigure global tooling.
+- Invoke the `nuxt-ui` skill for every implementation phase. Use the Nuxt UI MCP server for current component APIs, props, slots, events and examples; never rely on memory or guess an API.
+- Use `https://ui.nuxt.com/llms.txt` only as a documentation fallback. Never load `llms-full.txt` in full; retrieve only the specific information needed.
+- Use Playwright CLI to inspect the running UI, exercise workflows and capture review screenshots. Keep `@playwright/test` for repeatable E2E and approved visual-regression tests.
+- If any required integration is unavailable, stop and report exactly what is missing. Do not substitute another UI or browser-automation tool.
+
 ## Visual rules
 
 - Match every page's light/dark desktop/mobile PNG. No gradients, glass effects, purple, decorative additions, or alternate layouts.
@@ -57,7 +65,7 @@ The main agent must complete this once before spawning the Phase 0 subagent:
 ### Agent orchestration
 
 - After repository preflight, the main agent coordinates and reviews; it must spawn **one fresh subagent for each numbered phase**, including Phase 0.
-- Give the subagent only this runbook, the phase number, target files/images/tests and the current repository state. The subagent must read the references itself and modify only that phase.
+- Give the subagent only this runbook, the phase number, target files/images/tests and the current repository state. Require it to use the Nuxt UI skill/MCP and Playwright CLI. The subagent must read the references itself and modify only that phase.
 - Run only one phase subagent at a time. The main agent monitors it, reviews its diff, verifies tests/visual checks and sends phase-specific corrections back to the same subagent.
 - After the phase passes, the main agent reports to the user and waits. Spawn a new subagent for the next phase only after explicit user approval.
 
@@ -75,8 +83,8 @@ The main agent must complete this once before spawning the Phase 0 subagent:
 
 ## Required gate after every phase
 
-- Compare light/dark at desktop and mobile against the target PNGs.
-- Run relevant unit tests, then `npm run type-check` and `npm run build`.
+- Use Playwright CLI to compare light/dark screenshots at exactly `352x856` and `1174x856` against the target PNGs. Never update a baseline to hide a mismatch.
+- Run relevant unit and Playwright tests, then `npm run type-check` and `npm run build`.
 - Report production JS/CSS sizes versus the previous approved phase.
 - Verify keyboard/focus behavior and the phase's complete user workflow.
 - Report tests, changed files, and any mismatch; **stop and wait for approval**.
