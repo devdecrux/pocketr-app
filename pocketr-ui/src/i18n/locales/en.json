@@ -111,6 +111,10 @@
     "dateRangePicker": {
       "clearAriaLabel": "Clear date range"
     },
+    "passwordInput": {
+      "hide": "Hide password",
+      "show": "Show password"
+    },
     "sidebar": {
       "household": "Household",
       "mainNavigation": "Main navigation",
@@ -218,16 +222,18 @@
         "title": "Welcome back!"
       },
       "registration": {
-        "description": "Enter your information to create an account",
+        "emailPlaceholder": "alex{'@'}example.com",
         "errors": {
           "passwordsMismatch": "Passwords do not match",
           "unableToRegister": "Unable to register user"
         },
+        "firstNamePlaceholder": "Alex",
+        "lastNamePlaceholder": "Morgan",
         "links": {
           "loginPrompt": "Already have an account?"
         },
-        "submit": "Create an account",
-        "title": "Sign Up"
+        "submit": "Create account",
+        "title": "Create your account"
       }
     },
     "categories": {

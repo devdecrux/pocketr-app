@@ -26,7 +26,7 @@ const routes = [
     path: '/registration',
     name: 'registration',
     component: RegistrationPage,
-    meta: { layout: 'auth', guestOnly: true },
+    meta: { layout: 'auth', guestOnly: true, uiV2: true },
   },
   {
     path: '/dashboard',

@@ -111,6 +111,10 @@
     "dateRangePicker": {
       "clearAriaLabel": "Изчисти периода"
     },
+    "passwordInput": {
+      "hide": "Скрий паролата",
+      "show": "Покажи паролата"
+    },
     "sidebar": {
       "household": "Домакинство",
       "mainNavigation": "Основна навигация",
@@ -218,16 +222,18 @@
         "title": "Добре дошъл отново!"
       },
       "registration": {
-        "description": "Въведи данните си, за да създадеш профил",
+        "emailPlaceholder": "alex{'@'}example.com",
         "errors": {
           "passwordsMismatch": "Паролите не съвпадат",
           "unableToRegister": "Неуспешна регистрация"
         },
+        "firstNamePlaceholder": "Алекс",
+        "lastNamePlaceholder": "Морган",
         "links": {
           "loginPrompt": "Вече имаш профил?"
         },
         "submit": "Създай профил",
-        "title": "Регистрация"
+        "title": "Създай своя профил"
       }
     },
     "categories": {

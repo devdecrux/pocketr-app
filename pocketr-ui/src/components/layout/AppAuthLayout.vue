@@ -38,24 +38,49 @@ const { t } = useI18n()
 </template>
 
 <style scoped>
-/* Declared on the card so the slotted page form (sign-in, registration) inherits the same sizes. */
+/*
+ * Declared on the card so the slotted pages (sign-in, registration) inherit them and share one
+ * source at every width.
+ */
+.pocketr-auth-card {
+  --pocketr-auth-mark: 6.4375rem;
+  --pocketr-auth-mark-icon: 3.25rem;
+  --pocketr-auth-title: 1.875rem;
+  --pocketr-auth-title-leading: 2.5rem;
+  --pocketr-auth-title-gap: 0.25rem;
+  --pocketr-auth-subtitle: 1rem;
+  --pocketr-auth-subtitle-leading: 1.5;
+  --pocketr-auth-subtitle-gap: 0.5rem;
+  --pocketr-auth-link: 0.9375rem;
+  --pocketr-auth-link-gap: 1.375rem;
+  --pocketr-auth-field-gap: 0.9375rem;
+  --pocketr-auth-label: 1rem;
+  --pocketr-auth-label-leading: 1.25rem;
+  --pocketr-auth-label-gap: 0.25rem;
+  --pocketr-auth-control-h: 2.5rem;
+  --pocketr-auth-control-text: 1rem;
+  --pocketr-auth-control-icon: 1.375rem;
+  --pocketr-auth-control-inset: 1.0625rem;
+  --pocketr-auth-control-text-inset: 3.625rem;
+  --pocketr-auth-button-h: 3rem;
+  --pocketr-auth-button-text: 1.125rem;
+}
+
 @media (width >= 40rem) {
   .pocketr-auth-card {
     --pocketr-auth-mark: 5rem;
     --pocketr-auth-mark-icon: 2.75rem;
     --pocketr-auth-title: 1.5rem;
     --pocketr-auth-title-leading: 2rem;
-    --pocketr-auth-title-gap: 0.25rem;
-    --pocketr-auth-subtitle: 1rem;
+    --pocketr-auth-subtitle-leading: calc(1.75 / 1.125);
     --pocketr-auth-subtitle-gap: 0.25rem;
     --pocketr-auth-form-gap: 1.25rem;
     --pocketr-auth-field-gap: 1rem;
     --pocketr-auth-label: 0.875rem;
-    --pocketr-auth-label-gap: 0.25rem;
-    --pocketr-auth-control-h: 2.5rem;
+    --pocketr-auth-label-leading: 1.5;
     --pocketr-auth-control-text: 0.875rem;
     --pocketr-auth-control-icon: 1.125rem;
-    --pocketr-auth-control-icon-inset: 0.875rem;
+    --pocketr-auth-control-inset: 0.875rem;
     --pocketr-auth-control-text-inset: 2.75rem;
     --pocketr-auth-button-h: 2.75rem;
     --pocketr-auth-button-text: 1rem;

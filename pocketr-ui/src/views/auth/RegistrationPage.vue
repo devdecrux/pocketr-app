@@ -1,30 +1,52 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref, useTemplateRef } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { api } from '@/api/http'
-import { AppFormField, AuthPageShell } from '@/components/app'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
+import PasswordInput from '@/components/forms/PasswordInput.vue'
+import AppAuthLayout from '@/components/layout/AppAuthLayout.vue'
+import {
+  authFieldsClass,
+  authFieldUi,
+  authIconInputUi,
+  authInputUi,
+  authLinkRowClass,
+  authMarkClass,
+  authMarkIconClass,
+  authSubmitClass,
+  authSubtitleClass,
+  authTitleClass,
+} from '@/components/layout/authForm'
+
+type InputHandle = { inputRef: HTMLInputElement | null }
+type PasswordHandle = InputHandle & { hide: () => void }
+
+const { t } = useI18n()
+const router = useRouter()
 
 const firstName = ref('')
 const lastName = ref('')
 const password = ref('')
 const confirmPassword = ref('')
 const email = ref('')
-const isAlert = ref(false)
-const alertMessage = ref('')
+const isPasswordMismatch = ref(false)
+const isRegisterError = ref(false)
 const isSubmitting = ref(false)
+const emailInput = useTemplateRef<InputHandle>('emailInput')
+const passwordInput = useTemplateRef<PasswordHandle>('passwordInput')
+const confirmPasswordInput = useTemplateRef<PasswordHandle>('confirmPasswordInput')
 
-const router = useRouter()
+const passwordMismatchError = computed(() =>
+  isPasswordMismatch.value ? t('views.auth.registration.errors.passwordsMismatch') : false,
+)
 
 async function register(): Promise<void> {
-  isAlert.value = false
-  alertMessage.value = ''
+  isPasswordMismatch.value = false
+  isRegisterError.value = false
 
   if (password.value !== confirmPassword.value) {
-    isAlert.value = true
-    alertMessage.value = 'views.auth.registration.errors.passwordsMismatch'
+    isPasswordMismatch.value = true
+    confirmPasswordInput.value?.inputRef?.focus()
     return
   }
 
@@ -40,83 +62,149 @@ async function register(): Promise<void> {
       },
     })
 
+    passwordInput.value?.hide()
+    confirmPasswordInput.value?.hide()
     await router.push('/login')
   } catch {
-    isAlert.value = true
-    alertMessage.value = 'views.auth.registration.errors.unableToRegister'
+    isRegisterError.value = true
   } finally {
     isSubmitting.value = false
+  }
+
+  // The disabled (loading) submit button drops focus; return keyboard users to the form.
+  if (
+    isRegisterError.value &&
+    (!document.activeElement || document.activeElement === document.body)
+  ) {
+    emailInput.value?.inputRef?.focus()
   }
 }
 </script>
 
 <template>
-  <AuthPageShell>
-    <Card class="w-full max-w-md">
-      <CardHeader>
-        <CardTitle class="text-xl">{{ $t('views.auth.registration.title') }}</CardTitle>
-        <CardDescription>{{ $t('views.auth.registration.description') }}</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <form @submit.prevent="register">
-          <div class="grid gap-4">
-            <div class="grid gap-4 sm:grid-cols-2">
-              <AppFormField :label="$t('common.fields.firstName')" control-id="first-name">
-                <Input
-                  id="first-name"
-                  v-model="firstName"
-                  :placeholder="$t('common.formHints.personFirstName')"
-                  required
-                />
-              </AppFormField>
-              <AppFormField :label="$t('common.fields.lastName')" control-id="last-name">
-                <Input
-                  id="last-name"
-                  v-model="lastName"
-                  :placeholder="$t('common.formHints.personLastName')"
-                  required
-                />
-              </AppFormField>
-            </div>
-            <AppFormField :label="$t('common.fields.email')" control-id="email">
-              <Input
-                id="email"
-                v-model="email"
-                type="email"
-                :placeholder="$t('common.formHints.email')"
-                required
-              />
-            </AppFormField>
-            <AppFormField :label="$t('common.fields.password')" control-id="password">
-              <Input id="password" v-model="password" type="password" required />
-            </AppFormField>
-            <AppFormField
-              :label="$t('common.fields.confirmPassword')"
-              control-id="confirm-password"
-            >
-              <Input id="confirm-password" v-model="confirmPassword" type="password" required />
-            </AppFormField>
+  <AppAuthLayout :motto="false">
+    <div :class="authMarkClass" aria-hidden="true">
+      <UIcon name="i-lucide-user-plus" :class="authMarkIconClass" />
+    </div>
 
-            <p v-if="isAlert" class="text-sm text-destructive">
-              {{ $t(alertMessage) }}
-            </p>
+    <h1 :class="authTitleClass">
+      {{ t('views.auth.registration.title') }}
+    </h1>
+    <p :class="authSubtitleClass">
+      {{ t('components.authLayout.motto') }}
+    </p>
 
-            <Button type="submit" class="w-full" :disabled="isSubmitting">
-              {{
-                isSubmitting
-                  ? $t('common.feedback.creatingAccount')
-                  : $t('views.auth.registration.submit')
-              }}
-            </Button>
-          </div>
-        </form>
-        <div class="mt-4 text-center text-sm">
-          {{ $t('views.auth.registration.links.loginPrompt') }}
-          <RouterLink to="/login" class="text-(--app-button-fg) underline">
-            {{ $t('common.actions.signIn') }}
-          </RouterLink>
-        </div>
-      </CardContent>
-    </Card>
-  </AuthPageShell>
+    <form
+      class="mt-[11px] sm:mt-(--pocketr-auth-form-gap)"
+      :class="authFieldsClass"
+      @submit.prevent="register"
+    >
+      <div class="grid gap-(--pocketr-auth-field-gap) sm:grid-cols-2 sm:gap-x-4">
+        <UFormField :label="t('common.fields.firstName')" name="firstName" :ui="authFieldUi">
+          <UInput
+            id="first-name"
+            v-model="firstName"
+            name="firstName"
+            autocomplete="given-name"
+            :placeholder="t('views.auth.registration.firstNamePlaceholder')"
+            required
+            size="xl"
+            class="w-full"
+            :ui="authInputUi"
+          />
+        </UFormField>
+        <UFormField :label="t('common.fields.lastName')" name="lastName" :ui="authFieldUi">
+          <UInput
+            id="last-name"
+            v-model="lastName"
+            name="lastName"
+            autocomplete="family-name"
+            :placeholder="t('views.auth.registration.lastNamePlaceholder')"
+            required
+            size="xl"
+            class="w-full"
+            :ui="authInputUi"
+          />
+        </UFormField>
+      </div>
+
+      <UFormField :label="t('common.fields.email')" name="email" :ui="authFieldUi">
+        <UInput
+          id="email"
+          ref="emailInput"
+          v-model="email"
+          name="email"
+          type="email"
+          autocomplete="username"
+          :placeholder="t('views.auth.registration.emailPlaceholder')"
+          required
+          size="xl"
+          icon="i-lucide-mail"
+          class="w-full"
+          :ui="authIconInputUi"
+        />
+      </UFormField>
+
+      <UFormField :label="t('common.fields.password')" name="password" :ui="authFieldUi">
+        <PasswordInput
+          id="password"
+          ref="passwordInput"
+          v-model="password"
+          name="password"
+          autocomplete="new-password"
+          required
+        />
+      </UFormField>
+
+      <UFormField
+        :label="t('common.fields.confirmPassword')"
+        name="confirmPassword"
+        :error="passwordMismatchError"
+        :ui="authFieldUi"
+      >
+        <PasswordInput
+          id="confirm-password"
+          ref="confirmPasswordInput"
+          v-model="confirmPassword"
+          name="confirmPassword"
+          autocomplete="new-password"
+          required
+        />
+        <template #error="{ error }">
+          <span role="alert">{{ error }}</span>
+        </template>
+      </UFormField>
+
+      <UAlert
+        v-if="isRegisterError"
+        role="alert"
+        color="error"
+        variant="subtle"
+        icon="i-lucide-circle-alert"
+        :description="t('views.auth.registration.errors.unableToRegister')"
+        :ui="{ icon: 'size-4', description: 'text-sm' }"
+      />
+
+      <UButton
+        type="submit"
+        size="xl"
+        block
+        :loading="isSubmitting"
+        :label="
+          isSubmitting ? t('common.feedback.creatingAccount') : t('views.auth.registration.submit')
+        "
+        :class="authSubmitClass"
+      />
+    </form>
+
+    <p :class="authLinkRowClass">
+      {{ t('views.auth.registration.links.loginPrompt') }}
+      <ULink
+        to="/login"
+        class="font-medium text-primary hover:text-primary hover:underline underline-offset-2"
+      >
+        {{ t('common.actions.signIn') }}
+      </ULink>
+    </p>
+  </AppAuthLayout>
 </template>

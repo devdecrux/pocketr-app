@@ -3,8 +3,21 @@
     "name": "Pocketr"
   },
   "common": {
+    "actions": {
+      "signIn": "Anmelden"
+    },
     "amounts": {
       "mixedCurrencies": "Gemischte Währungen"
+    },
+    "feedback": {
+      "creatingAccount": "Konto wird erstellt..."
+    },
+    "fields": {
+      "confirmPassword": "Passwort bestätigen",
+      "email": "E-Mail",
+      "firstName": "Vorname",
+      "lastName": "Nachname",
+      "password": "Passwort"
     },
     "states": {
       "archived": "Archiviert"
@@ -34,6 +47,20 @@
         },
         "submit": "Anmelden",
         "title": "Willkommen zurück!"
+      },
+      "registration": {
+        "emailPlaceholder": "alex{'@'}example.com",
+        "errors": {
+          "passwordsMismatch": "Die Passwörter stimmen nicht überein",
+          "unableToRegister": "Registrierung fehlgeschlagen"
+        },
+        "firstNamePlaceholder": "Alex",
+        "lastNamePlaceholder": "Morgan",
+        "links": {
+          "loginPrompt": "Du hast bereits ein Konto?"
+        },
+        "submit": "Konto erstellen",
+        "title": "Erstelle dein Konto"
       }
     },
     "dashboard": {
@@ -69,6 +96,10 @@
   "components": {
     "authLayout": {
       "motto": "Einfach an der Oberfläche. Solide im Kern."
+    },
+    "passwordInput": {
+      "hide": "Passwort verbergen",
+      "show": "Passwort anzeigen"
     },
     "sidebar": {
       "mainNavigation": "Hauptnavigation"

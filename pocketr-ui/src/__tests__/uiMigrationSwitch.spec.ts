@@ -68,10 +68,10 @@ describe('UI migration switch (temporary)', () => {
     expect(isUiV2Route({ meta: { uiV2: true } })).toBe(true)
   })
 
-  it('flags only the sign-in and dashboard routes (Phases 1-2)', () => {
+  it('flags only the sign-in, registration and dashboard routes (Phases 1-3)', () => {
     const flagged = appRouter.getRoutes().filter((route) => isUiV2Route(route))
 
-    expect(flagged.map((route) => route.path)).toEqual(['/login', '/dashboard'])
+    expect(flagged.map((route) => route.path)).toEqual(['/login', '/registration', '/dashboard'])
   })
 
   it('renders unflagged routes through the legacy shell', async () => {
