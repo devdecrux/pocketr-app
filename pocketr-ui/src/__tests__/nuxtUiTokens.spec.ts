@@ -1,0 +1,76 @@
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
+import { describe, expect, it } from 'vitest'
+
+const css = readFileSync(resolve(process.cwd(), 'src/main.css'), 'utf8').replace(
+  /\/\*[\s\S]*?\*\//g,
+  '',
+)
+
+/** Returns the declarations of the first block whose selector is exactly `selector` (any nesting level). */
+function declarations(selector: string): Record<string, string> {
+  const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const match = css.match(new RegExp(`(?:^|[}{;])\\s*${escaped}\\s*\\{([^{}]*)\\}`))
+  if (!match?.[1]) {
+    throw new Error(`No CSS block found for selector "${selector}".`)
+  }
+
+  const result: Record<string, string> = {}
+  for (const [, property, value] of match[1].matchAll(/(--[\w-]+)\s*:\s*([^;]+);/g)) {
+    if (property && value) {
+      result[property] = value.trim()
+    }
+  }
+  return result
+}
+
+describe('Pocketr v2 Nuxt UI tokens (IMPLEMENTATION.md "Visual rules")', () => {
+  it('maps the light palette exactly', () => {
+    expect(declarations(':root')).toEqual({
+      '--ui-primary': '#0891b2',
+      '--ui-secondary': '#f59e0b',
+      '--ui-bg': '#ffffff',
+      '--ui-border': '#e5e7eb',
+      '--ui-border-muted': '#e5e7eb',
+      '--ui-text': '#172124',
+      '--ui-text-highlighted': '#172124',
+      '--ui-text-muted': '#67747c',
+      '--pocketr-bg-canvas': '#fafafa',
+      '--pocketr-bg-main': '#fafafa',
+      '--pocketr-bg-shell': '#ffffff',
+    })
+  })
+
+  it('maps the dark palette exactly', () => {
+    expect(declarations('.dark')).toEqual({
+      '--ui-primary': '#22d3ee',
+      '--ui-secondary': '#f59e0b',
+      '--ui-bg': '#1c2227',
+      '--ui-bg-elevated': '#242c32',
+      '--ui-border': '#30383f',
+      '--ui-border-muted': '#30383f',
+      '--ui-text': '#edf2f5',
+      '--ui-text-highlighted': '#edf2f5',
+      '--ui-text-muted': '#a0acb7',
+      '--pocketr-bg-canvas': '#101214',
+      '--pocketr-bg-main': '#15191d',
+      '--pocketr-bg-shell': '#111518',
+    })
+  })
+
+  it('re-points shared legacy theme keys to Nuxt UI tokens only on migrated pages', () => {
+    expect(declarations("body[data-ui-migration='v2']")).toEqual({
+      '--primary': 'var(--ui-primary)',
+      '--secondary': 'var(--ui-secondary)',
+      '--muted': 'var(--ui-bg-muted)',
+      '--border': 'var(--ui-border)',
+      '--radius-xs': 'calc(var(--ui-radius) * 0.5)',
+      '--radius-sm': 'var(--ui-radius)',
+      '--radius-md': 'calc(var(--ui-radius) * 1.5)',
+      '--radius-lg': 'calc(var(--ui-radius) * 2)',
+      '--radius-xl': 'calc(var(--ui-radius) * 3)',
+      '--radius-2xl': 'calc(var(--ui-radius) * 4)',
+      '--radius-3xl': 'calc(var(--ui-radius) * 6)',
+    })
+  })
+})

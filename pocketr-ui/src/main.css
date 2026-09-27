@@ -1,4 +1,5 @@
 @import 'tailwindcss';
+@import '@nuxt/ui';
 @import 'tw-animate-css';
 
 @custom-variant dark (&:is(.dark *));
@@ -29,10 +30,6 @@
   --color-chart-3: var(--chart-3);
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar-primary: var(--sidebar-primary);
@@ -48,6 +45,65 @@
   --color-app-sidebar-surface: var(--app-sidebar-surface);
   --color-app-sidebar-muted: var(--app-sidebar-muted);
   --color-app-sidebar-strong: var(--app-sidebar-strong);
+
+  /*
+   * TEMPORARY (UI migration, remove in Phase 10): Nuxt UI defines these utility namespaces too.
+   * Pinning them keeps legacy `bg-muted` / `bg-border` compiled exactly as before.
+   */
+  --background-color-muted: var(--muted);
+  --background-color-border: var(--border);
+}
+
+/*
+ * Radius scale. Not `inline` so the TEMPORARY Nuxt UI bridge below can re-point it to
+ * `--ui-radius` on migrated pages. xs/2xl/3xl pin Tailwind's defaults, which Nuxt UI redefines.
+ */
+@theme {
+  --radius-xs: 0.125rem;
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: 1rem;
+  --radius-3xl: 1.5rem;
+}
+
+/*
+ * Pocketr v2 design tokens for Nuxt UI (docs/design-concepts/pocketr-v1 IMPLEMENTATION.md, "Visual rules").
+ * Only migrated (Nuxt UI) pages consume `--ui-*` and `--pocketr-*`. Unlayered so they override the
+ * defaults Nuxt UI generates in `@layer theme`.
+ * Unmapped Nuxt UI tokens (neutral palette, bg-muted/accented, dimmed/toned text) are Phase 0
+ * fallbacks (Nuxt UI slate defaults) and must be matched to the Phase 1 PNGs.
+ */
+:root {
+  --ui-primary: #0891b2;
+  --ui-secondary: #f59e0b;
+  --ui-bg: #ffffff;
+  --ui-border: #e5e7eb;
+  --ui-border-muted: #e5e7eb;
+  --ui-text: #172124;
+  --ui-text-highlighted: #172124;
+  --ui-text-muted: #67747c;
+
+  --pocketr-bg-canvas: #fafafa;
+  --pocketr-bg-main: #fafafa;
+  --pocketr-bg-shell: #ffffff;
+}
+
+.dark {
+  --ui-primary: #22d3ee;
+  --ui-secondary: #f59e0b;
+  --ui-bg: #1c2227;
+  --ui-bg-elevated: #242c32;
+  --ui-border: #30383f;
+  --ui-border-muted: #30383f;
+  --ui-text: #edf2f5;
+  --ui-text-highlighted: #edf2f5;
+  --ui-text-muted: #a0acb7;
+
+  --pocketr-bg-canvas: #101214;
+  --pocketr-bg-main: #15191d;
+  --pocketr-bg-shell: #111518;
 }
 
 /* Theme definitions: Pocketr light preset */
@@ -292,6 +348,55 @@
 
   body {
     @apply bg-background text-foreground;
+  }
+
+  /*
+   * TEMPORARY UI migration bridge (remove in Phase 10 together with the legacy styles).
+   * Legacy pages: undo the base defaults `@import '@nuxt/ui'` adds, so they render exactly as before.
+   */
+  body,
+  body:is(.dark *) {
+    -webkit-font-smoothing: revert-layer;
+    -moz-osx-font-smoothing: revert-layer;
+    color-scheme: revert-layer;
+  }
+
+  a:focus-visible {
+    outline-offset: revert-layer;
+  }
+
+  /*
+   * Migrated pages: `useUiMigration` sets `data-ui-migration="v2"` on <body> only while a
+   * `meta.uiV2` route renders. Legacy theme keys win in the shared Tailwind theme, so this scope
+   * re-points them to Nuxt UI tokens and restores Nuxt UI's own body/base defaults.
+   */
+  body[data-ui-migration='v2'] {
+    --primary: var(--ui-primary);
+    --secondary: var(--ui-secondary);
+    --muted: var(--ui-bg-muted);
+    --border: var(--ui-border);
+    --radius-xs: calc(var(--ui-radius) * 0.5);
+    --radius-sm: var(--ui-radius);
+    --radius-md: calc(var(--ui-radius) * 1.5);
+    --radius-lg: calc(var(--ui-radius) * 2);
+    --radius-xl: calc(var(--ui-radius) * 3);
+    --radius-2xl: calc(var(--ui-radius) * 4);
+    --radius-3xl: calc(var(--ui-radius) * 6);
+
+    @apply antialiased text-default bg-default scheme-light dark:scheme-dark;
+  }
+
+  body[data-ui-migration='v2'] * {
+    border-color: currentColor;
+    outline-color: revert-layer;
+  }
+
+  body[data-ui-migration='v2'] a:focus-visible {
+    outline-offset: 0;
+  }
+
+  body[data-ui-migration='v2'] #app {
+    isolation: isolate;
   }
 }
 

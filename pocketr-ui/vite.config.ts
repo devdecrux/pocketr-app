@@ -1,7 +1,7 @@
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import vueDevTools from 'vite-plugin-vue-devtools'
-import tailwindcss from '@tailwindcss/vite'
+import ui from '@nuxt/ui/vite'
 import path from 'node:path'
 
 const traefikUrl = process.env.VITE_TRAEFIK_URL ?? 'http://localhost'
@@ -11,7 +11,45 @@ export default defineConfig({
   plugins: [
     vue(),
     vueDevTools(),
-    tailwindcss(),
+    // Nuxt UI registers `@tailwindcss/vite` itself, so the standalone Tailwind plugin is not added.
+    ui({
+      ui: {
+        colors: {
+          primary: 'cyan',
+          secondary: 'amber',
+        },
+      },
+      // Bundle only the icons Pocketr uses (plus Nuxt UI's own) from `@iconify-json/*`: no runtime Iconify API calls.
+      // `globInclude` replaces the default list; `.ts` is included because some icon names live in TS modules.
+      icon: {
+        clientBundle: {
+          scan: {
+            globInclude: ['src/**/*.{vue,ts}'],
+            globExclude: [
+              'node_modules',
+              'dist',
+              'build',
+              'coverage',
+              'test',
+              'tests',
+              '.*',
+              '**/__tests__/**',
+              '**/*.spec.ts',
+              '**/*.d.ts',
+            ],
+          },
+        },
+      },
+      // `useAppTheme` (VueUse `useColorMode`, `.dark` class on <html>) stays the only color-mode controller.
+      colorMode: false,
+      // Auto-register Nuxt UI components only; legacy `src/components/**` keep their explicit imports.
+      components: {
+        dirs: [],
+      },
+      experimental: {
+        componentDetection: true,
+      },
+    }),
     {
       name: 'traefik-info',
       configureServer(server) {
