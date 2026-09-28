@@ -1,14 +1,16 @@
-export const CATEGORY_PRESET_COLORS = [
-  '#ef4444',
-  '#f97316',
-  '#f59e0b',
-  '#84cc16',
-  '#22c55e',
-  '#14b8a6',
-  '#06b6d4',
-  '#3b82f6',
-  '#8b5cf6',
-  '#ec4899',
-  '#6b7280',
-  '#0ea5e9',
+export const CATEGORY_COLOR_PRESETS = [
+  { key: 'cyan', value: '#2cc4e6' },
+  { key: 'green', value: '#62a864' },
+  { key: 'blue', value: '#4a7fd0' },
+  { key: 'rose', value: '#e45a77' },
+  { key: 'amber', value: '#f5a616' },
+  { key: 'slate', value: '#8391a5' },
+  { key: 'neutral', value: '#c8cdd4' },
 ] as const
+
+export type CategoryColorKey = (typeof CATEGORY_COLOR_PRESETS)[number]['key']
+
+export function isPresetCategoryColor(color: string | null | undefined): boolean {
+  const normalized = color?.toLowerCase()
+  return CATEGORY_COLOR_PRESETS.some((preset) => preset.value === normalized)
+}

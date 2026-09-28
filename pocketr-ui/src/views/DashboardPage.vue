@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, defineAsyncComponent, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useLocalStorage } from '@vueuse/core'
 import AppPagePanel from '@/components/layout/AppPagePanel.vue'
 import { useAccountStore } from '@/stores/account'
 import { useAuthStore } from '@/stores/auth'
@@ -48,8 +49,26 @@ const recentExpenses = ref<LedgerTxn[]>([])
 const recentExpensesLoading = ref(false)
 const lifetimeReport = ref<MonthlyReportEntry[]>([])
 const lifetimeReportLoading = ref(false)
-const categoryChartView = ref<'rollover' | 'lifetime'>('rollover')
-const periodCount = ref<ReportPeriodCount>(DEFAULT_REPORT_PERIOD_COUNT)
+const categoryChartView = useLocalStorage<'rollover' | 'lifetime'>(
+  'pocketr-dashboard-category-view',
+  'rollover',
+)
+const periodCount = useLocalStorage<ReportPeriodCount>(
+  'pocketr-dashboard-period-count',
+  DEFAULT_REPORT_PERIOD_COUNT,
+  {
+    serializer: {
+      read: (raw) => {
+        const count = Number(raw)
+        return (
+          REPORT_PERIOD_COUNT_OPTIONS.find((option) => option === count) ??
+          DEFAULT_REPORT_PERIOD_COUNT
+        )
+      },
+      write: (count) => String(count),
+    },
+  },
+)
 
 /** Rollover day of the active scope: the household's in household mode, otherwise the user's. */
 const rolloverDay = computed(() => {
@@ -468,9 +487,9 @@ const selectUi = {
         }"
       >
         <span
-          class="flex size-[60px] shrink-0 items-center justify-center rounded-full bg-(--pocketr-icon-bg) lg:col-start-2 lg:row-start-1 lg:size-6"
+          class="flex size-[60px] shrink-0 items-center justify-center rounded-full bg-success/10 lg:col-start-2 lg:row-start-1 lg:size-9"
         >
-          <UIcon name="i-lucide-wallet" class="size-7 text-primary lg:size-3.5" />
+          <UIcon name="i-lucide-wallet" class="size-7 text-(--pocketr-success-fg) lg:size-5" />
         </span>
         <div class="min-w-0 space-y-0.5 lg:contents">
           <p class="text-sm text-muted lg:col-start-1 lg:row-start-1 lg:truncate lg:text-[13px]">
@@ -521,9 +540,9 @@ const selectUi = {
         }"
       >
         <span
-          class="flex size-[60px] shrink-0 items-center justify-center rounded-full bg-(--pocketr-icon-bg) lg:col-start-2 lg:row-start-1 lg:size-6"
+          class="flex size-[60px] shrink-0 items-center justify-center rounded-full bg-error/10 lg:col-start-2 lg:row-start-1 lg:size-9"
         >
-          <UIcon name="i-lucide-arrow-up-right" class="size-7 text-primary lg:size-3.5" />
+          <UIcon name="i-lucide-arrow-up-right" class="size-7 text-error lg:size-5" />
         </span>
         <div class="min-w-0 space-y-0.5 lg:contents">
           <p class="text-sm text-muted lg:col-start-1 lg:row-start-1 lg:truncate lg:text-[13px]">
@@ -575,8 +594,9 @@ const selectUi = {
         :ui="{ root: 'rounded-xl', body: 'p-3 sm:p-4 lg:px-4 lg:pb-4' }"
       >
         <div class="mb-2 flex items-center justify-between gap-3">
-          <h2 class="text-[15px] font-semibold text-highlighted">
-            {{ $t('views.dashboard.overview.spendingOverTime') }}
+          <h2 class="flex min-w-0 items-center gap-1.5 text-[15px] font-semibold text-highlighted">
+            <UIcon name="i-lucide-chart-line" class="size-4 shrink-0 text-primary" />
+            <span class="truncate">{{ $t('views.dashboard.overview.spendingOverTime') }}</span>
           </h2>
           <USelect
             :model-value="periodCount"
@@ -609,15 +629,19 @@ const selectUi = {
       <UCard :ui="{ root: 'rounded-xl', body: 'p-3 sm:p-4 lg:p-4' }">
         <!-- Row-2 headers: title (truncates at 1/5 width) left, action right, one fixed desktop height. -->
         <div class="flex items-center justify-between gap-3 pb-3 lg:mb-3 lg:h-7 lg:gap-2 lg:pb-0">
-          <h2 class="min-w-0 truncate text-[15px] font-semibold text-highlighted">
-            {{ $t('views.dashboard.overview.recentExpenses') }}
+          <h2 class="flex min-w-0 items-center gap-1.5 text-[15px] font-semibold text-highlighted">
+            <UIcon name="i-lucide-receipt" class="size-4 shrink-0 text-primary" />
+            <span class="truncate">{{ $t('views.dashboard.overview.recentExpenses') }}</span>
           </h2>
-          <ULink
-            to="/transactions"
-            class="shrink-0 text-sm whitespace-nowrap text-primary hover:underline"
-          >
-            {{ $t('views.dashboard.overview.viewAll') }}
-          </ULink>
+          <UTooltip :text="$t('views.dashboard.overview.viewAll')">
+            <ULink
+              to="/transactions"
+              class="inline-flex shrink-0 items-center text-sm whitespace-nowrap text-primary hover:underline"
+            >
+              <UIcon name="i-lucide-arrow-right" class="hidden size-4 lg:max-2xl:inline-block" />
+              <span class="lg:max-2xl:sr-only">{{ $t('views.dashboard.overview.viewAll') }}</span>
+            </ULink>
+          </UTooltip>
         </div>
         <div v-if="recentExpensesLoading" class="space-y-3">
           <USkeleton v-for="index in 3" :key="index" class="h-12 w-full" />
@@ -656,25 +680,27 @@ const selectUi = {
 
       <UCard :ui="{ root: 'rounded-xl', body: 'p-3 sm:p-4 lg:p-4' }">
         <div class="mb-3 flex items-center justify-between gap-3 lg:mb-3 lg:h-7 lg:gap-2 lg:pb-0">
-          <h2 class="min-w-0 truncate text-[15px] font-semibold text-highlighted">
-            {{ $t('views.dashboard.overview.topCategories') }}
+          <h2 class="flex min-w-0 items-center gap-1.5 text-[15px] font-semibold text-highlighted">
+            <UIcon name="i-lucide-shapes" class="size-4 shrink-0 text-primary" />
+            <span class="truncate">{{ $t('views.dashboard.overview.topCategories') }}</span>
           </h2>
           <!-- Off = current rollover period, on = lifetime (as the legacy dashboard switch). -->
-          <USwitch
-            v-model="categoryChartView"
-            true-value="lifetime"
-            false-value="rollover"
-            :label="$t('views.dashboard.periodViews.lifetime')"
-            size="sm"
-            class="shrink-0"
-            :ui="{
-              root: 'flex-row-reverse items-center gap-2',
-              // Unchecked track in the muted text colour: >= 3:1 against the card in both themes.
-              base: 'data-[state=unchecked]:bg-(--ui-text-muted)',
-              wrapper: 'ms-0',
-              label: 'text-xs font-normal whitespace-nowrap text-muted',
-            }"
-          />
+          <UTooltip :text="$t('views.dashboard.periodViews.lifetime')">
+            <USwitch
+              v-model="categoryChartView"
+              true-value="lifetime"
+              false-value="rollover"
+              :label="$t('views.dashboard.periodViews.lifetime')"
+              size="sm"
+              class="shrink-0"
+              :ui="{
+                root: 'flex-row-reverse items-center gap-2',
+                base: 'data-[state=unchecked]:bg-(--ui-text-muted)',
+                wrapper: 'ms-0',
+                label: 'text-xs font-normal whitespace-nowrap text-muted lg:max-2xl:sr-only',
+              }"
+            />
+          </UTooltip>
         </div>
         <div v-if="categoryChartLoading" class="space-y-4">
           <USkeleton v-for="index in 4" :key="index" class="h-8 w-full" />

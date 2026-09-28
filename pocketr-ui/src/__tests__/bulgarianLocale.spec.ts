@@ -43,7 +43,7 @@ describe('Bulgarian locale', () => {
     try {
       setLocale('bg')
 
-      expect(i18n.global.t('views.settings.profile.title')).toBe('Настройки на профила')
+      expect(i18n.global.t('views.settings.profile.title')).toBe('Профил')
       expect(i18n.global.t('common.actions.save')).toBe('Запази')
     } finally {
       setLocale('en')

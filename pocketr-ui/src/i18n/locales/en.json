@@ -13,6 +13,7 @@
       "close": "Close",
       "create": "Create",
       "delete": "Delete",
+      "edit": "Edit",
       "leave": "Leave",
       "logOut": "Log out",
       "manage": "Manage",
@@ -78,6 +79,7 @@
       "unknownUser": "Unknown user"
     },
     "table": {
+      "actions": "Actions",
       "amount": "Amount",
       "balance": "Balance",
       "category": "Category",
@@ -102,6 +104,16 @@
       "motto": "Simple on the surface. Solid underneath."
     },
     "categoryColorPicker": {
+      "colors": {
+        "amber": "Amber",
+        "blue": "Blue",
+        "cyan": "Cyan",
+        "green": "Green",
+        "neutral": "Neutral",
+        "rose": "Rose",
+        "slate": "Slate"
+      },
+      "current": "Current color",
       "noColor": "No color"
     },
     "categoryTagSelector": {
@@ -159,6 +171,7 @@
       "signOut": "Sign out"
     },
     "viewMode": {
+      "household": "Household",
       "individual": "Individual",
       "personal": "Personal",
       "selectMode": "Select view mode"
@@ -238,18 +251,33 @@
     },
     "categories": {
       "actions": {
-        "new": "New Category"
+        "new": "New category"
       },
       "confirmDelete": "Delete category \"{name}\"?",
       "create": {
         "description": "Add a category for transaction tagging.",
+        "submit": "Create Category",
         "title": "Create Category"
       },
+      "delete": {
+        "confirm": "Delete category",
+        "description": "Categories used by transactions cannot be deleted."
+      },
+      "edit": {
+        "description": "Change the name or color.",
+        "submit": "Save changes",
+        "title": "Edit category"
+      },
       "empty": "No categories yet. Create your first category to get started.",
+      "form": {
+        "preview": "Preview",
+        "previewPlaceholder": "Category name"
+      },
       "loading": "Loading categories...",
-      "rename": {
-        "description": "Update the category name.",
-        "title": "Rename Category"
+      "rowActions": {
+        "delete": "Delete {name}",
+        "edit": "Edit {name}",
+        "more": "More actions for {name}"
       },
       "title": "Categories"
     },
@@ -344,26 +372,37 @@
       "title": "Page not found"
     },
     "settings": {
+      "heading": "Make Pocketr yours",
       "household": {
         "acceptInviteBlocked": "Leave your current household before accepting another invitation.",
         "createAction": "Create Household",
         "createDescription": "You are not part of any household yet. Create one to start sharing accounts with family or roommates.",
-        "description": "Create or manage a household to share accounts and track expenses together.",
         "invitedBadge": "Invited",
+        "leave": "Leave household",
+        "leaveDescription": "You will no longer see this household's shared accounts. Rejoining needs a new invitation.",
+        "leaveTitle": "Leave {name}?",
+        "manage": "Manage household",
         "pendingInvitations": "Pending Invitations",
-        "title": "Household Budgeting"
+        "title": "Household"
+      },
+      "preferences": {
+        "language": "Language",
+        "rolloverDay": "Rollover period",
+        "rolloverHelp": "Choose when your monthly spending period begins. Days missing from shorter months use the month end.",
+        "rolloverHelpLabel": "About rollover period",
+        "saved": "Preferences saved.",
+        "title": "Preferences"
       },
       "profile": {
-        "acceptedFormats": "Accepted formats: JPEG, PNG, GIF, WEBP. Maximum size: 5MB.",
-        "description": "Upload your avatar and personalize your profile.",
-        "language": "Language",
-        "languageUpdated": "Language updated.",
-        "noFileSelected": "No file selected",
-        "rolloverDay": "Expense rollover day",
-        "rolloverHelp": "Expense balances and spending reports restart on this day each month. Days missing from shorter months use month end.",
-        "rolloverUpdated": "Expense rollover day updated.",
-        "title": "Profile Settings"
-      }
+        "acceptedFormats": "JPG, PNG, GIF or WebP · Up to 5 MB",
+        "changePhoto": "Change photo",
+        "pendingPhoto": "Previewing {name}. Save it to apply the new photo.",
+        "previewAlt": "Preview of your new profile photo",
+        "savePhoto": "Save photo",
+        "title": "Profile"
+      },
+      "subtitle": "Your profile and everyday preferences.",
+      "title": "Settings"
     },
     "transactions": {
       "actions": {
@@ -471,6 +510,8 @@
     },
     "avatar": {
       "chooseImage": "Please choose an image before uploading.",
+      "tooLarge": "This image is larger than 5 MB. Choose a smaller one.",
+      "unsupportedType": "Choose a JPG, PNG, GIF or WebP image.",
       "upload": "Failed to upload avatar. Please try again."
     },
     "language": {

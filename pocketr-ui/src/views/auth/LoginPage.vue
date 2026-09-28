@@ -4,7 +4,7 @@ import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import { primeCsrfToken } from '@/api/csrf'
 import { api } from '@/api/http'
-import AuthFormMessage from '@/components/forms/AuthFormMessage.vue'
+import FormMessage from '@/components/forms/FormMessage.vue'
 import PasswordInput from '@/components/forms/PasswordInput.vue'
 import AppAuthLayout from '@/components/layout/AppAuthLayout.vue'
 import {
@@ -103,8 +103,8 @@ async function login(event: SubmitEvent): Promise<void> {
       :class="authFieldsClass"
       @submit.prevent="login"
     >
-      <AuthFormMessage v-if="credentialsError" tone="error" :message="credentialsError" />
-      <AuthFormMessage
+      <FormMessage v-if="credentialsError" tone="error" :message="credentialsError" />
+      <FormMessage
         v-else-if="isSessionExpired"
         tone="warning"
         :message="t('views.auth.login.errors.sessionExpired')"

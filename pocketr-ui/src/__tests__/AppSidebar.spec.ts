@@ -147,6 +147,8 @@ describe('AppSidebar', () => {
   })
 
   it('renders every navigation target and marks the current route active', async () => {
+    useHouseholdStore().households = [household('MEMBER')]
+    useModeStore().switchToHousehold('hh-1')
     const { wrapper } = await mountSidebar('/dashboard')
 
     expect(navLinks(wrapper)).toEqual([
@@ -158,6 +160,55 @@ describe('AppSidebar', () => {
     ])
     expect(wrapper.text()).toContain('Alex Morgan')
     expect(wrapper.text()).toContain('alex@example.com')
+    wrapper.unmount()
+  })
+
+  it('hides Household for users without any household', async () => {
+    const { wrapper } = await mountSidebar('/dashboard')
+
+    expect(navLinks(wrapper).map((link) => link.text)).toEqual([
+      'Dashboard',
+      'Transactions',
+      'Accounts',
+      'Categories',
+    ])
+    wrapper.unmount()
+  })
+
+  it('hides Household in personal mode even with households', async () => {
+    useHouseholdStore().households = [household('OWNER')]
+    const { wrapper } = await mountSidebar('/dashboard')
+
+    expect(navLinks(wrapper)).toHaveLength(4)
+    wrapper.unmount()
+  })
+
+  it('toggles Household immediately when switching between personal and household mode', async () => {
+    useHouseholdStore().households = [household('MEMBER')]
+    const modeStore = useModeStore()
+    const { wrapper } = await mountSidebar('/dashboard')
+    expect(navLinks(wrapper)).toHaveLength(4)
+
+    modeStore.switchToHousehold('hh-1')
+    await flushPromises()
+    expect(navLinks(wrapper)[4]).toMatchObject({ text: 'Household', href: '/settings' })
+
+    modeStore.switchToIndividual()
+    await flushPromises()
+    expect(navLinks(wrapper)).toHaveLength(4)
+    wrapper.unmount()
+  })
+
+  it('hides Household again after the last household is left', async () => {
+    const householdStore = useHouseholdStore()
+    householdStore.households = [household('OWNER')]
+    useModeStore().switchToHousehold('hh-1')
+    const { wrapper } = await mountSidebar('/dashboard')
+    expect(navLinks(wrapper)).toHaveLength(5)
+
+    householdStore.households = []
+    await flushPromises()
+    expect(navLinks(wrapper)).toHaveLength(4)
     wrapper.unmount()
   })
 
@@ -181,6 +232,23 @@ describe('AppSidebar', () => {
     wrapper.unmount()
   })
 
+  it('marks Settings through the profile row, not the Household row that links to it', async () => {
+    const profileRow = (wrapper: ReturnType<typeof mount>) =>
+      wrapper.findAll('button').find((button) => button.text().includes('Alex Morgan'))
+
+    useHouseholdStore().households = [household('MEMBER')]
+    useModeStore().switchToHousehold('hh-1')
+    const settings = await mountSidebar('/settings')
+    expect(navLinks(settings.wrapper).every((link) => link.current === undefined)).toBe(true)
+    expect(navLinks(settings.wrapper)[4]).toMatchObject({ href: '/settings' })
+    expect(profileRow(settings.wrapper)?.classes()).toContain('bg-(--pocketr-nav-active)')
+    settings.wrapper.unmount()
+
+    const dashboard = await mountSidebar('/dashboard')
+    expect(profileRow(dashboard.wrapper)?.classes()).not.toContain('bg-(--pocketr-nav-active)')
+    dashboard.wrapper.unmount()
+  })
+
   it('opens the mobile menu with Ctrl+B and closes it with Escape', async () => {
     const { wrapper } = await mountSidebar('/dashboard')
     expect(document.querySelector('[role="dialog"]')).toBeNull()
@@ -190,6 +258,7 @@ describe('AppSidebar', () => {
     const dialog = document.querySelector('[role="dialog"]')
     expect(dialog).not.toBeNull()
     expect(dialog?.textContent).toContain('Transactions')
+    expect(dialog?.textContent).not.toContain('Household')
 
     document.activeElement?.dispatchEvent(
       new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }),

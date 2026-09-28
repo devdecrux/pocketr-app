@@ -4,24 +4,56 @@
   },
   "common": {
     "actions": {
+      "accept": "Annehmen",
       "backToDashboard": "Zurück zum Dashboard",
+      "cancel": "Abbrechen",
+      "close": "Schließen",
+      "delete": "Löschen",
+      "edit": "Bearbeiten",
+      "save": "Speichern",
       "signIn": "Anmelden"
     },
     "amounts": {
       "mixedCurrencies": "Gemischte Währungen"
     },
     "feedback": {
-      "creatingAccount": "Konto wird erstellt..."
+      "creating": "Wird erstellt...",
+      "creatingAccount": "Konto wird erstellt...",
+      "leaving": "Wird verlassen...",
+      "saving": "Wird gespeichert...",
+      "uploading": "Wird hochgeladen..."
     },
     "fields": {
+      "color": "Farbe",
       "confirmPassword": "Passwort bestätigen",
       "email": "E-Mail",
       "firstName": "Vorname",
+      "householdName": "Haushaltsname",
       "lastName": "Nachname",
+      "name": "Name",
       "password": "Passwort"
     },
+    "formHints": {
+      "householdName": "Name meines Haushalts (mind. 3 Zeichen)"
+    },
     "states": {
-      "archived": "Archiviert"
+      "archived": "Archiviert",
+      "noData": "Keine Daten."
+    },
+    "table": {
+      "actions": "Aktionen",
+      "category": "Kategorie",
+      "created": "Erstellt",
+      "pageOf": "Seite {page} von {totalPages}",
+      "rowsPerPage": "Zeilen pro Seite",
+      "total": "{totalElements} insgesamt"
+    }
+  },
+  "display": {
+    "householdRoles": {
+      "ADMIN": "Admin",
+      "MEMBER": "Mitglied",
+      "OWNER": "Eigentümer"
     }
   },
   "views": {
@@ -92,11 +124,116 @@
       "description": "Die gesuchte Seite existiert nicht oder wurde verschoben.",
       "heading": "Diese Seite hat sich verlaufen.",
       "title": "Seite nicht gefunden"
+    },
+    "settings": {
+      "heading": "Mach Pocketr zu deinem",
+      "household": {
+        "acceptInviteBlocked": "Verlasse deinen aktuellen Haushalt, bevor du eine andere Einladung annimmst.",
+        "createAction": "Haushalt erstellen",
+        "createDescription": "Du bist noch in keinem Haushalt. Erstelle einen, um Konten mit Familie oder Mitbewohnern zu teilen.",
+        "invitedBadge": "Eingeladen",
+        "leave": "Haushalt verlassen",
+        "leaveDescription": "Du siehst die geteilten Konten dieses Haushalts dann nicht mehr. Für einen erneuten Beitritt brauchst du eine neue Einladung.",
+        "leaveTitle": "{name} verlassen?",
+        "manage": "Haushalt verwalten",
+        "pendingInvitations": "Ausstehende Einladungen",
+        "title": "Haushalt"
+      },
+      "preferences": {
+        "language": "Sprache",
+        "rolloverDay": "Abrechnungszeitraum",
+        "rolloverHelp": "Wähle, wann dein monatlicher Ausgabenzeitraum beginnt. Fehlt der Tag in kürzeren Monaten, gilt der Monatsletzte.",
+        "rolloverHelpLabel": "Über den Abrechnungszeitraum",
+        "saved": "Präferenzen gespeichert.",
+        "title": "Präferenzen"
+      },
+      "profile": {
+        "acceptedFormats": "JPG, PNG, GIF oder WebP · Bis zu 5 MB",
+        "changePhoto": "Foto ändern",
+        "pendingPhoto": "Vorschau von {name}. Speichere es, um das neue Foto zu übernehmen.",
+        "previewAlt": "Vorschau deines neuen Profilfotos",
+        "savePhoto": "Foto speichern",
+        "title": "Profil"
+      },
+      "subtitle": "Dein Profil und deine alltäglichen Vorlieben.",
+      "title": "Einstellungen"
+    },
+    "categories": {
+      "actions": {
+        "new": "Neue Kategorie"
+      },
+      "confirmDelete": "Kategorie „{name}“ löschen?",
+      "create": {
+        "description": "Füge eine Kategorie zum Markieren von Transaktionen hinzu.",
+        "submit": "Kategorie erstellen",
+        "title": "Kategorie erstellen"
+      },
+      "delete": {
+        "confirm": "Kategorie löschen",
+        "description": "Kategorien, die von Transaktionen verwendet werden, können nicht gelöscht werden."
+      },
+      "edit": {
+        "description": "Ändere den Namen oder die Farbe.",
+        "submit": "Änderungen speichern",
+        "title": "Kategorie bearbeiten"
+      },
+      "empty": "Noch keine Kategorien. Erstelle deine erste Kategorie.",
+      "form": {
+        "preview": "Vorschau",
+        "previewPlaceholder": "Kategoriename"
+      },
+      "loading": "Kategorien werden geladen...",
+      "rowActions": {
+        "delete": "{name} löschen",
+        "edit": "{name} bearbeiten",
+        "more": "Weitere Aktionen für {name}"
+      },
+      "title": "Kategorien"
+    }
+  },
+  "validation": {
+    "household": {
+      "nameMinLength": "Der Haushaltsname muss mindestens 3 Zeichen lang sein."
+    },
+    "rollover": {
+      "dayRange": "Der Tag muss zwischen 1 und 31 liegen."
+    },
+    "category": {
+      "duplicate": "Die Kategorie „{name}“ existiert bereits.",
+      "nameRequired": "Der Kategoriename ist erforderlich."
     }
   },
   "errors": {
     "accounts": {
       "archive": "Das Konto konnte nicht archiviert werden."
+    },
+    "avatar": {
+      "chooseImage": "Wähle vor dem Hochladen ein Bild aus.",
+      "tooLarge": "Dieses Bild ist größer als 5 MB. Wähle ein kleineres.",
+      "unsupportedType": "Wähle ein JPG-, PNG-, GIF- oder WebP-Bild.",
+      "upload": "Das Foto konnte nicht hochgeladen werden. Bitte versuche es erneut."
+    },
+    "households": {
+      "acceptInvite": "Die Einladung konnte nicht angenommen werden.",
+      "create": "Der Haushalt konnte nicht erstellt werden.",
+      "leave": "Der Haushalt konnte nicht verlassen werden."
+    },
+    "language": {
+      "update": "Die Sprache konnte nicht aktualisiert werden."
+    },
+    "rollover": {
+      "update": "Der Monatsbeginn konnte nicht aktualisiert werden."
+    },
+    "categories": {
+      "create": "Die Kategorie konnte nicht erstellt werden.",
+      "delete": "Die Kategorie konnte nicht gelöscht werden.",
+      "load": "Die Kategorien konnten nicht geladen werden.",
+      "rename": "Die Kategorie konnte nicht gespeichert werden."
+    }
+  },
+  "success": {
+    "avatar": {
+      "updated": "Foto aktualisiert."
     }
   },
   "components": {
@@ -121,8 +258,22 @@
       "signOut": "Abmelden"
     },
     "viewMode": {
+      "household": "Haushalt",
       "personal": "Persönlich",
       "selectMode": "Ansichtsmodus wählen"
+    },
+    "categoryColorPicker": {
+      "colors": {
+        "amber": "Bernstein",
+        "blue": "Blau",
+        "cyan": "Cyan",
+        "green": "Grün",
+        "neutral": "Neutral",
+        "rose": "Rosa",
+        "slate": "Schiefergrau"
+      },
+      "current": "Aktuelle Farbe",
+      "noColor": "Keine Farbe"
     }
   }
 }

@@ -80,6 +80,7 @@
   --ui-primary: #0891b2;
   --ui-secondary: #f59e0b;
   --ui-warning: #f59e0b;
+  --ui-error: #dc2626;
   --ui-bg: #ffffff;
   --ui-border: #e5e7eb;
   --ui-border-muted: #e5e7eb;
@@ -110,8 +111,11 @@
   --pocketr-auth-header-bg: #ffffff;
   --pocketr-field-bg: #ffffff;
   --pocketr-auth-mark-bg: #e7f7fd;
-  /* Readable amber for warning text and icons on the amber-tinted alert surface. */
+  /* Readable text and icon colours on the tinted warning and success alert surfaces. */
   --pocketr-warning-fg: #92400e;
+  --pocketr-success-fg: #047857;
+  /* Backdrop behind every modal and drawer. */
+  --pocketr-scrim: rgb(23 33 36 / 0.6);
 }
 
 .dark {
@@ -146,6 +150,8 @@
   --pocketr-field-bg: #1f262c;
   --pocketr-auth-mark-bg: #1c2b32;
   --pocketr-warning-fg: #fcd34d;
+  --pocketr-success-fg: #6ee7b7;
+  --pocketr-scrim: rgb(0 0 0 / 0.2);
 }
 
 /* Theme definitions: Pocketr light preset */

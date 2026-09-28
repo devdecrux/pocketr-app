@@ -3,7 +3,7 @@ import { computed, ref, useTemplateRef } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { api } from '@/api/http'
-import AuthFormMessage from '@/components/forms/AuthFormMessage.vue'
+import FormMessage from '@/components/forms/FormMessage.vue'
 import PasswordInput from '@/components/forms/PasswordInput.vue'
 import AppAuthLayout from '@/components/layout/AppAuthLayout.vue'
 import {
@@ -100,7 +100,7 @@ async function register(): Promise<void> {
       :class="authFieldsClass"
       @submit.prevent="register"
     >
-      <AuthFormMessage
+      <FormMessage
         v-if="isRegisterError"
         tone="error"
         :message="t('views.auth.registration.errors.unableToRegister')"

@@ -30,6 +30,7 @@ describe('Pocketr v2 Nuxt UI tokens (IMPLEMENTATION.md "Visual rules")', () => {
       '--ui-primary': '#0891b2',
       '--ui-secondary': '#f59e0b',
       '--ui-warning': '#f59e0b',
+      '--ui-error': '#dc2626',
       '--ui-bg': '#ffffff',
       '--ui-border': '#e5e7eb',
       '--ui-border-muted': '#e5e7eb',
@@ -58,6 +59,8 @@ describe('Pocketr v2 Nuxt UI tokens (IMPLEMENTATION.md "Visual rules")', () => {
       '--pocketr-field-bg': '#ffffff',
       '--pocketr-auth-mark-bg': '#e7f7fd',
       '--pocketr-warning-fg': '#92400e',
+      '--pocketr-success-fg': '#047857',
+      '--pocketr-scrim': 'rgb(23 33 36 / 0.6)',
     })
   })
 
@@ -93,6 +96,8 @@ describe('Pocketr v2 Nuxt UI tokens (IMPLEMENTATION.md "Visual rules")', () => {
       '--pocketr-field-bg': '#1f262c',
       '--pocketr-auth-mark-bg': '#1c2b32',
       '--pocketr-warning-fg': '#fcd34d',
+      '--pocketr-success-fg': '#6ee7b7',
+      '--pocketr-scrim': 'rgb(0 0 0 / 0.2)',
     })
   })
 

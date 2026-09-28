@@ -1,375 +1,393 @@
 <script setup lang="ts">
-import { computed, h, onMounted, ref } from 'vue'
-import { type ColumnDef, getCoreRowModel, useVueTable } from '@tanstack/vue-table'
-import { Check, Pencil, Plus, Trash2, X } from 'lucide-vue-next'
-import {
-  ColorSwatchPickerItem,
-  ColorSwatchPickerItemIndicator,
-  ColorSwatchPickerItemSwatch,
-  ColorSwatchPickerRoot,
-} from 'reka-ui'
+import type { DropdownMenuItem } from '@nuxt/ui'
+import { useMediaQuery } from '@vueuse/core'
+import { computed, onMounted, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
+import CategoryForm from '@/components/forms/CategoryForm.vue'
+import FormMessage from '@/components/forms/FormMessage.vue'
+import AppPagePanel from '@/components/layout/AppPagePanel.vue'
+import AppConfirmDialog from '@/components/shared/AppConfirmDialog.vue'
+import AppDataTable from '@/components/shared/AppDataTable.vue'
+import AppFormOverlay from '@/components/shared/AppFormOverlay.vue'
+import CategoryColorDot from '@/components/shared/CategoryColorDot.vue'
 import { useCategoryStore } from '@/stores/category'
+import type { AppTableColumn } from '@/types/dataTable'
 import type { CategoryTag } from '@/types/ledger'
-import { CATEGORY_PRESET_COLORS } from '@/utils/categoryColors'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
-import { Dialog, DialogTrigger } from '@/components/ui/dialog'
-import { Input } from '@/components/ui/input'
-import {
-  AppCardHeader,
-  AppDialogBody,
-  AppDialogContent,
-  AppFormField,
-  AppStateMessage,
-  AppStatusText,
-} from '@/components/app'
-import DataTable from '@/components/DataTable.vue'
-import { translate } from '@/i18n/translate'
 
-const NO_COLOR_VALUE = '#00000000'
-const colorSwatchPickerRootClass = 'flex flex-wrap gap-2'
-const colorSwatchPickerItemClass = 'relative size-8 cursor-pointer'
-const colorSwatchPickerSwatchClass = 'size-full rounded-md'
-const colorSwatchPickerIndicatorClass =
-  'absolute inset-0 flex items-center justify-center text-white'
-const colorSwatchStyle = { backgroundColor: 'var(--reka-color-swatch-color)' }
+const CREATE_FORM_ID = 'create-category-form'
+const EDIT_FORM_ID = 'edit-category-form'
 
+const { t } = useI18n()
 const categoryStore = useCategoryStore()
+const isDesktop = useMediaQuery('(min-width: 1024px)')
 
-const createDialogOpen = ref(false)
-const createName = ref('')
-const createColor = ref<string | null>(null)
-const createError = ref('')
-const isCreating = ref(false)
-
-const renameDialogOpen = ref(false)
-const renameTarget = ref<CategoryTag | null>(null)
-const renameName = ref('')
-const renameColor = ref<string | null>(null)
-const renameError = ref('')
-const isRenaming = ref(false)
-
-const deleteError = ref('')
-const deletingId = ref<string | null>(null)
-
-const sortedCategories = computed(() => {
-  return [...categoryStore.categories].sort((a, b) => a.name.localeCompare(b.name))
-})
-
-function toCategoryColor(value: string | string[]): string | null {
-  const nextValue = Array.isArray(value) ? (value[0] ?? NO_COLOR_VALUE) : value
-  return nextValue === NO_COLOR_VALUE ? null : nextValue
-}
-
-const createSelectedColor = computed({
-  get: () => createColor.value ?? NO_COLOR_VALUE,
-  set: (value: string | string[]) => {
-    createColor.value = toCategoryColor(value)
-  },
-})
-
-const renameSelectedColor = computed({
-  get: () => renameColor.value ?? NO_COLOR_VALUE,
-  set: (value: string | string[]) => {
-    renameColor.value = toCategoryColor(value)
-  },
-})
-
-function hasDuplicateName(name: string, excludeId?: string): boolean {
-  const normalized = name.trim().toLowerCase()
-  return categoryStore.categories.some((category) => {
-    if (excludeId && category.id === excludeId) {
-      return false
-    }
-    return category.name.trim().toLowerCase() === normalized
-  })
-}
+// The store's `error` is also set by failed mutations; only a failed load replaces the list.
+const loadError = ref<string | null>(null)
 
 onMounted(async () => {
   await categoryStore.load()
+  loadError.value = categoryStore.error
 })
 
-function startRename(category: CategoryTag): void {
-  renameTarget.value = category
-  renameName.value = category.name
-  renameColor.value = category.color ?? null
-  renameError.value = ''
-  renameDialogOpen.value = true
+const sortedCategories = computed(() =>
+  [...categoryStore.categories].sort((a, b) => a.name.localeCompare(b.name)),
+)
+
+const dateFormatter = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' })
+
+function formatCreated(createdAt: string): string {
+  const date = new Date(createdAt)
+  return Number.isNaN(date.getTime()) ? '' : dateFormatter.format(date)
 }
 
-async function submitCreate(): Promise<void> {
-  const trimmedName = createName.value.trim()
-  if (!trimmedName) {
-    createError.value = translate('validation.category.nameRequired')
-    return
-  }
-  if (hasDuplicateName(trimmedName)) {
-    createError.value = translate('validation.category.duplicate', { name: trimmedName })
-    return
-  }
+// One editor state for create and edit, so the two overlays can never be open together.
+type Editor = { mode: 'create' } | { mode: 'edit'; category: CategoryTag }
 
-  createError.value = ''
-  isCreating.value = true
+const editor = ref<Editor | null>(null)
+const draftName = ref('')
+const draftColor = ref<string | null>(null)
+const saveError = ref('')
+const isSaving = ref(false)
 
-  const created = await categoryStore.create(trimmedName, createColor.value)
-  if (created) {
-    createDialogOpen.value = false
-    createName.value = ''
-    createColor.value = null
+// The edited category outlives `editor`, so the overlay keeps its form while it animates closed.
+const editedCategory = ref<CategoryTag | null>(null)
+
+function closeEditor(): void {
+  if (!isSaving.value) editor.value = null
+}
+
+const isCreateOpen = computed({
+  get: () => editor.value?.mode === 'create',
+  set: (open: boolean) => {
+    if (!open) closeEditor()
+  },
+})
+
+const isEditOpen = computed({
+  get: () => editor.value?.mode === 'edit',
+  set: (open: boolean) => {
+    if (!open) closeEditor()
+  },
+})
+
+function openCreate(): void {
+  if (isSaving.value) return
+  returnFocusTo.value = null
+  draftName.value = ''
+  draftColor.value = null
+  saveError.value = ''
+  editor.value = { mode: 'create' }
+}
+
+// Actions chosen from a row menu return focus to its trigger; the menu item is gone by then.
+const menuTrigger = ref<HTMLElement | null>(null)
+const returnFocusTo = ref<HTMLElement | null>(null)
+
+function onMenuTriggerClick(event: MouseEvent): void {
+  menuTrigger.value = event.currentTarget as HTMLElement
+}
+
+function openEdit(category: CategoryTag, fromMenu = false): void {
+  if (isSaving.value) return
+  returnFocusTo.value = fromMenu ? menuTrigger.value : null
+  draftName.value = category.name
+  draftColor.value = category.color ?? null
+  saveError.value = ''
+  editedCategory.value = category
+  editor.value = { mode: 'edit', category }
+}
+
+async function saveCategory(payload: { name: string; color: string | null }): Promise<void> {
+  const current = editor.value
+  if (!current || isSaving.value) return
+
+  saveError.value = ''
+  isSaving.value = true
+  const saved =
+    current.mode === 'edit'
+      ? await categoryStore.rename(current.category.id, payload.name, payload.color)
+      : await categoryStore.create(payload.name, payload.color)
+  isSaving.value = false
+
+  if (saved) {
+    editor.value = null
   } else {
-    createError.value = categoryStore.error ?? translate('errors.categories.create')
+    saveError.value =
+      categoryStore.error ??
+      t(current.mode === 'edit' ? 'errors.categories.rename' : 'errors.categories.create')
   }
-
-  isCreating.value = false
 }
 
-async function submitRename(): Promise<void> {
-  const target = renameTarget.value
-  const trimmedName = renameName.value.trim()
-  if (!target) return
+const deleteTarget = ref<CategoryTag | null>(null)
+// Kept apart from the target so the dialog text does not blank out while it animates closed.
+const deleteTargetName = ref('')
+const deleteError = ref('')
+const isDeleting = ref(false)
 
-  if (!trimmedName) {
-    renameError.value = translate('validation.category.nameRequired')
-    return
-  }
-  if (hasDuplicateName(trimmedName, target.id)) {
-    renameError.value = translate('validation.category.duplicate', { name: trimmedName })
-    return
-  }
+const isDeleteDialogOpen = computed({
+  get: () => deleteTarget.value !== null,
+  set: (open: boolean) => {
+    if (!open && !isDeleting.value) deleteTarget.value = null
+  },
+})
 
-  renameError.value = ''
-  isRenaming.value = true
-
-  const updated = await categoryStore.rename(target.id, trimmedName, renameColor.value)
-  if (updated) {
-    renameDialogOpen.value = false
-    renameTarget.value = null
-    renameName.value = ''
-    renameColor.value = null
-  } else {
-    renameError.value = categoryStore.error ?? translate('errors.categories.rename')
-  }
-
-  isRenaming.value = false
-}
-
-async function deleteCategory(category: CategoryTag): Promise<void> {
+function requestDelete(category: CategoryTag, fromMenu = false): void {
+  returnFocusTo.value = fromMenu ? menuTrigger.value : null
   deleteError.value = ''
-
-  const confirmed = window.confirm(
-    translate('views.categories.confirmDelete', { name: category.name }),
-  )
-  if (!confirmed) return
-
-  deletingId.value = category.id
-  const success = await categoryStore.remove(category.id)
-  if (!success) {
-    deleteError.value = categoryStore.error ?? translate('errors.categories.delete')
-  }
-  deletingId.value = null
+  deleteTargetName.value = category.name
+  deleteTarget.value = category
 }
 
-const columns: ColumnDef<CategoryTag>[] = [
+async function confirmDelete(): Promise<void> {
+  const category = deleteTarget.value
+  if (!category || isDeleting.value) return
+
+  isDeleting.value = true
+  const removed = await categoryStore.remove(category.id)
+  isDeleting.value = false
+  deleteTarget.value = null
+
+  if (removed) {
+    if (editor.value?.mode === 'edit' && editor.value.category.id === category.id)
+      editor.value = null
+  } else {
+    deleteError.value = categoryStore.error ?? t('errors.categories.delete')
+  }
+}
+
+const columns = computed<AppTableColumn<CategoryTag>[]>(() => [
   {
     accessorKey: 'name',
-    header: translate('common.table.name'),
-    cell: ({ row }) => {
-      const cat = row.original
-      return h('div', { class: 'flex items-center justify-end gap-2' }, [
-        cat.color
-          ? h('span', {
-              class: 'inline-block h-4 w-5 shrink-0 rounded-sm',
-              style: { backgroundColor: cat.color },
-            })
-          : null,
-        h('span', {}, cat.name),
-      ])
-    },
+    header: t('common.table.category'),
+    meta: { class: { th: 'w-full', td: 'w-full max-w-0' } },
   },
   {
     accessorKey: 'createdAt',
-    header: translate('common.table.created'),
-    cell: ({ row }) => new Date(row.original.createdAt).toLocaleDateString(),
+    header: t('common.table.created'),
+    meta: { align: 'end', class: { th: 'min-w-40', td: 'min-w-40' } },
   },
   {
     id: 'actions',
-    header: '',
-    cell: ({ row }) =>
-      h('div', { class: 'flex items-center justify-end gap-1' }, [
-        h(
-          Button,
-          {
-            variant: 'ghost',
-            size: 'icon',
-            'data-table-action': 'edit',
-            onClick: () => startRename(row.original),
-          },
-          () => h(Pencil, { class: 'size-4' }),
-        ),
-        h(
-          Button,
-          {
-            variant: 'ghost',
-            size: 'icon',
-            'data-table-action': 'delete',
-            disabled: deletingId.value === row.original.id,
-            onClick: () => deleteCategory(row.original),
-          },
-          () => h(Trash2, { class: 'size-4' }),
-        ),
-      ]),
+    header: t('common.table.actions'),
+    meta: { align: 'end', class: { th: 'min-w-28', td: 'min-w-28 py-1.5' } },
   },
-]
+])
 
-const table = useVueTable({
-  get data() {
-    return sortedCategories.value
-  },
-  columns,
-  getCoreRowModel: getCoreRowModel(),
-})
+function rowMenuItems(category: CategoryTag): DropdownMenuItem[] {
+  return [
+    {
+      label: t('common.actions.edit'),
+      icon: 'i-lucide-pencil',
+      onSelect: () => openEdit(category, true),
+    },
+    {
+      label: t('common.actions.delete'),
+      icon: 'i-lucide-trash-2',
+      color: 'error',
+      onSelect: () => requestDelete(category, true),
+    },
+  ]
+}
+
+const iconButtonClass = 'rounded-lg text-default'
 </script>
 
 <template>
-  <section class="flex flex-col gap-4">
-    <Card>
-      <AppCardHeader :title="$t('views.categories.title')" title-class="text-2xl">
-        <Dialog v-model:open="createDialogOpen">
-          <DialogTrigger as-child>
-            <Button size="sm">
-              <Plus class="size-4" />
-              {{ $t('views.categories.actions.new') }}
-            </Button>
-          </DialogTrigger>
-          <AppDialogContent
-            :title="$t('views.categories.create.title')"
-            :description="$t('views.categories.create.description')"
+  <AppPagePanel :title="t('views.categories.title')">
+    <div class="grid gap-4 lg:grid-cols-5">
+      <div class="flex min-w-0 flex-col gap-3 lg:col-span-3">
+        <div class="flex items-center justify-between gap-4">
+          <h1 class="min-w-0 text-[22px] leading-8 font-bold text-highlighted lg:hidden">
+            {{ t('views.categories.title') }}
+          </h1>
+          <h2 class="hidden min-w-0 text-2xl leading-8 font-bold text-highlighted lg:block">
+            {{ t('views.categories.title') }}
+          </h2>
+          <UButton
+            icon="i-lucide-plus"
+            size="md"
+            :label="t('views.categories.actions.new')"
+            class="hidden shrink-0 rounded-lg lg:inline-flex"
+            @click="openCreate"
+          />
+        </div>
+
+        <FormMessage v-if="deleteError" tone="error" :message="deleteError" />
+
+        <FormMessage v-if="loadError" tone="error" :message="loadError" />
+
+        <AppDataTable
+          v-else-if="isDesktop"
+          :data="sortedCategories"
+          :columns="columns"
+          :loading="categoryStore.isLoading"
+          :empty-text="t('views.categories.empty')"
+          :get-row-id="(category: CategoryTag) => category.id"
+        >
+          <template #name-cell="{ row }">
+            <span class="flex min-w-0 items-center gap-3">
+              <CategoryColorDot :color="row.original.color" />
+              <span class="truncate font-medium text-highlighted">{{ row.original.name }}</span>
+            </span>
+          </template>
+          <template #createdAt-cell="{ row }">
+            <span class="whitespace-nowrap text-muted tabular-nums">
+              {{ formatCreated(row.original.createdAt) }}
+            </span>
+          </template>
+          <template #actions-cell="{ row }">
+            <div class="-me-2 inline-flex items-center gap-1">
+              <UTooltip :text="t('common.actions.edit')">
+                <UButton
+                  color="neutral"
+                  variant="ghost"
+                  size="md"
+                  icon="i-lucide-pencil"
+                  :aria-label="t('views.categories.rowActions.edit', { name: row.original.name })"
+                  :class="iconButtonClass"
+                  @click="openEdit(row.original)"
+                />
+              </UTooltip>
+              <UTooltip :text="t('common.actions.delete')">
+                <UButton
+                  color="neutral"
+                  variant="ghost"
+                  size="md"
+                  icon="i-lucide-trash-2"
+                  :aria-label="t('views.categories.rowActions.delete', { name: row.original.name })"
+                  :class="iconButtonClass"
+                  @click="requestDelete(row.original)"
+                />
+              </UTooltip>
+            </div>
+          </template>
+          <template #loading>{{ t('views.categories.loading') }}</template>
+        </AppDataTable>
+
+        <template v-else>
+          <div
+            v-if="categoryStore.isLoading"
+            class="space-y-2"
+            :aria-label="t('views.categories.loading')"
           >
-            <AppDialogBody>
-              <AppFormField :label="$t('common.fields.name')" control-id="create-category-name">
-                <Input
-                  id="create-category-name"
-                  v-model="createName"
-                  :placeholder="$t('common.formHints.categoryExamples')"
-                />
-              </AppFormField>
-              <AppFormField :label="$t('common.fields.color')">
-                <ColorSwatchPickerRoot
-                  v-model="createSelectedColor"
-                  :class="colorSwatchPickerRootClass"
-                >
-                  <ColorSwatchPickerItem
-                    v-for="color in CATEGORY_PRESET_COLORS"
-                    :key="color"
-                    :value="color"
-                    :class="colorSwatchPickerItemClass"
-                  >
-                    <ColorSwatchPickerItemSwatch
-                      :class="colorSwatchPickerSwatchClass"
-                      :style="colorSwatchStyle"
-                    />
-                    <ColorSwatchPickerItemIndicator :class="colorSwatchPickerIndicatorClass">
-                      <Check class="size-3.5 drop-shadow-[0_1px_1px_rgba(0,0,0,0.75)]" />
-                    </ColorSwatchPickerItemIndicator>
-                  </ColorSwatchPickerItem>
-
-                  <ColorSwatchPickerItem
-                    :value="NO_COLOR_VALUE"
-                    :class="colorSwatchPickerItemClass"
-                    :title="$t('components.categoryColorPicker.noColor')"
-                  >
-                    <ColorSwatchPickerItemSwatch
-                      :class="colorSwatchPickerSwatchClass"
-                      :style="colorSwatchStyle"
-                    />
-                    <X class="absolute inset-0 m-auto size-3.5 text-muted-foreground" />
-                    <ColorSwatchPickerItemIndicator class="sr-only">
-                      {{ $t('components.categoryColorPicker.noColor') }}
-                    </ColorSwatchPickerItemIndicator>
-                  </ColorSwatchPickerItem>
-                </ColorSwatchPickerRoot>
-              </AppFormField>
-              <AppStatusText v-if="createError">{{ createError }}</AppStatusText>
-            </AppDialogBody>
-
-            <template #footer>
-              <Button :disabled="isCreating || !createName.trim()" @click="submitCreate">
-                {{ isCreating ? $t('common.feedback.creating') : $t('common.actions.create') }}
-              </Button>
-            </template>
-          </AppDialogContent>
-        </Dialog>
-      </AppCardHeader>
-
-      <CardContent class="flex flex-col pb-6">
-        <AppStateMessage v-if="categoryStore.isLoading" center>
-          {{ $t('views.categories.loading') }}
-        </AppStateMessage>
-
-        <AppStateMessage v-else-if="categoryStore.error" variant="error" center>
-          {{ categoryStore.error }}
-        </AppStateMessage>
-
-        <DataTable v-else :table="table" sticky-header :empty-text="$t('views.categories.empty')" />
-
-        <AppStatusText v-if="deleteError" class="mt-3">{{ deleteError }}</AppStatusText>
-      </CardContent>
-    </Card>
-
-    <Dialog v-model:open="renameDialogOpen">
-      <AppDialogContent
-        :title="$t('views.categories.rename.title')"
-        :description="$t('views.categories.rename.description')"
-      >
-        <AppDialogBody>
-          <AppFormField :label="$t('common.fields.name')" control-id="rename-category-name">
-            <Input id="rename-category-name" v-model="renameName" />
-          </AppFormField>
-          <AppFormField :label="$t('common.fields.color')">
-            <ColorSwatchPickerRoot
-              v-model="renameSelectedColor"
-              :class="colorSwatchPickerRootClass"
+            <USkeleton v-for="index in 4" :key="index" class="h-14 w-full rounded-xl" />
+          </div>
+          <p
+            v-else-if="sortedCategories.length === 0"
+            class="rounded-xl border border-default bg-default px-4 py-8 text-center text-sm text-muted"
+          >
+            {{ t('views.categories.empty') }}
+          </p>
+          <ul
+            v-else
+            class="divide-y divide-default overflow-hidden rounded-xl border border-default bg-default"
+          >
+            <li
+              v-for="category in sortedCategories"
+              :key="category.id"
+              class="flex items-center gap-3 py-2.5 ps-4 pe-2"
             >
-              <ColorSwatchPickerItem
-                v-for="color in CATEGORY_PRESET_COLORS"
-                :key="color"
-                :value="color"
-                :class="colorSwatchPickerItemClass"
+              <CategoryColorDot :color="category.color" class="size-4" />
+              <div class="min-w-0 flex-1">
+                <p class="truncate text-[15px] font-medium text-highlighted">{{ category.name }}</p>
+                <p class="text-[13px] text-muted tabular-nums">
+                  {{ formatCreated(category.createdAt) }}
+                </p>
+              </div>
+              <UButton
+                color="neutral"
+                variant="ghost"
+                size="lg"
+                icon="i-lucide-pencil"
+                :aria-label="t('views.categories.rowActions.edit', { name: category.name })"
+                :class="iconButtonClass"
+                @click="openEdit(category)"
+              />
+              <!-- Non-modal: a modal menu's pointer lock would outlive the drawer its item opens. -->
+              <UDropdownMenu
+                :items="rowMenuItems(category)"
+                :modal="false"
+                :content="{ align: 'end' }"
               >
-                <ColorSwatchPickerItemSwatch
-                  :class="colorSwatchPickerSwatchClass"
-                  :style="colorSwatchStyle"
+                <UButton
+                  color="neutral"
+                  variant="ghost"
+                  size="lg"
+                  icon="i-lucide-ellipsis"
+                  :aria-label="t('views.categories.rowActions.more', { name: category.name })"
+                  :class="iconButtonClass"
+                  @click="onMenuTriggerClick"
                 />
-                <ColorSwatchPickerItemIndicator :class="colorSwatchPickerIndicatorClass">
-                  <Check class="size-3.5 drop-shadow-[0_1px_1px_rgba(0,0,0,0.75)]" />
-                </ColorSwatchPickerItemIndicator>
-              </ColorSwatchPickerItem>
-
-              <ColorSwatchPickerItem
-                :value="NO_COLOR_VALUE"
-                :class="colorSwatchPickerItemClass"
-                :title="$t('components.categoryColorPicker.noColor')"
-              >
-                <ColorSwatchPickerItemSwatch
-                  :class="colorSwatchPickerSwatchClass"
-                  :style="colorSwatchStyle"
-                />
-                <X class="absolute inset-0 m-auto size-3.5 text-muted-foreground" />
-                <ColorSwatchPickerItemIndicator class="sr-only">
-                  {{ $t('components.categoryColorPicker.noColor') }}
-                </ColorSwatchPickerItemIndicator>
-              </ColorSwatchPickerItem>
-            </ColorSwatchPickerRoot>
-          </AppFormField>
-          <AppStatusText v-if="renameError">{{ renameError }}</AppStatusText>
-        </AppDialogBody>
-
-        <template #footer>
-          <Button :disabled="isRenaming || !renameName.trim()" @click="submitRename">
-            {{ isRenaming ? $t('common.feedback.saving') : $t('common.actions.save') }}
-          </Button>
+              </UDropdownMenu>
+            </li>
+          </ul>
         </template>
-      </AppDialogContent>
-    </Dialog>
-  </section>
+      </div>
+    </div>
+
+    <AppFormOverlay
+      v-model:open="isEditOpen"
+      :title="t('views.categories.edit.title')"
+      :description="t('views.categories.edit.description')"
+      :form-id="EDIT_FORM_ID"
+      :submit-label="t('views.categories.edit.submit')"
+      :loading="isSaving"
+      :submit-disabled="!draftName.trim()"
+      :return-focus-to="returnFocusTo"
+    >
+      <CategoryForm
+        v-if="editedCategory"
+        :id="EDIT_FORM_ID"
+        :key="editedCategory.id"
+        v-model:name="draftName"
+        v-model:color="draftColor"
+        :categories="categoryStore.categories"
+        :exclude-id="editedCategory.id"
+        :server-error="saveError"
+        preview
+        @submit="saveCategory"
+      />
+    </AppFormOverlay>
+
+    <AppFormOverlay
+      v-model:open="isCreateOpen"
+      :title="t('views.categories.create.title')"
+      :description="t('views.categories.create.description')"
+      :form-id="CREATE_FORM_ID"
+      :submit-label="t('views.categories.create.submit')"
+      :loading="isSaving"
+      :submit-disabled="!draftName.trim()"
+    >
+      <CategoryForm
+        :id="CREATE_FORM_ID"
+        v-model:name="draftName"
+        v-model:color="draftColor"
+        :categories="categoryStore.categories"
+        :server-error="saveError"
+        preview
+        @submit="saveCategory"
+      />
+    </AppFormOverlay>
+
+    <AppConfirmDialog
+      v-model:open="isDeleteDialogOpen"
+      :title="t('views.categories.confirmDelete', { name: deleteTargetName })"
+      :description="t('views.categories.delete.description')"
+      :confirm-label="t('views.categories.delete.confirm')"
+      :loading="isDeleting"
+      :return-focus-to="returnFocusTo"
+      @confirm="confirmDelete"
+    />
+
+    <template #footer>
+      <UButton
+        block
+        icon="i-lucide-plus"
+        size="md"
+        :label="t('views.categories.actions.new')"
+        class="h-11 justify-center rounded-lg"
+        @click="openCreate"
+      />
+    </template>
+  </AppPagePanel>
 </template>

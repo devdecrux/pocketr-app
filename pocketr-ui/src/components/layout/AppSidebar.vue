@@ -5,24 +5,33 @@
  */
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useRoute } from 'vue-router'
 import { useEventListener, useMediaQuery } from '@vueuse/core'
 import type { NavigationMenuItem } from '@nuxt/ui'
 import AppBrand from '@/components/layout/AppBrand.vue'
 import AppUserMenu from '@/components/layout/AppUserMenu.vue'
 import { useHouseholdSettingsPath } from '@/composables/useHouseholdSettingsPath'
 import { useAuthStore } from '@/stores/auth'
+import { useHouseholdStore } from '@/stores/household'
+import { useModeStore } from '@/stores/mode'
 import { initialsFromName } from '@/utils/initials'
 
 /** Same toggle shortcut as the legacy sidebar (`SIDEBAR_KEYBOARD_SHORTCUT`). */
 const SIDEBAR_KEYBOARD_SHORTCUT = 'b'
 
 const { t } = useI18n()
+const route = useRoute()
 const authStore = useAuthStore()
+const householdStore = useHouseholdStore()
+const modeStore = useModeStore()
 const householdSettingsPath = useHouseholdSettingsPath()
 const isDesktop = useMediaQuery('(min-width: 1024px)')
 
 const mobileOpen = ref(false)
 const collapsed = ref(false)
+
+/** Settings is reached from the profile menu, so the profile row (not a nav row) marks it. */
+const isSettingsRoute = computed(() => route.path === '/settings')
 
 const userInitials = computed(() =>
   initialsFromName(authStore.user?.firstName, authStore.user?.lastName),
@@ -53,14 +62,22 @@ const navigationItems = computed<NavigationMenuItem[]>(() => [
     to: '/categories',
     exact: true,
   },
-  {
-    label: t('components.sidebar.household'),
-    icon: 'i-lucide-users',
-    // OWNER/ADMIN in household mode manage the active household; everyone else reaches the
-    // household create / membership entry point on the settings page.
-    to: householdSettingsPath.value ?? '/settings',
-    exact: true,
-  },
+  // Only in household mode, and hidden until the memberships have loaded.
+  ...(modeStore.isHousehold && householdStore.households.length
+    ? [
+        {
+          label: t('components.sidebar.household'),
+          icon: 'i-lucide-users',
+          // OWNER/ADMIN in household mode manage the active household; everyone else reaches the
+          // membership entry point on the settings page.
+          to: householdSettingsPath.value ?? '/settings',
+          // On the settings page the profile row marks the current page instead; `exact` would
+          // still set aria-current on this row, so it is dropped there too.
+          exact: !isSettingsRoute.value,
+          active: isSettingsRoute.value ? false : undefined,
+        },
+      ]
+    : []),
 ])
 
 useEventListener('keydown', (event: KeyboardEvent) => {
@@ -129,7 +146,7 @@ useEventListener('keydown', (event: KeyboardEvent) => {
           variant="ghost"
           :aria-label="isCollapsed ? t('components.userMenu.openProfileMenu') : undefined"
           class="w-full gap-2.5 rounded-lg px-0.5 py-1.5 text-start"
-          :class="isCollapsed ? 'justify-center' : ''"
+          :class="[isCollapsed && 'justify-center', isSettingsRoute && 'bg-(--pocketr-nav-active)']"
         >
           <UAvatar
             :src="authStore.user.avatar ?? undefined"
@@ -148,7 +165,11 @@ useEventListener('keydown', (event: KeyboardEvent) => {
               }}</span>
               <span class="truncate text-[13px] text-muted">{{ authStore.user.email }}</span>
             </span>
-            <UIcon name="i-lucide-chevron-right" class="size-4 shrink-0 text-default" />
+            <UIcon
+              name="i-lucide-chevron-right"
+              class="size-4 shrink-0"
+              :class="isSettingsRoute ? 'text-primary' : 'text-default'"
+            />
           </template>
         </UButton>
       </AppUserMenu>

@@ -50,13 +50,13 @@ const routes = [
     path: '/categories',
     name: 'categories',
     component: CategoriesPage,
-    meta: { requiresAuth: true },
+    meta: { requiresAuth: true, uiV2: true },
   },
   {
     path: '/settings',
     name: 'settings',
     component: SettingsPage,
-    meta: { requiresAuth: true },
+    meta: { requiresAuth: true, uiV2: true },
   },
   {
     path: '/household/:householdId/settings',

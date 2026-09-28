@@ -50,7 +50,7 @@ const userInitials = computed(() =>
 
         <template #right>
           <template v-if="isDesktop">
-            <AppModeSelect class="w-[137px]" />
+            <AppModeSelect class="w-auto min-w-[137px]" />
             <slot name="context" />
           </template>
           <AppUserMenu v-else-if="authStore.user" placement="header">
@@ -81,7 +81,9 @@ const userInitials = computed(() =>
         <div
           v-if="!isDesktop"
           class="grid gap-2.5"
-          :class="slots.context ? 'grid-cols-2' : 'grid-cols-1'"
+          :class="
+            slots.context ? 'grid-cols-[minmax(max-content,1fr)_minmax(0,1fr)]' : 'grid-cols-1'
+          "
         >
           <AppModeSelect />
           <slot name="context" />
