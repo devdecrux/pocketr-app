@@ -61,6 +61,14 @@ async function mountLoginAt(path = '/login') {
   return { router, wrapper }
 }
 
+/** The form message slot is the form's first child, directly above its first field. */
+function expectAboveFirstField(message: Element, firstFieldSelector: string) {
+  const form = document.querySelector('form')
+  expect(form?.firstElementChild).toBe(message)
+  const field = document.querySelector(firstFieldSelector)
+  expect(message.compareDocumentPosition(field!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+}
+
 function fillAndSubmit(wrapper: Awaited<ReturnType<typeof mountLoginAt>>['wrapper']) {
   wrapper.get<HTMLInputElement>('#email').element.value = 'user@example.com'
   wrapper.get<HTMLInputElement>('#password').element.value = 'secret'
@@ -177,6 +185,9 @@ describe('LoginPage', () => {
     expect(router.currentRoute.value.path).toBe('/login')
     const alert = wrapper.get('[role="alert"]')
     expect(alert.text()).toBe('Invalid email or password. Please try again.')
+    expect(wrapper.findAll('[role="alert"]')).toHaveLength(1)
+    expectAboveFirstField(alert.element, '#email')
+    expect(alert.classes()).toContain('bg-error/10')
 
     for (const id of ['email', 'password']) {
       const input = wrapper.get(`#${id}`)
@@ -198,10 +209,26 @@ describe('LoginPage', () => {
     wrapper.unmount()
   })
 
-  it('shows the session-expired notice', async () => {
+  it('shows the session-expired notice as a warning in the form message slot', async () => {
     const { wrapper } = await mountLoginAt('/login?reason=session-expired')
 
-    expect(wrapper.text()).toContain('Your session has expired. Please log in again.')
+    const notice = wrapper.get('[role="status"]')
+    expect(notice.text()).toBe('Your session has expired. Please log in again.')
+    expect(notice.classes()).toContain('bg-warning/10')
+    expectAboveFirstField(notice.element, '#email')
+    expect(wrapper.find('[role="alert"]').exists()).toBe(false)
+    wrapper.unmount()
+  })
+
+  it('replaces the session-expired notice with the sign-in error in the same slot', async () => {
+    apiMocks.post.mockRejectedValue(new Error('401 Unauthorized'))
+    const { wrapper } = await mountLoginAt('/login?reason=session-expired')
+
+    await fillAndSubmit(wrapper)
+    await flushPromises()
+
+    expect(wrapper.find('[role="status"]').exists()).toBe(false)
+    expectAboveFirstField(wrapper.get('[role="alert"]').element, '#email')
     wrapper.unmount()
   })
 })

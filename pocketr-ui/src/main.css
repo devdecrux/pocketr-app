@@ -79,6 +79,7 @@
 :root {
   --ui-primary: #0891b2;
   --ui-secondary: #f59e0b;
+  --ui-warning: #f59e0b;
   --ui-bg: #ffffff;
   --ui-border: #e5e7eb;
   --ui-border-muted: #e5e7eb;
@@ -109,11 +110,14 @@
   --pocketr-auth-header-bg: #ffffff;
   --pocketr-field-bg: #ffffff;
   --pocketr-auth-mark-bg: #e7f7fd;
+  /* Readable amber for warning text and icons on the amber-tinted alert surface. */
+  --pocketr-warning-fg: #92400e;
 }
 
 .dark {
   --ui-primary: #22d3ee;
   --ui-secondary: #f59e0b;
+  --ui-warning: #f59e0b;
   --ui-bg: #1c2227;
   --ui-bg-elevated: #242c32;
   --ui-border: #30383f;
@@ -141,6 +145,7 @@
   --pocketr-auth-header-bg: #161b20;
   --pocketr-field-bg: #1f262c;
   --pocketr-auth-mark-bg: #1c2b32;
+  --pocketr-warning-fg: #fcd34d;
 }
 
 /* Theme definitions: Pocketr light preset */
@@ -200,7 +205,7 @@
   --app-sidebar-divider: #f1f1f1;
   --app-sidebar-icon-bg: #e0fff1;
   --app-sidebar-icon-bg-hover: #d4fbe8;
-  --app-sidebar-icon-bg-active: #34C98E;
+  --app-sidebar-icon-bg-active: #34c98e;
   --app-sidebar-icon-fg: #184838;
   --app-sidebar-icon-fg-active: #fffff0;
   --app-sidebar-danger-fg: var(--destructive);
@@ -282,9 +287,9 @@
   --destructive-foreground: #fff0ee;
   --border: rgba(234, 255, 245, 0.22);
   --input: #003952;
-  --ring: #34C98E;
-  --chart-1: #34C98E;
-  --chart-2: #13614C;
+  --ring: #34c98e;
+  --chart-1: #34c98e;
+  --chart-2: #13614c;
   --chart-3: #003952;
   --chart-4: #004459;
   --chart-5: #eafff5;
@@ -293,10 +298,10 @@
   /* App shell */
   --app-shell-base: #004459;
   --app-shell-bottom-left: #004459;
-  --app-shell-middle: #004E66;
+  --app-shell-middle: #004e66;
   --app-shell-top-right: #004459;
   --app-shell-gradient-stop-2: #004459;
-  --app-shell-gradient-stop-4: #004E66;
+  --app-shell-gradient-stop-4: #004e66;
   --app-shell-gradient-stop-5: #004459;
   --app-shell-radial-middle: rgba(19, 97, 76, 0.18);
   --app-shell-radial-bottom-left: rgba(19, 69, 97, 0.34);
@@ -317,7 +322,7 @@
   --app-sidebar-divider: rgba(234, 255, 245, 0.24);
   --app-sidebar-icon-bg: rgba(234, 255, 245, 0.2);
   --app-sidebar-icon-bg-hover: rgba(234, 255, 245, 0.3);
-  --app-sidebar-icon-bg-active: #34C98E;
+  --app-sidebar-icon-bg-active: #34c98e;
   --app-sidebar-icon-fg: #eafff5;
   --app-sidebar-icon-fg-active: #052617;
   --app-sidebar-danger-fg: #f87171;
@@ -328,14 +333,14 @@
 
   /* Controls and feedback */
   --app-button-bg: #007294;
-  --app-button-hover: #0086AD;
-  --app-button-disabled-bg: #00566D;
+  --app-button-hover: #0086ad;
+  --app-button-disabled-bg: #00566d;
   --app-button-disabled-fg: rgba(234, 255, 245, 0.62);
   --app-button-fg: #eafff5;
   --app-button-link-bg: var(--app-button-bg);
   --app-button-link-hover: var(--app-button-hover);
   --app-button-link-fg: var(--app-button-fg);
-  --app-control-border: #2B6A7A;
+  --app-control-border: #2b6a7a;
   --app-action-danger-fg: #dc2626;
   --app-action-danger-hover-bg: rgba(69, 10, 10, 0.3);
   --app-action-danger-hover-fg: #b91c1c;
@@ -374,7 +379,7 @@
   --sidebar-accent: rgba(234, 255, 245, 0.16);
   --sidebar-accent-foreground: #eafff5;
   --sidebar-border: rgba(234, 255, 245, 0.24);
-  --sidebar-ring: #34C98E;
+  --sidebar-ring: #34c98e;
 }
 
 /* Base application defaults */
@@ -477,11 +482,7 @@
         var(--app-shell-radial-bottom-left) 0%,
         transparent 72%
       ),
-      radial-gradient(
-        32rem 24rem at 88% 12%,
-        var(--app-shell-radial-top-right) 0%,
-        transparent 72%
-      );
+      radial-gradient(32rem 24rem at 88% 12%, var(--app-shell-radial-top-right) 0%, transparent 72%);
     opacity: 0.9;
     filter: blur(22px);
     pointer-events: none;
@@ -662,11 +663,7 @@
         var(--app-shell-radial-bottom-left) 0%,
         transparent 72%
       ),
-      radial-gradient(
-        22rem 16rem at 88% 12%,
-        var(--app-shell-radial-top-right) 0%,
-        transparent 68%
-      );
+      radial-gradient(22rem 16rem at 88% 12%, var(--app-shell-radial-top-right) 0%, transparent 68%);
     opacity: 0.9;
     filter: blur(22px);
     pointer-events: none;

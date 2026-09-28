@@ -4,6 +4,7 @@ import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import { primeCsrfToken } from '@/api/csrf'
 import { api } from '@/api/http'
+import AuthFormMessage from '@/components/forms/AuthFormMessage.vue'
 import PasswordInput from '@/components/forms/PasswordInput.vue'
 import AppAuthLayout from '@/components/layout/AppAuthLayout.vue'
 import {
@@ -36,7 +37,10 @@ const passwordInput = useTemplateRef<{ inputRef: HTMLInputElement | null; hide: 
   'passwordInput',
 )
 
-/** One message for both fields: it marks both invalid and is shown (and announced) once. */
+/**
+ * One message for both fields: shown (and announced) once in the form message slot. Each field keeps
+ * a visually hidden copy so `aria-invalid` fields are described by it.
+ */
 const credentialsError = computed(() =>
   isAlert.value ? t('views.auth.login.errors.invalidCredentials') : undefined,
 )
@@ -94,21 +98,17 @@ async function login(event: SubmitEvent): Promise<void> {
       {{ t('components.authLayout.motto') }}
     </p>
 
-    <UAlert
-      v-if="isSessionExpired"
-      color="neutral"
-      variant="subtle"
-      icon="i-lucide-triangle-alert"
-      :description="t('views.auth.login.errors.sessionExpired')"
-      class="mt-6"
-      :ui="{ icon: 'size-4 text-error', description: 'text-sm text-default' }"
-    />
-
     <form
       class="mt-[44px] sm:mt-(--pocketr-auth-form-gap)"
       :class="authFieldsClass"
       @submit.prevent="login"
     >
+      <AuthFormMessage v-if="credentialsError" tone="error" :message="credentialsError" />
+      <AuthFormMessage
+        v-else-if="isSessionExpired"
+        tone="warning"
+        :message="t('views.auth.login.errors.sessionExpired')"
+      />
       <UFormField
         :label="t('common.fields.email')"
         name="email"
@@ -133,8 +133,8 @@ async function login(event: SubmitEvent): Promise<void> {
       <UFormField
         :label="t('common.fields.password')"
         name="password"
-        :error="credentialsError ?? false"
-        :ui="authFieldUi"
+        :error="credentialsError"
+        :ui="{ ...authFieldUi, error: 'sr-only' }"
       >
         <PasswordInput
           id="password"
@@ -144,9 +144,6 @@ async function login(event: SubmitEvent): Promise<void> {
           autocomplete="current-password"
           required
         />
-        <template #error="{ error }">
-          <span role="alert">{{ error }}</span>
-        </template>
       </UFormField>
 
       <UButton

@@ -150,6 +150,8 @@ describe('RegistrationPage', () => {
     expect(router.currentRoute.value.path).toBe('/registration')
     const alert = wrapper.get('[role="alert"]')
     expect(alert.text()).toBe('Passwords do not match')
+    // Field-level validation stays on its field, not in the form message slot.
+    expect(alert.element.closest('[data-slot="error"]')).not.toBeNull()
 
     const confirm = wrapper.get('#confirm-password')
     expect(confirm.attributes('aria-invalid')).toBe('true')
@@ -195,7 +197,11 @@ describe('RegistrationPage', () => {
     await flushPromises()
 
     expect(router.currentRoute.value.path).toBe('/registration')
-    expect(wrapper.get('[role="alert"]').text()).toBe('Unable to register user')
+    const alert = wrapper.get('[role="alert"]')
+    expect(alert.text()).toBe('Unable to register user')
+    expect(alert.classes()).toContain('bg-error/10')
+    // The server error sits in the form message slot, above the first field.
+    expect(document.querySelector('form')?.firstElementChild).toBe(alert.element)
     const submit = wrapper.get('button[type="submit"]')
     expect(submit.attributes('disabled')).toBeUndefined()
     expect(submit.text()).toBe('Create account')

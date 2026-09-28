@@ -3,6 +3,7 @@ import { computed, ref, useTemplateRef } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { api } from '@/api/http'
+import AuthFormMessage from '@/components/forms/AuthFormMessage.vue'
 import PasswordInput from '@/components/forms/PasswordInput.vue'
 import AppAuthLayout from '@/components/layout/AppAuthLayout.vue'
 import {
@@ -99,6 +100,11 @@ async function register(): Promise<void> {
       :class="authFieldsClass"
       @submit.prevent="register"
     >
+      <AuthFormMessage
+        v-if="isRegisterError"
+        tone="error"
+        :message="t('views.auth.registration.errors.unableToRegister')"
+      />
       <div class="grid gap-(--pocketr-auth-field-gap) sm:grid-cols-2 sm:gap-x-4">
         <UFormField :label="t('common.fields.firstName')" name="firstName" :ui="authFieldUi">
           <UInput
@@ -174,16 +180,6 @@ async function register(): Promise<void> {
           <span role="alert">{{ error }}</span>
         </template>
       </UFormField>
-
-      <UAlert
-        v-if="isRegisterError"
-        role="alert"
-        color="error"
-        variant="subtle"
-        icon="i-lucide-circle-alert"
-        :description="t('views.auth.registration.errors.unableToRegister')"
-        :ui="{ icon: 'size-4', description: 'text-sm' }"
-      />
 
       <UButton
         type="submit"

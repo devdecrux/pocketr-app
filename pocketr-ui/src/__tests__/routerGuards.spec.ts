@@ -44,6 +44,16 @@ describe('authGuard', () => {
     householdStoreMock.ensureModeValidated.mockResolvedValue(undefined)
   })
 
+  it('sends guests on an unknown protected URL to sign in with a redirect back', async () => {
+    await expect(
+      authGuard(makeRoute({ requiresAuth: true, uiV2: true }, '/nope?x=1')),
+    ).resolves.toEqual({
+      name: 'login',
+      query: { redirect: '/nope?x=1' },
+    })
+    expect(householdStoreMock.ensureModeValidated).not.toHaveBeenCalled()
+  })
+
   it('waits for household-mode validation before entering protected routes', async () => {
     authStoreMock.isAuthenticated = true
 

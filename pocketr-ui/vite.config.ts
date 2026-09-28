@@ -17,6 +17,7 @@ export default defineConfig({
         colors: {
           primary: 'cyan',
           secondary: 'amber',
+          warning: 'amber',
         },
       },
       // Bundle only the icons Pocketr uses (plus Nuxt UI's own) from `@iconify-json/*`: no runtime Iconify API calls.

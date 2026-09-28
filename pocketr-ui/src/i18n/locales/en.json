@@ -339,7 +339,8 @@
       }
     },
     "notFound": {
-      "description": "The page you requested does not exist.",
+      "description": "The page you’re looking for doesn’t exist or has moved.",
+      "heading": "This page wandered off.",
       "title": "Page not found"
     },
     "settings": {

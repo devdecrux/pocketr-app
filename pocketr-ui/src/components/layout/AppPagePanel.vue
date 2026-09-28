@@ -77,8 +77,12 @@ const userInitials = computed(() =>
     </template>
 
     <template #body>
-      <main class="flex flex-col gap-4">
-        <div v-if="!isDesktop" class="grid grid-cols-2 gap-2.5">
+      <main class="flex flex-1 flex-col gap-4">
+        <div
+          v-if="!isDesktop"
+          class="grid gap-2.5"
+          :class="slots.context ? 'grid-cols-2' : 'grid-cols-1'"
+        >
           <AppModeSelect />
           <slot name="context" />
         </div>

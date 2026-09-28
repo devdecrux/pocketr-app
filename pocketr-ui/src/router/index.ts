@@ -68,7 +68,7 @@ const routes = [
     path: '/:pathMatch(.*)*',
     name: 'not-found',
     component: NotFoundPage,
-    meta: { requiresAuth: true },
+    meta: { requiresAuth: true, uiV2: true },
   },
 ]
 

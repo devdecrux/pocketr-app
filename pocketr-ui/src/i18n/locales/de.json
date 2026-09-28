@@ -4,6 +4,7 @@
   },
   "common": {
     "actions": {
+      "backToDashboard": "Zurück zum Dashboard",
       "signIn": "Anmelden"
     },
     "amounts": {
@@ -86,6 +87,11 @@
         "viewAll": "Alle anzeigen",
         "yesterday": "Gestern"
       }
+    },
+    "notFound": {
+      "description": "Die gesuchte Seite existiert nicht oder wurde verschoben.",
+      "heading": "Diese Seite hat sich verlaufen.",
+      "title": "Seite nicht gefunden"
     }
   },
   "errors": {
