@@ -27,10 +27,14 @@ const props = withDefaults(
     loading?: boolean
     submitDisabled?: boolean
     variant?: OverlayVariant
+    /** Desktop modal width: `lg` suits forms with a two-column field grid. */
+    size?: 'md' | 'lg'
+    /** `ghost` renders Cancel as plain text, as in the create-transaction design. */
+    cancelVariant?: 'outline' | 'ghost'
     /** Focus target on close when the opener is gone, for example a menu item. */
     returnFocusTo?: HTMLElement | null
   }>(),
-  { variant: 'form', submitColor: 'primary' },
+  { variant: 'form', submitColor: 'primary', size: 'md', cancelVariant: 'outline' },
 )
 
 const emit = defineEmits<{ submit: [] }>()
@@ -103,9 +107,17 @@ const contentProps = {
       props.returnFocusTo.focus()
     }
   },
-  // A form starts at its first field; overlays without one keep the default (the X).
+  // The desktop modal starts at the first field; overlays without one keep the default (the X). The
+  // mobile drawer keeps focus on the dialog itself: focusing a field would raise the on-screen
+  // keyboard (and the viewport resize it causes) while the drawer is still sliding up.
   onOpenAutoFocus: (event: Event) => {
-    if (focusFirstField(event.target as HTMLElement | null)) event.preventDefault()
+    const content = event.target as HTMLElement | null
+    if (!isDesktop.value) {
+      event.preventDefault()
+      content?.focus({ preventScroll: true })
+      return
+    }
+    if (focusFirstField(content)) event.preventDefault()
   },
 }
 
@@ -120,12 +132,12 @@ const modalUi = computed(() =>
       }
     : {
         overlay: 'bg-(--pocketr-scrim)',
-        content: 'max-w-[440px] divide-y-0 rounded-xl',
+        content: `${props.size === 'lg' ? 'max-w-[536px]' : 'max-w-[440px]'} divide-y-0 rounded-xl`,
         header: 'min-h-0 items-start ps-5 pe-14 pt-5 pb-0 sm:ps-6 sm:pt-6',
         title: 'text-lg font-bold text-highlighted',
         description: 'mt-0.5 text-sm text-muted',
         close: 'top-4 end-4 sm:top-5 sm:end-5',
-        body: 'px-5 py-4 sm:px-6 sm:py-5',
+        body: `px-5 py-4 sm:px-6 ${props.size === 'lg' ? 'sm:pt-6 sm:pb-10' : 'sm:py-5'}`,
         footer: 'justify-end gap-2 px-5 pt-0 pb-5 sm:px-6 sm:pb-6',
       },
 )
@@ -140,12 +152,15 @@ const drawerUi = computed(() =>
       }
     : {
         overlay: 'bg-(--pocketr-scrim)',
-        container: 'gap-3 px-4 pt-3 pb-0',
+        container: props.size === 'lg' ? 'gap-3 px-[22px] pt-3 pb-0' : 'gap-3 px-4 pt-3 pb-0',
         header: 'items-start',
+        body: props.size === 'lg' ? 'pb-9' : '',
         title: 'text-lg font-bold text-highlighted',
-        description: 'mt-0.5 text-sm text-muted',
-        footer:
-          '-mx-4 flex-row gap-2.5 border-t border-default px-4 pt-3 pb-[max(1rem,env(safe-area-inset-bottom))]',
+        description:
+          props.size === 'lg'
+            ? 'mt-0.5 text-[11.5px] tracking-tight text-muted'
+            : 'mt-0.5 text-sm text-muted',
+        footer: `${props.size === 'lg' ? '-mx-[22px] px-[22px]' : '-mx-4 px-4'} flex-row gap-2.5 border-t border-default pt-3 pb-[max(1rem,env(safe-area-inset-bottom))]`,
       },
 )
 
@@ -153,8 +168,8 @@ const drawerUi = computed(() =>
 const actionClass = computed(() =>
   props.variant === 'form'
     ? {
-        cancel: 'justify-center rounded-lg max-lg:basis-2/5',
-        submit: 'justify-center rounded-lg max-lg:flex-1',
+        cancel: `justify-center rounded-lg max-lg:basis-2/5 ${props.size === 'lg' ? 'h-11 px-5' : ''}`,
+        submit: `justify-center rounded-lg max-lg:flex-1 ${props.size === 'lg' ? 'h-11 px-5' : ''}`,
       }
     : { cancel: 'justify-center rounded-lg', submit: 'justify-center rounded-lg' },
 )
@@ -169,7 +184,7 @@ const actionClass = computed(() =>
     <slot name="footer" :close="close">
       <UButton
         color="neutral"
-        variant="outline"
+        :variant="cancelVariant"
         size="md"
         :label="cancelLabel ?? t('common.actions.cancel')"
         :disabled="loading"

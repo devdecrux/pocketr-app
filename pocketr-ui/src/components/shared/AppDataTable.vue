@@ -2,13 +2,14 @@
 /**
  * Pocketr table on `UTable`: shared styling, optional sticky header, clickable rows (click, Enter or
  * Space on the focused row), empty and loading states, and optional server-side pagination with a
- * page-size select. Every `UTable` slot (`<column>-cell`, `<column>-header`, `expanded`, ...) and
+ * page-size select (`AppPaginationBar`). Every `UTable` slot (`<column>-cell`, `<column>-header`, `expanded`, ...) and
  * other `UTable` prop or listener (for example `get-row-id`, `v-model:expanded`) passes through;
  * `class` and `style` go to the wrapper.
  */
 import type { TableData, TableRow } from '@nuxt/ui'
 import { computed, useAttrs, useSlots } from 'vue'
 import { useI18n } from 'vue-i18n'
+import AppPaginationBar from '@/components/shared/AppPaginationBar.vue'
 import type { AppTableAlign, AppTableColumn, AppTablePagination } from '@/types/dataTable'
 
 defineOptions({ inheritAttrs: false })
@@ -80,15 +81,11 @@ const passThroughSlots = computed(() =>
 function onSelect(_event: Event, row: TableRow<T>): void {
   emit('row-click', row)
 }
-
-const pageSizeItems = computed(() =>
-  props.pageSizeOptions.map((size) => ({ label: String(size), value: size })),
-)
 </script>
 
 <template>
   <div v-bind="wrapperAttrs" class="flex min-w-0 flex-col gap-3">
-    <!-- The rounded frame clips the table from outside, so the scrolling table keeps square edges. -->
+    <!-- The rounded frame clips the table (and holds the pagination footer), so the scrolling table keeps square edges. -->
     <div class="overflow-hidden rounded-xl border border-default bg-default">
       <UTable
         v-bind="tableAttrs"
@@ -99,9 +96,13 @@ const pageSizeItems = computed(() =>
         :on-select="clickable ? onSelect : undefined"
         :ui="{
           root: 'bg-default',
+          // A real row border draws the header line; a sticky header needs Nuxt UI's separator instead.
+          thead: sticky ? '' : '[&>tr]:border-b [&>tr]:border-default',
+          separator: sticky ? '' : 'hidden',
           th: 'px-4 py-3 text-sm font-semibold text-highlighted',
           td: 'px-4 py-3 text-sm text-default',
-          tbody: '[&>tr]:border-default',
+          tbody:
+            '[&>tr]:border-default [&>tr[data-expanded=true]]:border-b-0 [&>tr[data-expanded=true]+tr>td]:pt-2 [&>tr[data-expanded=true]+tr>td]:pb-2 [&>tr[data-expanded=true]+tr>td]:whitespace-normal',
           empty: 'py-10 text-center text-sm text-muted whitespace-normal',
           loading: 'py-10 text-center text-sm text-muted',
         }"
@@ -116,43 +117,14 @@ const pageSizeItems = computed(() =>
           <slot name="loading" />
         </template>
       </UTable>
-    </div>
-
-    <div
-      v-if="pagination && pagination.totalPages > 0"
-      class="flex flex-wrap items-center justify-between gap-3"
-    >
-      <div class="flex items-center gap-2">
-        <span class="text-xs text-muted">{{ t('common.table.rowsPerPage') }}</span>
-        <USelect
-          :model-value="pagination.pageSize"
-          :items="pageSizeItems"
-          :aria-label="t('common.table.rowsPerPage')"
-          size="sm"
-          class="w-20"
-          @update:model-value="(size: number) => emit('update:page-size', size)"
-        />
-      </div>
-      <div class="flex flex-wrap items-center gap-3">
-        <span class="text-xs text-muted">
-          {{
-            t('common.table.pageOf', {
-              page: pagination.page + 1,
-              totalPages: pagination.totalPages,
-            })
-          }}
-          &middot;
-          {{ t('common.table.total', { totalElements: pagination.totalElements }) }}
-        </span>
-        <UPagination
-          :page="pagination.page + 1"
-          :total="pagination.totalElements"
-          :items-per-page="pagination.pageSize"
-          :sibling-count="1"
-          size="sm"
-          @update:page="(page: number) => emit('update:page', page - 1)"
-        />
-      </div>
+      <AppPaginationBar
+        v-if="pagination && pagination.totalPages > 0"
+        class="border-t border-default px-4 py-[18px]"
+        :pagination="pagination"
+        :page-size-options="pageSizeOptions"
+        @update:page="(page: number) => emit('update:page', page)"
+        @update:page-size="(size: number) => emit('update:page-size', size)"
+      />
     </div>
   </div>
 </template>

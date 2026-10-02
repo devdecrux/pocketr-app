@@ -2,9 +2,16 @@ import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import vueDevTools from 'vite-plugin-vue-devtools'
 import ui from '@nuxt/ui/vite'
+import os from 'node:os'
 import path from 'node:path'
 
 const traefikUrl = process.env.VITE_TRAEFIK_URL ?? 'http://localhost'
+
+// Non-internal IPv4 addresses of this machine (LAN IPs), so a phone can open the dev server via Traefik or :5173.
+const lanHosts = Object.values(os.networkInterfaces())
+  .flatMap((addresses) => addresses ?? [])
+  .filter((address) => address.family === 'IPv4' && !address.internal)
+  .map((address) => address.address)
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -73,8 +80,7 @@ export default defineConfig({
   server: {
     host: '0.0.0.0',
     port: 5173,
-    origin: 'http://localhost',
-    allowedHosts: ['localhost', 'host.docker.internal'],
+    allowedHosts: ['localhost', 'host.docker.internal', ...lanHosts],
     proxy: {
       '/api': {
         target: 'http://host.docker.internal:8081',

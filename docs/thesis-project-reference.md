@@ -945,7 +945,7 @@ Frontend Node requirement: `^20.19.0 || >=22.12.0`. The Docker frontend build us
 
 - PostgreSQL on `127.0.0.1:5432`;
 - pgAdmin on `127.0.0.1:5050`;
-- Traefik on `127.0.0.1:80`;
+- Traefik on port 80 on all interfaces (LAN access for device testing);
 - a bridge network and persistent database/pgAdmin volumes.
 
 The Kotlin backend runs on host port 8081 and the Vite frontend on 5173. Traefik routes `/api` to

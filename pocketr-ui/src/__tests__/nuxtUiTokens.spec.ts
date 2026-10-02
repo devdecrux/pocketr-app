@@ -51,6 +51,7 @@ describe('Pocketr v2 Nuxt UI tokens (IMPLEMENTATION.md "Visual rules")', () => {
       '--pocketr-nav-active': '#e5f5f9',
       '--pocketr-icon-bg': '#eef9fc',
       '--pocketr-tile-bg': '#e8f7fb',
+      '--pocketr-detail-bg': '#f1f6f9',
       '--pocketr-choice-active': '#dff3f8',
       '--pocketr-avatar-bg': '#dee3e8',
       '--pocketr-track': '#f0f2f5',
@@ -88,6 +89,7 @@ describe('Pocketr v2 Nuxt UI tokens (IMPLEMENTATION.md "Visual rules")', () => {
       '--pocketr-nav-active': '#11333e',
       '--pocketr-icon-bg': '#17313b',
       '--pocketr-tile-bg': '#17313b',
+      '--pocketr-detail-bg': '#1f2a31',
       '--pocketr-choice-active': '#093644',
       '--pocketr-avatar-bg': '#2e3941',
       '--pocketr-track': '#28323a',
@@ -115,5 +117,14 @@ describe('Pocketr v2 Nuxt UI tokens (IMPLEMENTATION.md "Visual rules")', () => {
       '--radius-2xl': 'calc(var(--ui-radius) * 4)',
       '--radius-3xl': 'calc(var(--ui-radius) * 6)',
     })
+  })
+
+  it('keeps text-entry controls at 16px below lg on migrated pages only (no iOS focus zoom)', () => {
+    const rule = css.match(
+      /@media \(max-width: 1023\.98px\)\s*\{\s*body\[data-ui-migration='v2'\]\s*:is\(([^{}]*)\)\s*\{\s*font-size:\s*16px;\s*\}\s*\}/,
+    )
+    expect(rule?.[1]).toContain('input:not(')
+    expect(rule?.[1]).toContain('textarea')
+    expect(rule?.[1]).toContain('select')
   })
 })

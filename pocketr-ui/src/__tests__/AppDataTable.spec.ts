@@ -145,11 +145,9 @@ describe('AppDataTable', () => {
   it('emits zero-based page changes and page-size changes', async () => {
     const { wrapper, events } = mountTable({ pagination: PAGINATION, pageSizeOptions: [10, 25] })
 
-    expect(wrapper.text()).toContain('Page 1 of 3')
-    expect(wrapper.text()).toContain('25 total')
+    expect(wrapper.text()).toContain('1\u201310 of 25')
 
-    const pageTwo = wrapper.findAll('button').find((button) => button.text() === '2')
-    await pageTwo!.trigger('click')
+    await wrapper.find('button[aria-label="Next page"]').trigger('click')
     await flushPromises()
     expect(events.find((event) => event.name === 'onUpdate:page')?.args).toEqual([1])
 

@@ -1,67 +1,50 @@
 <script setup lang="ts">
 import { HTTPError } from 'ky'
-import { computed, h, onMounted, ref, watch } from 'vue'
-import {
-  createColumnHelper,
-  getCoreRowModel,
-  getExpandedRowModel,
-  useVueTable,
-} from '@tanstack/vue-table'
+import { useMediaQuery } from '@vueuse/core'
+import { computed, onMounted, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { createTxn, deleteTxn } from '@/api/ledger'
+import AccountSelect from '@/components/forms/AccountSelect.vue'
+import AppDateRangePicker from '@/components/forms/AppDateRangePicker.vue'
+import CategorySelect from '@/components/forms/CategorySelect.vue'
+import FormMessage from '@/components/forms/FormMessage.vue'
+import TransactionForm from '@/components/forms/TransactionForm.vue'
+import { FIELD_BASE_CLASS } from '@/components/forms/fieldStyles'
+import AppPagePanel from '@/components/layout/AppPagePanel.vue'
+import AppConfirmDialog from '@/components/shared/AppConfirmDialog.vue'
+import AppDataTable from '@/components/shared/AppDataTable.vue'
+import AppFormOverlay from '@/components/shared/AppFormOverlay.vue'
+import AppPaginationBar from '@/components/shared/AppPaginationBar.vue'
+import TransactionDetails, {
+  type TxnDetailsCreator,
+} from '@/components/shared/TransactionDetails.vue'
 import { useAccountStore } from '@/stores/account'
 import { useCategoryStore } from '@/stores/category'
 import { useCurrencyStore } from '@/stores/currency'
 import { useHouseholdStore } from '@/stores/household'
 import { useLedgerStore } from '@/stores/ledger'
 import { useModeStore } from '@/stores/mode'
-import type { LedgerSplit, LedgerTxn } from '@/types/ledger'
-import {
-  debtPaymentStrategy,
-  expenseStrategy,
-  incomeStrategy,
-  transferStrategy,
-} from '@/utils/txnStrategies'
-import { formatSplitAmount, formatTxnDisplayAmount } from '@/utils/txnDisplay'
-import { getTxnPresentation } from '@/utils/txnPresentation'
-import AccountSelector from '@/components/AccountSelector.vue'
-import CategoryTagSelector from '@/components/CategoryTagSelector.vue'
-import DateRangePicker from '@/components/DateRangePicker.vue'
-import CurrencyAmountInput from '@/components/CurrencyAmountInput.vue'
-import {
-  AppCardHeader,
-  AppDialogContent,
-  AppFilterBar,
-  AppFormField,
-  AppNotice,
-  AppStateMessage,
-  AppStatusText,
-} from '@/components/app'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
-import { Dialog, DialogTrigger } from '@/components/ui/dialog'
-import { Input } from '@/components/ui/input'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import {
-  ArrowLeftRight,
-  ChevronDown,
-  ChevronRight,
-  Minus,
-  Plus,
-  Trash2,
-  TrendingDown,
-} from 'lucide-vue-next'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import type { AppTableColumn } from '@/types/dataTable'
+import type { CreateTxnRequest, LedgerTxn } from '@/types/ledger'
+import { formatIsoDate } from '@/utils/dates'
 import { initialsFromName } from '@/utils/initials'
-import DataTable from '@/components/DataTable.vue'
-import { translate } from '@/i18n/translate'
+import { formatTxnDisplayAmount } from '@/utils/txnDisplay'
+import { buildTxnDetails, txnCategoryNames, type TxnDetails } from '@/utils/txnDetails'
+import { getTxnAppearance } from '@/utils/txnAppearance'
+import { groupTransactionsByDay } from '@/utils/txnGroups'
+import { getTxnPresentation } from '@/utils/txnPresentation'
 
+const CREATE_FORM_ID = 'create-transaction-form'
+const FILTERS_PANEL_ID = 'transaction-filters'
+
+const { t } = useI18n()
 const ledgerStore = useLedgerStore()
 const accountStore = useAccountStore()
 const categoryStore = useCategoryStore()
 const currencyStore = useCurrencyStore()
 const modeStore = useModeStore()
 const householdStore = useHouseholdStore()
+const isDesktop = useMediaQuery('(min-width: 1024px)')
 
 // Filters
 const filterDateFrom = ref<string | undefined>(undefined)
@@ -70,334 +53,28 @@ const filterAccountId = ref('')
 const filterCategoryId = ref<string | null>(null)
 const filterSearch = ref('')
 
-// Create dialog
-const dialogOpen = ref(false)
-const activeTab = ref('expense')
-const isSubmitting = ref(false)
-const submitError = ref('')
-const deleteError = ref('')
-const deletingTxnId = ref<string | null>(null)
+// The filters stay out of the way until asked for; the button counts the ones in use.
+const isFiltersOpen = ref(false)
 
-// Expense form
-const expenseDate = ref(todayString())
-const expensePayFrom = ref('')
-const expenseAccount = ref('')
-const expenseAmount = ref(0)
-const expenseCategory = ref<string | null>(null)
-const expenseDescription = ref('')
+const activeFilterCount = computed(
+  () =>
+    Number(Boolean(filterSearch.value.trim())) +
+    Number(Boolean(filterDateFrom.value || filterDateTo.value)) +
+    Number(Boolean(filterAccountId.value)) +
+    Number(Boolean(filterCategoryId.value)),
+)
 
-// Income form
-const incomeDate = ref(todayString())
-const incomeDeposit = ref('')
-const incomeAccount = ref('')
-const incomeAmount = ref(0)
-const incomeDescription = ref('')
-
-// Transfer form
-const transferDate = ref(todayString())
-const transferFrom = ref('')
-const transferTo = ref('')
-const transferAmount = ref(0)
-const transferDescription = ref('')
-
-// Debt payment form
-const debtPaymentDate = ref(todayString())
-const debtPaymentPayFrom = ref('')
-const debtPaymentLiabilityAccount = ref('')
-const debtPaymentAmount = ref(0)
-const debtPaymentDescription = ref('')
-
-function todayString(): string {
-  return new Date().toISOString().slice(0, 10)
+function clearFilters(): void {
+  filterSearch.value = ''
+  filterDateFrom.value = undefined
+  filterDateTo.value = undefined
+  filterAccountId.value = ''
+  filterCategoryId.value = null
 }
 
-// Derived currency for expense (from pay-from account)
-const expenseCurrency = computed(() => {
-  const acc = accountStore.accountMap.get(expensePayFrom.value)
-  return acc?.currency ?? ''
-})
+// Rows are expanded by transaction id, shared by the desktop table and the mobile list.
+const expanded = ref<Record<string, boolean>>({})
 
-const expenseMinorUnit = computed(() => currencyStore.getMinorUnit(expenseCurrency.value))
-
-// Derived currency for income (from deposit account)
-const incomeCurrency = computed(() => {
-  const acc = accountStore.accountMap.get(incomeDeposit.value)
-  return acc?.currency ?? ''
-})
-
-const incomeMinorUnit = computed(() => currencyStore.getMinorUnit(incomeCurrency.value))
-
-// Derived currency for transfer (from "from" account)
-const transferCurrency = computed(() => {
-  const acc = accountStore.accountMap.get(transferFrom.value)
-  return acc?.currency ?? ''
-})
-
-const transferMinorUnit = computed(() => currencyStore.getMinorUnit(transferCurrency.value))
-
-// Derived currency for debt payment (from asset account)
-const debtPaymentCurrency = computed(() => {
-  const acc = accountStore.accountMap.get(debtPaymentPayFrom.value)
-  return acc?.currency ?? ''
-})
-
-const debtPaymentMinorUnit = computed(() => currencyStore.getMinorUnit(debtPaymentCurrency.value))
-
-// Cross-user transfer info
-const isCrossUserTransfer = computed(() => {
-  if (!modeStore.isHousehold) return false
-  const from = accountStore.accountMap.get(transferFrom.value)
-  const to = accountStore.accountMap.get(transferTo.value)
-  if (!from || !to) return false
-  return from.ownerUserId !== to.ownerUserId
-})
-
-// --- Transaction tab strategies (dispatch table) ---
-function getStrategyResult(): {
-  error: string | null
-  request?: ReturnType<typeof expenseStrategy.buildRequest>
-} {
-  const ctx = { mode: modeStore.modeParam, householdId: modeStore.householdId }
-
-  if (activeTab.value === 'expense') {
-    const fields = {
-      date: expenseDate.value,
-      payFrom: expensePayFrom.value,
-      account: expenseAccount.value,
-      amount: expenseAmount.value,
-      currency: expenseCurrency.value,
-      description: expenseDescription.value,
-      categoryTagId: expenseCategory.value,
-    }
-    const error = expenseStrategy.validate(fields)
-    return error ? { error } : { error: null, request: expenseStrategy.buildRequest(ctx, fields) }
-  }
-
-  if (activeTab.value === 'income') {
-    const fields = {
-      date: incomeDate.value,
-      deposit: incomeDeposit.value,
-      account: incomeAccount.value,
-      amount: incomeAmount.value,
-      currency: incomeCurrency.value,
-      description: incomeDescription.value,
-    }
-    const error = incomeStrategy.validate(fields)
-    return error ? { error } : { error: null, request: incomeStrategy.buildRequest(ctx, fields) }
-  }
-
-  if (activeTab.value === 'transfer') {
-    const fields = {
-      date: transferDate.value,
-      from: transferFrom.value,
-      to: transferTo.value,
-      amount: transferAmount.value,
-      currency: transferCurrency.value,
-      description: transferDescription.value,
-    }
-    const error = transferStrategy.validate(fields)
-    return error ? { error } : { error: null, request: transferStrategy.buildRequest(ctx, fields) }
-  }
-
-  if (activeTab.value === 'debt-payment') {
-    const fields = {
-      date: debtPaymentDate.value,
-      payFrom: debtPaymentPayFrom.value,
-      liabilityAccount: debtPaymentLiabilityAccount.value,
-      amount: debtPaymentAmount.value,
-      currency: debtPaymentCurrency.value,
-      description: debtPaymentDescription.value,
-    }
-    const error = debtPaymentStrategy.validate(fields)
-    return error
-      ? { error }
-      : { error: null, request: debtPaymentStrategy.buildRequest(ctx, fields) }
-  }
-
-  return { error: translate('validation.transactions.unknownTab') }
-}
-
-const isFormValid = computed(() => getStrategyResult().error === null)
-
-// Unique categories across all splits of a transaction
-function txnCategories(txn: LedgerTxn): { name: string; color?: string | null }[] {
-  const seen = new Set<string>()
-  const result: { name: string; color?: string | null }[] = []
-  for (const split of txn.splits) {
-    if (split.categoryTagId) {
-      const cat = categoryStore.categories.find((c) => c.id === split.categoryTagId)
-      if (cat && !seen.has(cat.name)) {
-        seen.add(cat.name)
-        result.push({ name: cat.name, color: cat.color })
-      }
-    }
-  }
-  return result
-}
-
-// Total amount for display
-function txnDisplayAmount(txn: LedgerTxn): string {
-  return formatTxnDisplayAmount(txn, currencyStore.getMinorUnit)
-}
-
-function txnPresentation(txn: LedgerTxn) {
-  return getTxnPresentation(txn.txnKind)
-}
-
-// Filtered transactions
-const filteredTransactions = computed(() => {
-  let txns = ledgerStore.transactions
-  if (filterSearch.value.trim()) {
-    const q = filterSearch.value.trim().toLowerCase()
-    txns = txns.filter((t) => t.description.toLowerCase().includes(q))
-  }
-  return txns
-})
-
-// TanStack table
-const columnHelper = createColumnHelper<LedgerTxn>()
-
-const columns = computed(() => {
-  const cols = [
-    columnHelper.display({
-      id: 'expand',
-      meta: { tdClass: 'w-8' },
-      cell: ({ row }) =>
-        h(row.getIsExpanded() ? ChevronDown : ChevronRight, {
-          class: 'size-4 text-muted-foreground',
-        }),
-    }),
-    columnHelper.accessor('txnDate', {
-      header: translate('common.table.date'),
-      meta: { tdClass: 'whitespace-nowrap' },
-    }),
-    columnHelper.accessor('description', {
-      header: translate('common.table.description'),
-    }),
-    columnHelper.display({
-      id: 'kind',
-      header: translate('common.table.type'),
-      cell: ({ row }) => {
-        const presentation = txnPresentation(row.original)
-        return h(
-          Badge,
-          { variant: presentation.badgeVariant, class: 'text-xs' },
-          () => presentation.label,
-        )
-      },
-    }),
-    columnHelper.display({
-      id: 'categories',
-      header: translate('common.table.category'),
-      cell: ({ row }) => {
-        const cats = txnCategories(row.original)
-        if (!cats.length) return null
-        return h(
-          'div',
-          { class: 'flex flex-wrap justify-end gap-1' },
-          cats.map((cat) =>
-            h(
-              'span',
-              {
-                key: cat.name,
-                class: [
-                  'inline-block rounded-md px-2 py-1 text-xs font-medium',
-                  !cat.color ? 'bg-secondary text-secondary-foreground' : '',
-                ],
-                style: cat.color ? { backgroundColor: cat.color + '33', color: cat.color } : {},
-              },
-              cat.name,
-            ),
-          ),
-        )
-      },
-    }),
-    columnHelper.display({
-      id: 'amount',
-      header: translate('common.table.amount'),
-      cell: ({ row }) => {
-        const presentation = txnPresentation(row.original)
-        return h(
-          'span',
-          {
-            class: `inline-flex items-center justify-end gap-1 whitespace-nowrap font-medium ${presentation.amountClass}`,
-          },
-          [
-            presentation.indicator === 'transfer'
-              ? h(ArrowLeftRight, { class: 'size-3' })
-              : h('span', {}, presentation.indicator === 'minus' ? '-' : '+'),
-            txnDisplayAmount(row.original),
-          ],
-        )
-      },
-    }),
-  ]
-
-  if (modeStore.isHousehold) {
-    cols.push(
-      columnHelper.display({
-        id: 'member',
-        header: translate('common.table.member'),
-        cell: ({ row }) => {
-          const creator = row.original.createdBy
-          if (!creator) return null
-          const name =
-            [creator.firstName, creator.lastName].filter(Boolean).join(' ') || creator.email
-          return h('div', { class: 'flex items-center justify-end gap-2' }, [
-            h('div', { class: 'grid text-right text-sm leading-tight' }, [
-              h('span', { class: 'truncate text-xs font-semibold' }, name),
-              h('span', { class: 'truncate text-[10px] text-muted-foreground' }, creator.email),
-            ]),
-            h(Avatar, { class: 'h-8 w-8 shrink-0 rounded-lg border border-border' }, () => [
-              creator.avatar ? h(AvatarImage, { src: creator.avatar }) : null,
-              h(AvatarFallback, { class: 'rounded-lg text-xs' }, () =>
-                initialsFromName(creator.firstName, creator.lastName),
-              ),
-            ]),
-          ])
-        },
-      }),
-    )
-  }
-
-  cols.push(
-    columnHelper.display({
-      id: 'actions',
-      header: '',
-      cell: ({ row }) =>
-        h(
-          Button,
-          {
-            variant: 'ghost',
-            size: 'icon',
-            'data-table-action': 'delete',
-            disabled: deletingTxnId.value === row.original.id,
-            onClick: (event: MouseEvent) => {
-              event.stopPropagation()
-              void deleteTransaction(row.original)
-            },
-          },
-          () => h(Trash2, { class: 'size-4' }),
-        ),
-    }),
-  )
-
-  return cols
-})
-
-const table = useVueTable({
-  get data() {
-    return filteredTransactions.value
-  },
-  get columns() {
-    return columns.value
-  },
-  getCoreRowModel: getCoreRowModel(),
-  getExpandedRowModel: getExpandedRowModel(),
-  getRowCanExpand: () => true,
-})
-
-// Load data on mount and mode change
 async function loadData(resetPage = false): Promise<void> {
   const filters: Record<string, string | undefined> = {}
   if (filterDateFrom.value) filters.dateFrom = filterDateFrom.value
@@ -407,6 +84,7 @@ async function loadData(resetPage = false): Promise<void> {
 
   const page = resetPage ? 0 : ledgerStore.currentPage
   if (resetPage) ledgerStore.currentPage = 0
+  expanded.value = {}
   await ledgerStore.load(filters, page, ledgerStore.pageSize)
 }
 
@@ -438,417 +116,719 @@ watch(
   },
 )
 
-// Split display helper
-function splitLabel(split: LedgerSplit): string {
-  const acc = accountStore.accountMap.get(split.accountId)
-  return acc?.name ?? split.accountName ?? split.accountId
+// The description search only narrows the page that is already loaded.
+const filteredTransactions = computed(() => {
+  const query = filterSearch.value.trim().toLowerCase()
+  if (!query) return ledgerStore.transactions
+  return ledgerStore.transactions.filter((txn) => txn.description.toLowerCase().includes(query))
+})
+
+const pagination = computed(() => ({
+  page: ledgerStore.currentPage,
+  pageSize: ledgerStore.pageSize,
+  totalPages: ledgerStore.totalPages,
+  totalElements: ledgerStore.totalElements,
+}))
+
+// --- Row presentation ---
+
+function amountText(txn: LedgerTxn): string {
+  return formatTxnDisplayAmount(txn, currencyStore.getMinorUnit)
 }
 
-function splitAmount(split: LedgerSplit): string {
-  return formatSplitAmount(split, currencyStore.getMinorUnit)
+function isTransfer(txn: LedgerTxn): boolean {
+  return getTxnPresentation(txn.txnKind).indicator === 'transfer'
 }
 
-function orderedSplits(txn: LedgerTxn): LedgerSplit[] {
-  const sideRank: Record<'CREDIT' | 'DEBIT', number> = {
-    CREDIT: 0,
-    DEBIT: 1,
+// "−€46.80" or "+€3,500.00" with a true minus, as on the dashboard; transfers show two arrows instead.
+function signedAmountText(txn: LedgerTxn): string {
+  if (isTransfer(txn)) return amountText(txn)
+  return `${getTxnPresentation(txn.txnKind).indicator === 'minus' ? '−' : '+'}${amountText(txn)}`
+}
+
+function categoryText(txn: LedgerTxn): string {
+  return txnCategoryNames(txn, categoryStore.categories).join(', ')
+}
+
+function creatorName(txn: LedgerTxn): string {
+  const creator = txn.createdBy
+  return creator
+    ? [creator.firstName, creator.lastName].filter(Boolean).join(' ') || creator.email
+    : ''
+}
+
+// The mobile list has no member column, so in household mode the details name who added the row.
+function detailsCreator(txn: LedgerTxn): TxnDetailsCreator | undefined {
+  const creator = txn.createdBy
+  if (!modeStore.isHousehold || !creator) return undefined
+  return {
+    name: creatorName(txn),
+    initials: initialsFromName(creator.firstName, creator.lastName),
+    avatar: creator.avatar,
   }
-  return [...txn.splits].sort((a, b) => sideRank[a.side] - sideRank[b.side])
 }
 
-// Reset form
-function resetForms(): void {
-  expenseDate.value = todayString()
-  expensePayFrom.value = ''
-  expenseAccount.value = ''
-  expenseAmount.value = 0
-  expenseCategory.value = null
-  expenseDescription.value = ''
-
-  incomeDate.value = todayString()
-  incomeDeposit.value = ''
-  incomeAccount.value = ''
-  incomeAmount.value = 0
-  incomeDescription.value = ''
-
-  transferDate.value = todayString()
-  transferFrom.value = ''
-  transferTo.value = ''
-  transferAmount.value = 0
-  transferDescription.value = ''
-
-  debtPaymentDate.value = todayString()
-  debtPaymentPayFrom.value = ''
-  debtPaymentLiabilityAccount.value = ''
-  debtPaymentAmount.value = 0
-  debtPaymentDescription.value = ''
-
-  submitError.value = ''
+function detailsFor(txn: LedgerTxn): TxnDetails {
+  return buildTxnDetails(txn, {
+    accountName: (accountId) => accountStore.accountMap.get(accountId)?.name,
+    categories: categoryStore.categories,
+    minorUnit: currencyStore.getMinorUnit,
+  })
 }
 
-// Submit transaction
-async function submitTransaction(): Promise<void> {
-  submitError.value = ''
+function toggleRow(txn: LedgerTxn): void {
+  expanded.value = { ...expanded.value, [txn.id]: !expanded.value[txn.id] }
+}
 
-  const { error: validationError, request } = getStrategyResult()
-  if (validationError || !request) {
-    submitError.value = validationError ?? ''
-    return
+// The header toggle expands or collapses every row currently shown.
+const allExpanded = computed(
+  () =>
+    filteredTransactions.value.length > 0 &&
+    filteredTransactions.value.every((txn) => expanded.value[txn.id]),
+)
+
+function toggleAllRows(): void {
+  expanded.value = allExpanded.value
+    ? {}
+    : Object.fromEntries(filteredTransactions.value.map((txn) => [txn.id, true]))
+}
+
+const ROW_HEIGHT = 'h-[58px]'
+
+const columns = computed<AppTableColumn<LedgerTxn>[]>(() => {
+  // The member column leaves less room for the description, so the other columns tighten up.
+  const tight = modeStore.isHousehold
+  const dateWidth = tight ? 'min-w-[112px]' : 'min-w-[120px]'
+  const typeWidth = tight ? 'min-w-[140px]' : 'min-w-[149px]'
+  const categoryWidth = tight ? 'min-w-[112px]' : 'min-w-[140px]'
+  const amountWidth = tight ? 'min-w-[128px]' : 'min-w-[150px]'
+  const cols: AppTableColumn<LedgerTxn>[] = [
+    {
+      id: 'txnDate',
+      accessorKey: 'txnDate',
+      header: t('common.table.date'),
+      meta: {
+        class: {
+          th: `h-[50px] ${dateWidth}`,
+          td: `${ROW_HEIGHT} ${dateWidth} whitespace-nowrap`,
+        },
+      },
+    },
+    {
+      id: 'description',
+      accessorKey: 'description',
+      header: t('common.table.description'),
+      meta: { class: { th: 'h-[50px] w-full', td: `${ROW_HEIGHT} w-full max-w-0` } },
+    },
+    {
+      id: 'kind',
+      header: t('common.table.type'),
+      meta: { class: { th: `h-[50px] ${typeWidth}`, td: `${ROW_HEIGHT} ${typeWidth}` } },
+    },
+    {
+      id: 'categories',
+      header: t('common.table.category'),
+      meta: { class: { th: `h-[50px] ${categoryWidth}`, td: `${ROW_HEIGHT} ${categoryWidth}` } },
+    },
+  ]
+  if (modeStore.isHousehold) {
+    cols.push({
+      id: 'member',
+      header: t('common.table.member'),
+      meta: { class: { th: 'h-[50px] min-w-[88px]', td: `${ROW_HEIGHT} min-w-[88px] py-0` } },
+    })
   }
+  cols.push(
+    {
+      id: 'amount',
+      header: t('common.table.amount'),
+      meta: {
+        align: 'end',
+        class: {
+          th: `h-[50px] ${amountWidth}`,
+          td: `${ROW_HEIGHT} ${amountWidth} whitespace-nowrap`,
+        },
+      },
+    },
+    {
+      id: 'actions',
+      header: t('common.table.actions'),
+      meta: {
+        class: {
+          th: 'h-[50px] min-w-[66px] px-0',
+          td: `${ROW_HEIGHT} min-w-[66px] px-0 py-0 text-center`,
+        },
+      },
+    },
+    {
+      id: 'expand',
+      header: '',
+      meta: {
+        class: {
+          th: 'h-[50px] min-w-10 px-0 py-0 text-center',
+          td: `${ROW_HEIGHT} min-w-10 px-0 py-0 text-center`,
+        },
+      },
+    },
+  )
+  return cols
+})
 
+// --- Mobile list ---
+
+// Group headings are relative to the day the page was opened.
+const today = new Date()
+
+const groups = computed(() =>
+  groupTransactionsByDay(filteredTransactions.value, today).map((group) => ({
+    ...group,
+    label: groupLabel(group.id, group.monthDate),
+  })),
+)
+
+function groupLabel(id: string, monthDate?: Date): string {
+  if (id === 'today' || id === 'yesterday' || id === 'earlierThisMonth' || id === 'upcoming') {
+    return t(`views.transactions.groups.${id}`)
+  }
+  return new Intl.DateTimeFormat(undefined, { month: 'long', year: 'numeric' }).format(monthDate)
+}
+
+// --- Create ---
+
+const isCreateOpen = ref(false)
+// Remounts the form for every new transaction, so each one starts from an empty draft.
+const createKey = ref(0)
+const isFormValid = ref(false)
+const isSubmitting = ref(false)
+const submitError = ref('')
+
+function openCreate(): void {
+  if (isSubmitting.value) return
+  submitError.value = ''
+  isFormValid.value = false
+  createKey.value += 1
+  isCreateOpen.value = true
+}
+
+function onCreateOpenChange(open: boolean): void {
+  if (!open && isSubmitting.value) return
+  isCreateOpen.value = open
+}
+
+async function resolveMessage(error: unknown, fallback: string): Promise<string> {
+  if (error instanceof HTTPError) {
+    const payload = await error.response.json<{ message?: string }>().catch(() => null)
+    return payload?.message?.trim() || fallback
+  }
+  return fallback
+}
+
+async function submitTransaction(request: CreateTxnRequest): Promise<void> {
+  if (isSubmitting.value) return
+  submitError.value = ''
   isSubmitting.value = true
 
   try {
     await createTxn(request)
-    dialogOpen.value = false
-    resetForms()
+    isCreateOpen.value = false
     await loadData()
   } catch (error: unknown) {
-    if (error instanceof HTTPError) {
-      const payload = await error.response.json<{ message?: string }>().catch(() => null)
-      submitError.value = payload?.message?.trim() || translate('errors.transactions.create')
-    } else {
-      submitError.value = translate('errors.transactions.create')
-    }
+    submitError.value = await resolveMessage(error, t('errors.transactions.create'))
   } finally {
     isSubmitting.value = false
   }
 }
 
-async function deleteTransaction(txn: LedgerTxn): Promise<void> {
-  deleteError.value = ''
+// --- Delete ---
 
-  const confirmed = window.confirm(
-    translate('views.transactions.confirmDelete', { description: txn.description }),
-  )
-  if (!confirmed) return
+const deleteTarget = ref<LedgerTxn | null>(null)
+// Kept apart from the target so the dialog text does not blank out while it animates closed.
+const deleteTargetDescription = ref('')
+const deleteError = ref('')
+const deletingTxnId = ref<string | null>(null)
+
+const isDeleteDialogOpen = computed({
+  get: () => deleteTarget.value !== null,
+  set: (open: boolean) => {
+    if (!open && deletingTxnId.value === null) deleteTarget.value = null
+  },
+})
+
+function requestDelete(txn: LedgerTxn): void {
+  if (deletingTxnId.value !== null) return
+  deleteError.value = ''
+  deleteTargetDescription.value = txn.description
+  deleteTarget.value = txn
+}
+
+async function confirmDelete(): Promise<void> {
+  const txn = deleteTarget.value
+  if (!txn || deletingTxnId.value !== null) return
 
   deletingTxnId.value = txn.id
 
   try {
     await deleteTxn(txn.id)
+    deleteTarget.value = null
     await loadData()
   } catch (error: unknown) {
-    if (error instanceof HTTPError) {
-      const payload = await error.response.json<{ message?: string }>().catch(() => null)
-      deleteError.value = payload?.message?.trim() || translate('errors.transactions.delete')
-    } else {
-      deleteError.value = translate('errors.transactions.delete')
-    }
+    deleteTarget.value = null
+    deleteError.value = await resolveMessage(error, t('errors.transactions.delete'))
   } finally {
     deletingTxnId.value = null
   }
 }
+
+// Compact controls next to a pointer, full touch targets below `lg`.
+const controlHeightClass = computed(() => (isDesktop.value ? 'h-9' : 'h-11'))
+const searchUi = computed(() => ({
+  base: `${FIELD_BASE_CLASS} ${controlHeightClass.value}`,
+  leadingIcon: 'size-5 text-default',
+}))
 </script>
 
 <template>
-  <section class="flex flex-col gap-4">
-    <Card>
-      <AppCardHeader :title="$t('views.transactions.title')" title-class="text-2xl">
-        <Dialog v-model:open="dialogOpen">
-          <DialogTrigger as-child>
-            <Button size="sm" @click="resetForms">
-              <Plus class="mr-1 size-4" />
-              {{ $t('views.transactions.actions.new') }}
-            </Button>
-          </DialogTrigger>
-          <AppDialogContent
-            :title="$t('views.transactions.create.title')"
-            :description="$t('views.transactions.create.description')"
-            class="max-w-lg"
+  <AppPagePanel :title="t('views.transactions.title')">
+    <div class="flex min-w-0 flex-col gap-3 lg:gap-5">
+      <!-- Below `lg` the subtitle runs under the title and the Filters button, at full width. -->
+      <div class="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4">
+        <h1 class="min-w-0 truncate text-[22px] leading-8 font-bold text-highlighted lg:hidden">
+          {{ t('views.transactions.title') }}
+        </h1>
+        <h2 class="hidden min-w-0 truncate text-2xl leading-8 font-bold text-highlighted lg:block">
+          {{ t('views.transactions.title') }}
+        </h2>
+        <p class="row-start-2 text-base text-muted max-lg:col-span-2">
+          {{ t('views.transactions.subtitle') }}
+        </p>
+        <div class="flex shrink-0 items-center gap-2.5 lg:row-span-2 lg:self-start">
+          <UButton
+            type="button"
+            color="neutral"
+            variant="outline"
+            size="md"
+            icon="i-lucide-sliders-horizontal"
+            :label="isDesktop ? t('views.transactions.filters.button') : undefined"
+            :aria-label="t('views.transactions.filters.button')"
+            :aria-expanded="isFiltersOpen"
+            :aria-controls="FILTERS_PANEL_ID"
+            class="h-10 rounded-lg bg-(--pocketr-field-bg) px-3 font-normal text-highlighted ring-default lg:px-4"
+            @click="isFiltersOpen = !isFiltersOpen"
           >
-            <Tabs v-model="activeTab" class="w-full">
-              <TabsList>
-                <TabsTrigger value="expense">
-                  <Minus class="size-4 shrink-0" />
-                  <span class="text-center leading-tight">{{
-                    $t('views.transactions.create.tabs.expense')
-                  }}</span>
-                </TabsTrigger>
-                <TabsTrigger value="income">
-                  <Plus class="size-4 shrink-0" />
-                  <span class="text-center leading-tight">{{
-                    $t('views.transactions.create.tabs.income')
-                  }}</span>
-                </TabsTrigger>
-                <TabsTrigger value="transfer">
-                  <ArrowLeftRight class="size-4 shrink-0" />
-                  <span class="text-center leading-tight">{{
-                    $t('views.transactions.create.tabs.transfer')
-                  }}</span>
-                </TabsTrigger>
-                <TabsTrigger value="debt-payment">
-                  <TrendingDown class="size-4 shrink-0" />
-                  <span class="text-center leading-tight">{{
-                    $t('views.transactions.create.tabs.debtPayment')
-                  }}</span>
-                </TabsTrigger>
-              </TabsList>
-
-              <!-- Expense Tab -->
-              <TabsContent value="expense" class="space-y-4 pt-4">
-                <div class="grid grid-cols-2 gap-4">
-                  <AppFormField :label="$t('common.fields.date')" control-id="expense-date">
-                    <Input id="expense-date" v-model="expenseDate" type="date" />
-                  </AppFormField>
-                  <AppFormField :label="$t('common.fields.amount')">
-                    <CurrencyAmountInput
-                      v-model="expenseAmount"
-                      :minor-unit="expenseMinorUnit"
-                      :currency-code="expenseCurrency"
-                    />
-                  </AppFormField>
-                </div>
-                <AppFormField :label="$t('views.transactions.fields.payFromAssetOrLiability')">
-                  <AccountSelector
-                    v-model="expensePayFrom"
-                    :allowed-types="['ASSET', 'LIABILITY']"
-                    :placeholder="$t('views.transactions.formHints.selectPayFromAccount')"
-                  />
-                </AppFormField>
-                <AppFormField :label="$t('views.transactions.fields.expenseAccount')">
-                  <AccountSelector
-                    v-model="expenseAccount"
-                    :allowed-types="['EXPENSE']"
-                    :placeholder="$t('views.transactions.formHints.selectExpenseAccount')"
-                  />
-                </AppFormField>
-                <AppFormField :label="$t('common.fields.category')">
-                  <CategoryTagSelector v-model="expenseCategory" />
-                </AppFormField>
-                <AppFormField :label="$t('common.fields.description')" control-id="expense-desc">
-                  <Input
-                    id="expense-desc"
-                    v-model="expenseDescription"
-                    :placeholder="$t('views.transactions.formHints.whatWasThisFor')"
-                  />
-                </AppFormField>
-              </TabsContent>
-
-              <!-- Income Tab -->
-              <TabsContent value="income" class="space-y-4 pt-4">
-                <div class="grid grid-cols-2 gap-4">
-                  <AppFormField :label="$t('common.fields.date')" control-id="income-date">
-                    <Input id="income-date" v-model="incomeDate" type="date" />
-                  </AppFormField>
-                  <AppFormField :label="$t('common.fields.amount')">
-                    <CurrencyAmountInput
-                      v-model="incomeAmount"
-                      :minor-unit="incomeMinorUnit"
-                      :currency-code="incomeCurrency"
-                    />
-                  </AppFormField>
-                </div>
-                <AppFormField :label="$t('views.transactions.fields.depositTo')">
-                  <AccountSelector
-                    v-model="incomeDeposit"
-                    :allowed-types="['ASSET']"
-                    :placeholder="$t('views.transactions.formHints.selectDepositAccount')"
-                  />
-                </AppFormField>
-                <AppFormField :label="$t('views.transactions.fields.incomeAccount')">
-                  <AccountSelector
-                    v-model="incomeAccount"
-                    :allowed-types="['INCOME']"
-                    :placeholder="$t('views.transactions.formHints.selectIncomeAccount')"
-                  />
-                </AppFormField>
-                <AppFormField :label="$t('common.fields.description')" control-id="income-desc">
-                  <Input
-                    id="income-desc"
-                    v-model="incomeDescription"
-                    :placeholder="$t('views.transactions.formHints.incomeSource')"
-                  />
-                </AppFormField>
-              </TabsContent>
-
-              <!-- Transfer Tab -->
-              <TabsContent value="transfer" class="space-y-4 pt-4">
-                <AppNotice v-if="modeStore.isHousehold">
-                  {{ $t('views.transactions.notices.householdTransfers') }}
-                </AppNotice>
-                <div class="grid grid-cols-2 gap-4">
-                  <AppFormField :label="$t('common.fields.date')" control-id="transfer-date">
-                    <Input id="transfer-date" v-model="transferDate" type="date" />
-                  </AppFormField>
-                  <AppFormField :label="$t('common.fields.amount')">
-                    <CurrencyAmountInput
-                      v-model="transferAmount"
-                      :minor-unit="transferMinorUnit"
-                      :currency-code="transferCurrency"
-                    />
-                  </AppFormField>
-                </div>
-                <AppFormField :label="$t('views.transactions.fields.fromAccount')">
-                  <AccountSelector
-                    v-model="transferFrom"
-                    :allowed-types="['ASSET']"
-                    :placeholder="$t('views.transactions.formHints.selectSourceAccount')"
-                  />
-                </AppFormField>
-                <AppFormField :label="$t('views.transactions.fields.toAccount')">
-                  <AccountSelector
-                    v-model="transferTo"
-                    :allowed-types="['ASSET']"
-                    :placeholder="$t('views.transactions.formHints.selectDestinationAccount')"
-                  />
-                </AppFormField>
-                <AppFormField :label="$t('common.fields.description')" control-id="transfer-desc">
-                  <Input
-                    id="transfer-desc"
-                    v-model="transferDescription"
-                    :placeholder="$t('views.transactions.formHints.transferReason')"
-                  />
-                </AppFormField>
-                <AppNotice v-if="isCrossUserTransfer" variant="warning">
-                  {{ $t('views.transactions.notices.crossUserTransfer') }}
-                </AppNotice>
-              </TabsContent>
-
-              <!-- Debt Payment Tab -->
-              <TabsContent value="debt-payment" class="space-y-4 pt-4">
-                <div class="grid grid-cols-2 gap-4">
-                  <AppFormField :label="$t('common.fields.date')" control-id="debt-payment-date">
-                    <Input id="debt-payment-date" v-model="debtPaymentDate" type="date" />
-                  </AppFormField>
-                  <AppFormField :label="$t('common.fields.amount')">
-                    <CurrencyAmountInput
-                      v-model="debtPaymentAmount"
-                      :minor-unit="debtPaymentMinorUnit"
-                      :currency-code="debtPaymentCurrency"
-                    />
-                  </AppFormField>
-                </div>
-                <AppFormField :label="$t('views.transactions.fields.payFromAsset')">
-                  <AccountSelector
-                    v-model="debtPaymentPayFrom"
-                    :allowed-types="['ASSET']"
-                    :placeholder="$t('views.transactions.formHints.selectAssetAccount')"
-                  />
-                </AppFormField>
-                <AppFormField :label="$t('views.transactions.fields.debtPaymentLiabilityAccount')">
-                  <AccountSelector
-                    v-model="debtPaymentLiabilityAccount"
-                    :allowed-types="['LIABILITY']"
-                    :placeholder="$t('views.transactions.formHints.selectLiabilityAccount')"
-                  />
-                </AppFormField>
-                <AppFormField
-                  :label="$t('common.fields.description')"
-                  control-id="debt-payment-desc"
-                >
-                  <Input
-                    id="debt-payment-desc"
-                    v-model="debtPaymentDescription"
-                    :placeholder="$t('views.transactions.formHints.debtPaymentNote')"
-                  />
-                </AppFormField>
-              </TabsContent>
-            </Tabs>
-
-            <AppStatusText v-if="submitError">{{ submitError }}</AppStatusText>
-
-            <template #footer>
-              <Button :disabled="isSubmitting || !isFormValid" @click="submitTransaction">
-                {{
-                  isSubmitting
-                    ? $t('common.feedback.creating')
-                    : $t('views.transactions.create.title')
-                }}
-              </Button>
-            </template>
-          </AppDialogContent>
-        </Dialog>
-      </AppCardHeader>
-
-      <CardContent class="flex flex-col pb-6">
-        <!-- Filters -->
-        <AppFilterBar>
-          <AppFormField :label="$t('common.fields.dateRange')" class="gap-1" label-class="text-xs">
-            <DateRangePicker
-              :from="filterDateFrom"
-              :to="filterDateTo"
-              @update:from="filterDateFrom = $event"
-              @update:to="filterDateTo = $event"
-            />
-          </AppFormField>
-          <AppFormField :label="$t('common.fields.account')" class="gap-1" label-class="text-xs">
-            <div class="w-48">
-              <AccountSelector
-                v-model="filterAccountId"
-                include-archived
-                :placeholder="$t('views.transactions.formHints.allAccounts')"
+            <template v-if="activeFilterCount > 0" #trailing>
+              <UBadge
+                :label="String(activeFilterCount)"
+                color="primary"
+                variant="subtle"
+                size="sm"
               />
-            </div>
-          </AppFormField>
-          <AppFormField :label="$t('common.fields.category')" class="gap-1" label-class="text-xs">
-            <div class="w-48">
-              <CategoryTagSelector v-model="filterCategoryId" />
-            </div>
-          </AppFormField>
-          <AppFormField :label="$t('common.fields.search')" class="gap-1" label-class="text-xs">
-            <Input
-              v-model="filterSearch"
-              type="text"
-              :placeholder="$t('views.transactions.formHints.searchDescriptions')"
-              class="h-8 w-48 text-xs"
-            />
-          </AppFormField>
-        </AppFilterBar>
+            </template>
+          </UButton>
+          <UButton
+            icon="i-lucide-plus"
+            size="md"
+            :label="t('views.transactions.actions.new')"
+            class="hidden h-10 rounded-lg px-5 lg:inline-flex"
+            @click="openCreate"
+          />
+        </div>
+      </div>
 
-        <!-- Loading state -->
-        <AppStateMessage v-if="ledgerStore.isLoading" center>
-          {{ $t('views.transactions.loading') }}
-        </AppStateMessage>
+      <!-- Hidden until the Filters button opens them: one row on desktop, stacked below `lg`. -->
+      <div
+        v-if="isFiltersOpen"
+        :id="FILTERS_PANEL_ID"
+        role="group"
+        :aria-label="t('views.transactions.filters.title')"
+        class="grid gap-2.5 lg:flex lg:flex-wrap lg:items-center"
+      >
+        <UInput
+          v-model="filterSearch"
+          icon="i-lucide-search"
+          type="search"
+          autocomplete="off"
+          size="lg"
+          :aria-label="t('common.fields.search')"
+          :placeholder="t('views.transactions.formHints.searchDescriptions')"
+          :ui="searchUi"
+          class="w-full lg:w-48"
+        />
+        <div class="min-w-0 lg:w-[232px]">
+          <AppDateRangePicker
+            v-model:from="filterDateFrom"
+            v-model:to="filterDateTo"
+            :trigger-class="controlHeightClass"
+          />
+        </div>
+        <div class="min-w-0 lg:w-44">
+          <AccountSelect
+            v-model="filterAccountId"
+            include-archived
+            :trigger-class="controlHeightClass"
+            :all-label="t('views.transactions.formHints.allAccounts')"
+            :aria-label="t('common.fields.account')"
+          />
+        </div>
+        <div class="min-w-0 lg:w-44">
+          <CategorySelect
+            v-model="filterCategoryId"
+            icon="i-lucide-layout-grid"
+            :trigger-class="controlHeightClass"
+            :none-label="t('views.transactions.formHints.allCategories')"
+            :aria-label="t('common.fields.category')"
+          />
+        </div>
+        <UTooltip v-if="activeFilterCount > 0" :text="t('views.transactions.filters.clear')">
+          <UButton
+            type="button"
+            color="neutral"
+            variant="ghost"
+            size="md"
+            icon="i-lucide-x"
+            :label="isDesktop ? undefined : t('views.transactions.filters.clear')"
+            :aria-label="t('views.transactions.filters.clear')"
+            class="rounded-lg text-default max-lg:justify-self-start"
+            @click="clearFilters"
+          />
+        </UTooltip>
+      </div>
 
-        <!-- Empty state -->
-        <AppStateMessage v-else-if="filteredTransactions.length === 0" center>
-          {{ $t('views.transactions.empty') }}
-        </AppStateMessage>
+      <FormMessage v-if="deleteError" tone="error" :message="deleteError" />
+      <FormMessage v-if="ledgerStore.error" tone="error" :message="ledgerStore.error" />
 
-        <!-- Error state (only reached when transactions exist but a reload failed) -->
-        <AppStateMessage v-else-if="ledgerStore.error" variant="error" center>
-          {{ ledgerStore.error }}
-        </AppStateMessage>
-
-        <!-- Transaction table -->
-        <DataTable
-          v-else
-          :table="table"
-          sticky-header
+      <template v-else>
+        <AppDataTable
+          v-if="isDesktop"
+          v-model:expanded="expanded"
+          :data="filteredTransactions"
+          :columns="columns"
+          :loading="ledgerStore.isLoading"
+          :empty-text="t('views.transactions.empty')"
+          :get-row-id="(txn: LedgerTxn) => txn.id"
+          :pagination="pagination"
           clickable
-          :empty-text="$t('views.transactions.empty')"
-          :pagination="{
-            page: ledgerStore.currentPage,
-            pageSize: ledgerStore.pageSize,
-            totalPages: ledgerStore.totalPages,
-            totalElements: ledgerStore.totalElements,
-          }"
           @row-click="(row) => row.toggleExpanded()"
           @update:page="goToPage"
           @update:page-size="changePageSize"
         >
-          <template #expanded="{ row }">
-            <div class="space-y-1 pl-6">
-              <div
-                v-for="split in orderedSplits(row.original)"
-                :key="split.id ?? split.accountId"
-                class="flex items-center justify-between text-xs"
-              >
-                <div class="flex items-center gap-2">
-                  <Badge variant="outline" class="text-[10px]">{{
-                    $t(`display.splitSides.${split.side}`)
-                  }}</Badge>
-                  <span>{{ splitLabel(split) }}</span>
-                </div>
-                <span class="font-mono">{{ splitAmount(split) }}</span>
-              </div>
-            </div>
+          <template #txnDate-header="{ column }">
+            <span class="inline-flex items-center gap-1.5">
+              {{ column.columnDef.header }}
+              <UIcon name="i-lucide-chevron-down" class="size-4 text-default" aria-hidden="true" />
+            </span>
           </template>
-        </DataTable>
+          <template #kind-header="{ column }">
+            <span class="inline-flex items-center gap-1.5">
+              {{ column.columnDef.header }}
+              <UIcon name="i-lucide-chevron-down" class="size-4 text-default" aria-hidden="true" />
+            </span>
+          </template>
+          <template #categories-header="{ column }">
+            <span class="inline-flex items-center gap-1.5">
+              {{ column.columnDef.header }}
+              <UIcon name="i-lucide-chevron-down" class="size-4 text-default" aria-hidden="true" />
+            </span>
+          </template>
+          <template #amount-header="{ column }">
+            <span class="inline-flex items-center gap-1.5">
+              {{ column.columnDef.header }}
+              <UIcon
+                name="i-lucide-chevrons-up-down"
+                class="size-4 text-default"
+                aria-hidden="true"
+              />
+            </span>
+          </template>
+          <template #actions-header="{ column }">
+            <span class="sr-only">{{ column.columnDef.header }}</span>
+          </template>
+          <template #expand-header>
+            <span class="sr-only">{{ t('views.transactions.details.column') }}</span>
+            <UTooltip
+              :text="
+                t(
+                  allExpanded
+                    ? 'views.transactions.rowActions.collapseAll'
+                    : 'views.transactions.rowActions.expandAll',
+                )
+              "
+            >
+              <UButton
+                color="neutral"
+                variant="ghost"
+                size="md"
+                :icon="allExpanded ? 'i-lucide-fold-vertical' : 'i-lucide-unfold-vertical'"
+                :aria-expanded="allExpanded"
+                :aria-label="
+                  t(
+                    allExpanded
+                      ? 'views.transactions.rowActions.collapseAll'
+                      : 'views.transactions.rowActions.expandAll',
+                  )
+                "
+                :disabled="filteredTransactions.length === 0"
+                class="rounded-lg text-default"
+                @click="toggleAllRows"
+              />
+            </UTooltip>
+          </template>
 
-        <AppStatusText v-if="deleteError" class="mt-3">{{ deleteError }}</AppStatusText>
-      </CardContent>
-    </Card>
-  </section>
+          <template #txnDate-cell="{ row }">
+            <span class="text-muted tabular-nums">{{ formatIsoDate(row.original.txnDate) }}</span>
+          </template>
+          <template #description-cell="{ row }">
+            <span class="block truncate font-medium text-highlighted">
+              {{ row.original.description }}
+            </span>
+          </template>
+          <template #kind-cell="{ row }">
+            <UBadge
+              :color="getTxnAppearance(row.original.txnKind).badgeColor"
+              variant="soft"
+              size="lg"
+              class="rounded-md px-3 font-normal"
+              :class="getTxnAppearance(row.original.txnKind).badgeClass"
+            >
+              {{ getTxnPresentation(row.original.txnKind).label }}
+            </UBadge>
+          </template>
+          <template #categories-cell="{ row }">
+            <span class="block max-w-[108px] truncate text-highlighted">
+              {{ categoryText(row.original) || '—' }}
+            </span>
+          </template>
+          <template #member-cell="{ row }">
+            <UTooltip
+              v-if="row.original.createdBy"
+              :text="`${creatorName(row.original)} (${row.original.createdBy.email})`"
+            >
+              <span class="inline-flex">
+                <UAvatar
+                  :src="row.original.createdBy.avatar ?? undefined"
+                  :text="
+                    initialsFromName(
+                      row.original.createdBy.firstName,
+                      row.original.createdBy.lastName,
+                    )
+                  "
+                  size="lg"
+                  aria-hidden="true"
+                  :ui="{
+                    root: 'size-9 bg-(--pocketr-avatar-bg)',
+                    fallback: 'text-sm font-normal text-highlighted',
+                  }"
+                />
+                <span class="sr-only">
+                  {{ creatorName(row.original) }}, {{ row.original.createdBy.email }}
+                </span>
+              </span>
+            </UTooltip>
+          </template>
+          <template #amount-cell="{ row }">
+            <span
+              class="inline-flex items-center gap-1.5 text-[15px] font-semibold"
+              :class="getTxnAppearance(row.original.txnKind).amountClass"
+            >
+              <UIcon
+                v-if="isTransfer(row.original)"
+                name="i-lucide-arrow-left-right"
+                class="size-4 shrink-0"
+                aria-hidden="true"
+              />
+              {{ signedAmountText(row.original) }}
+            </span>
+          </template>
+          <template #actions-cell="{ row }">
+            <UTooltip :text="t('common.actions.delete')">
+              <UButton
+                color="neutral"
+                variant="ghost"
+                size="md"
+                icon="i-lucide-trash-2"
+                :loading="deletingTxnId === row.original.id"
+                :disabled="deletingTxnId !== null"
+                :aria-label="
+                  t('views.transactions.rowActions.delete', {
+                    description: row.original.description,
+                  })
+                "
+                class="rounded-lg text-default hover:bg-error/10 hover:text-error dark:hover:text-error-400"
+                @click="requestDelete(row.original)"
+              />
+            </UTooltip>
+          </template>
+          <template #expand-cell="{ row }">
+            <UButton
+              color="neutral"
+              variant="ghost"
+              size="md"
+              :icon="row.getIsExpanded() ? 'i-lucide-chevron-down' : 'i-lucide-chevron-left'"
+              :aria-expanded="row.getIsExpanded()"
+              :aria-label="
+                t(
+                  row.getIsExpanded()
+                    ? 'views.transactions.rowActions.collapse'
+                    : 'views.transactions.rowActions.expand',
+                  { description: row.original.description },
+                )
+              "
+              class="rounded-lg text-default"
+              @click="row.toggleExpanded()"
+            />
+          </template>
+          <template #expanded="{ row }">
+            <TransactionDetails :details="detailsFor(row.original)" />
+          </template>
+          <template #loading>{{ t('views.transactions.loading') }}</template>
+        </AppDataTable>
+
+        <template v-else>
+          <div
+            v-if="ledgerStore.isLoading && filteredTransactions.length === 0"
+            class="space-y-2"
+            :aria-label="t('views.transactions.loading')"
+          >
+            <USkeleton v-for="index in 4" :key="index" class="h-16 w-full rounded-xl" />
+          </div>
+          <p
+            v-else-if="filteredTransactions.length === 0"
+            class="rounded-xl border border-default bg-default px-4 py-8 text-center text-sm text-muted"
+          >
+            {{ t('views.transactions.empty') }}
+          </p>
+          <div v-else class="flex flex-col" :aria-busy="ledgerStore.isLoading">
+            <section v-for="group in groups" :key="group.id" class="flex flex-col">
+              <h2 class="px-1 pt-2 pb-2 text-sm font-semibold text-highlighted">
+                {{ group.label }}
+              </h2>
+              <ul
+                class="divide-y divide-default overflow-hidden rounded-xl border border-default bg-default"
+              >
+                <li v-for="txn in group.items" :key="txn.id">
+                  <button
+                    type="button"
+                    class="flex w-full items-center gap-3 px-3 py-2.5 text-start outline-primary/25 focus-visible:outline-3 focus-visible:-outline-offset-3"
+                    :aria-expanded="Boolean(expanded[txn.id])"
+                    :aria-controls="`txn-details-${txn.id}`"
+                    @click="toggleRow(txn)"
+                  >
+                    <span
+                      class="flex size-11 shrink-0 items-center justify-center rounded-full bg-(--pocketr-tile-bg)"
+                    >
+                      <UIcon
+                        :name="getTxnAppearance(txn.txnKind).icon"
+                        class="size-5 text-highlighted dark:text-primary"
+                      />
+                    </span>
+                    <span class="min-w-0 flex-1">
+                      <span class="block truncate text-sm font-medium text-highlighted">
+                        {{ txn.description }}
+                      </span>
+                      <span class="block truncate text-[13px] text-muted">
+                        {{ categoryText(txn) || getTxnPresentation(txn.txnKind).label }}
+                      </span>
+                    </span>
+                    <span
+                      class="inline-flex shrink-0 items-center gap-1.5 text-[15px] font-semibold whitespace-nowrap"
+                      :class="getTxnAppearance(txn.txnKind).amountClass"
+                    >
+                      <UIcon
+                        v-if="isTransfer(txn)"
+                        name="i-lucide-arrow-left-right"
+                        class="size-4 shrink-0"
+                        aria-hidden="true"
+                      />
+                      {{ signedAmountText(txn) }}
+                    </span>
+                    <UIcon
+                      :name="expanded[txn.id] ? 'i-lucide-chevron-down' : 'i-lucide-chevron-right'"
+                      class="size-5 shrink-0 text-default"
+                      aria-hidden="true"
+                    />
+                  </button>
+                  <div
+                    v-if="expanded[txn.id]"
+                    :id="`txn-details-${txn.id}`"
+                    class="flex flex-col gap-2.5 px-3 pt-2 pb-3"
+                  >
+                    <TransactionDetails
+                      :details="detailsFor(txn)"
+                      :creator="detailsCreator(txn)"
+                      :date="
+                        group.id === 'today' || group.id === 'yesterday'
+                          ? undefined
+                          : formatIsoDate(txn.txnDate)
+                      "
+                    />
+                    <UButton
+                      block
+                      color="error"
+                      variant="soft"
+                      size="md"
+                      icon="i-lucide-trash-2"
+                      :label="t('common.actions.delete')"
+                      :loading="deletingTxnId === txn.id"
+                      :disabled="deletingTxnId !== null"
+                      :aria-label="
+                        t('views.transactions.rowActions.delete', { description: txn.description })
+                      "
+                      class="h-10 justify-center rounded-lg"
+                      @click="requestDelete(txn)"
+                    />
+                  </div>
+                </li>
+              </ul>
+            </section>
+          </div>
+          <AppPaginationBar
+            v-if="!ledgerStore.isLoading || filteredTransactions.length > 0"
+            :pagination="pagination"
+            @update:page="goToPage"
+            @update:page-size="changePageSize"
+          />
+        </template>
+      </template>
+    </div>
+
+    <AppFormOverlay
+      :open="isCreateOpen"
+      size="lg"
+      cancel-variant="ghost"
+      :title="t('views.transactions.create.title')"
+      :description="t('views.transactions.create.description')"
+      :form-id="CREATE_FORM_ID"
+      :submit-label="t('views.transactions.create.submit')"
+      :loading="isSubmitting"
+      :submit-disabled="!isFormValid"
+      @update:open="onCreateOpenChange"
+    >
+      <TransactionForm
+        :id="CREATE_FORM_ID"
+        :key="createKey"
+        v-model:valid="isFormValid"
+        :server-error="submitError"
+        @submit="submitTransaction"
+      />
+    </AppFormOverlay>
+
+    <AppConfirmDialog
+      v-model:open="isDeleteDialogOpen"
+      :title="t('views.transactions.confirmDelete', { description: deleteTargetDescription })"
+      :description="t('views.transactions.delete.description')"
+      :confirm-label="t('views.transactions.delete.confirm')"
+      :loading="deletingTxnId !== null"
+      @confirm="confirmDelete"
+    />
+
+    <template #footer>
+      <UButton
+        block
+        icon="i-lucide-plus"
+        size="md"
+        :label="t('views.transactions.actions.new')"
+        class="h-11 justify-center rounded-lg"
+        @click="openCreate"
+      />
+    </template>
+  </AppPagePanel>
 </template>

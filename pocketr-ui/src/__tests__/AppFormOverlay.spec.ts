@@ -17,6 +17,8 @@ vi.mock('@vueuse/core', async () => {
 interface HarnessOptions {
   formId?: string
   footer?: boolean
+  size?: 'md' | 'lg'
+  cancelVariant?: 'outline' | 'ghost'
 }
 
 function mountOverlay(options: HarnessOptions = {}) {
@@ -40,6 +42,8 @@ function mountOverlay(options: HarnessOptions = {}) {
                   description: 'Add a thing.',
                   submitLabel: 'Create',
                   formId: options.formId,
+                  size: options.size,
+                  cancelVariant: options.cancelVariant,
                   onSubmit: submitted,
                 },
                 {
@@ -119,6 +123,21 @@ describe('AppFormOverlay', () => {
     wrapper.unmount()
   })
 
+  it('widens the desktop modal for the large size and can render Cancel as plain text', async () => {
+    const regular = mountOverlay({ formId: 'thing-form' })
+    await openOverlay(regular.open)
+    expect(dialog()?.className).toContain('max-w-[440px]')
+    expect(dialogButton('Cancel').className).toContain('ring-accented')
+    regular.wrapper.unmount()
+    document.body.innerHTML = ''
+
+    const wide = mountOverlay({ formId: 'thing-form', size: 'lg', cancelVariant: 'ghost' })
+    await openOverlay(wide.open)
+    expect(dialog()?.className).toContain('max-w-[536px]')
+    expect(dialogButton('Cancel').className).not.toContain('ring-accented')
+    wide.wrapper.unmount()
+  })
+
   it('renders a drawer below the desktop breakpoint', async () => {
     mocks.desktop.value = false
     const { wrapper, open } = mountOverlay({ formId: 'thing-form' })
@@ -161,11 +180,23 @@ describe('AppFormOverlay', () => {
     wrapper.unmount()
   })
 
-  it('focuses the first field on open', async () => {
+  it('focuses the first field on open in the desktop modal', async () => {
     const { wrapper, open } = mountOverlay({ formId: 'thing-form' })
     await openOverlay(open)
 
     expect(document.activeElement?.id).toBe('thing-name')
+
+    wrapper.unmount()
+  })
+
+  it('keeps focus on the dialog, not a field, when the mobile drawer opens', async () => {
+    mocks.desktop.value = false
+    const { wrapper, open } = mountOverlay({ formId: 'thing-form' })
+    await openOverlay(open)
+
+    expect(document.activeElement).toBe(dialog())
+    expect(document.activeElement?.id).not.toBe('thing-name')
+    expect(dialog()?.contains(document.activeElement)).toBe(true)
 
     wrapper.unmount()
   })

@@ -29,6 +29,10 @@
     "amounts": {
       "mixedCurrencies": "Mixed currencies"
     },
+    "dateRange": {
+      "from": "From {date}",
+      "until": "Until {date}"
+    },
     "feedback": {
       "creating": "Creating...",
       "creatingAccount": "Creating account...",
@@ -89,7 +93,10 @@
       "description": "Description",
       "member": "Member",
       "name": "Name",
+      "nextPage": "Next page",
       "pageOf": "Page {page} of {totalPages}",
+      "previousPage": "Previous page",
+      "range": "{from}–{to} of {total}",
       "rowsPerPage": "Rows per page",
       "shared": "Shared",
       "total": "{totalElements} total",
@@ -415,29 +422,31 @@
     },
     "transactions": {
       "actions": {
-        "new": "New Transaction"
+        "new": "Add transaction"
       },
       "confirmDelete": "Delete transaction \"{description}\"?",
       "create": {
         "description": "Record an expense, income, transfer, or debt payment.",
+        "submit": "Create Transaction",
         "tabs": {
           "debtPayment": "Debt Payment",
           "expense": "Expense",
           "income": "Income",
           "transfer": "Transfer"
         },
-        "title": "Create Transaction"
+        "title": "Create Transaction",
+        "typeLabel": "Transaction type"
       },
       "empty": "No transactions found. Create your first transaction to get started.",
       "fields": {
         "debtPaymentLiabilityAccount": "Liability account",
-        "depositTo": "Deposit to (Asset)",
+        "depositTo": "Deposit to",
         "expenseAccount": "Expense account",
-        "fromAccount": "From account (Asset)",
+        "fromAccount": "From account",
         "incomeAccount": "Income account",
-        "payFromAsset": "Pay from (Asset)",
-        "payFromAssetOrLiability": "Pay from (Asset/Liability)",
-        "toAccount": "To account (Asset)"
+        "payFromAsset": "Pay from",
+        "payFromAssetOrLiability": "Pay from",
+        "toAccount": "To account"
       },
       "loading": "Loading transactions...",
       "notices": {
@@ -446,9 +455,11 @@
       },
       "formHints": {
         "allAccounts": "All accounts",
+        "allCategories": "All categories",
         "debtPaymentNote": "Debt payment note",
         "incomeSource": "Income source",
-        "searchDescriptions": "Search descriptions...",
+        "noCategory": "No category",
+        "searchDescriptions": "Search descriptions",
         "selectAssetAccount": "Select asset account",
         "selectDepositAccount": "Select deposit account",
         "selectDestinationAccount": "Select destination account",
@@ -460,7 +471,35 @@
         "transferReason": "Transfer reason",
         "whatWasThisFor": "What was this for?"
       },
-      "title": "Transactions"
+      "title": "Transactions",
+      "subtitle": "Every movement, clearly recorded.",
+      "delete": {
+        "confirm": "Delete transaction",
+        "description": "This removes the transaction from your records."
+      },
+      "details": {
+        "category": "Category: {name}",
+        "column": "Details",
+        "title": "Transaction details"
+      },
+      "filters": {
+        "button": "Filters",
+        "clear": "Clear filters",
+        "title": "Filters"
+      },
+      "groups": {
+        "earlierThisMonth": "Earlier this month",
+        "today": "Today",
+        "upcoming": "Upcoming",
+        "yesterday": "Yesterday"
+      },
+      "rowActions": {
+        "collapse": "Hide details of {description}",
+        "collapseAll": "Collapse all rows",
+        "delete": "Delete {description}",
+        "expand": "Show details of {description}",
+        "expandAll": "Expand all rows"
+      }
     }
   },
   "display": {

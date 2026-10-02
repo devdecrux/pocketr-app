@@ -29,6 +29,10 @@
     "amounts": {
       "mixedCurrencies": "Смесени валути"
     },
+    "dateRange": {
+      "from": "От {date}",
+      "until": "До {date}"
+    },
     "feedback": {
       "creating": "Създаване...",
       "creatingAccount": "Създаване на сметка...",
@@ -89,7 +93,10 @@
       "description": "Описание",
       "member": "Член",
       "name": "Име",
+      "nextPage": "Следваща страница",
       "pageOf": "Страница {page} от {totalPages}",
+      "previousPage": "Предишна страница",
+      "range": "{from}–{to} от {total}",
       "rowsPerPage": "Редове на страница",
       "shared": "Споделена",
       "total": "Общо: {totalElements}",
@@ -415,29 +422,31 @@
     },
     "transactions": {
       "actions": {
-        "new": "Нова транзакция"
+        "new": "Добави транзакция"
       },
       "confirmDelete": "Да се изтрие ли транзакция „{description}“?",
       "create": {
         "description": "Запиши разход, приход, превод или погасяване на дълг.",
+        "submit": "Създай транзакция",
         "tabs": {
           "debtPayment": "Погасяване на дълг",
           "expense": "Разход",
           "income": "Приход",
           "transfer": "Превод"
         },
-        "title": "Създаване на транзакция"
+        "title": "Създаване на транзакция",
+        "typeLabel": "Тип транзакция"
       },
       "empty": "Няма намерени транзакции. Създай първата си транзакция.",
       "fields": {
         "debtPaymentLiabilityAccount": "Сметка за задължение",
-        "depositTo": "Постъпление по (актив)",
+        "depositTo": "Постъпление по",
         "expenseAccount": "Разходна сметка",
-        "fromAccount": "От сметка (актив)",
+        "fromAccount": "От сметка",
         "incomeAccount": "Приходна сметка",
-        "payFromAsset": "Плащане от (актив)",
-        "payFromAssetOrLiability": "Плащане от (актив/пасив)",
-        "toAccount": "Към сметка (актив)"
+        "payFromAsset": "Плащане от",
+        "payFromAssetOrLiability": "Плащане от",
+        "toAccount": "Към сметка"
       },
       "loading": "Зареждане на транзакциите...",
       "notices": {
@@ -446,9 +455,11 @@
       },
       "formHints": {
         "allAccounts": "Всички сметки",
+        "allCategories": "Всички категории",
         "debtPaymentNote": "Бележка за погасяването",
         "incomeSource": "Източник на прихода",
-        "searchDescriptions": "Търси описания...",
+        "noCategory": "Без категория",
+        "searchDescriptions": "Търси в описанията",
         "selectAssetAccount": "Избери сметка за актив",
         "selectDepositAccount": "Избери сметка за постъпление",
         "selectDestinationAccount": "Избери сметка получател",
@@ -460,7 +471,35 @@
         "transferReason": "Причина за превода",
         "whatWasThisFor": "За какво беше това?"
       },
-      "title": "Транзакции"
+      "title": "Транзакции",
+      "subtitle": "Всяко движение, ясно записано.",
+      "delete": {
+        "confirm": "Изтрий транзакцията",
+        "description": "Транзакцията ще бъде премахната от записите ти."
+      },
+      "details": {
+        "category": "Категория: {name}",
+        "column": "Подробности",
+        "title": "Подробности за транзакцията"
+      },
+      "filters": {
+        "button": "Филтри",
+        "clear": "Изчисти филтрите",
+        "title": "Филтри"
+      },
+      "groups": {
+        "earlierThisMonth": "По-рано този месец",
+        "today": "Днес",
+        "upcoming": "Предстоящи",
+        "yesterday": "Вчера"
+      },
+      "rowActions": {
+        "collapse": "Скрий подробностите за {description}",
+        "collapseAll": "Свий всички редове",
+        "delete": "Изтрий {description}",
+        "expand": "Покажи подробностите за {description}",
+        "expandAll": "Разгъни всички редове"
+      }
     }
   },
   "display": {

@@ -1,15 +1,16 @@
 http:
   routers:
-    # Local-dev only: keep explicit localhost/host.docker.internal host matching.
+    # Local-dev only: explicit localhost/host.docker.internal host matching plus private LAN IPv4 addresses
+    # (10/8, 172.16/12, 192.168/16) so a phone on the same Wi-Fi can open http://<LAN-IP>.
     api-router:
-      rule: "(Host(`localhost`) || Host(`127.0.0.1`) || Host(`host.docker.internal`)) && PathPrefix(`/api`)"
+      rule: "(Host(`localhost`) || Host(`127.0.0.1`) || Host(`host.docker.internal`) || HostRegexp(`^(10([.][0-9]{1,3}){3}|192[.]168([.][0-9]{1,3}){2}|172[.](1[6-9]|2[0-9]|3[01])([.][0-9]{1,3}){2})$`)) && PathPrefix(`/api`)"
       entryPoints:
         - web
       priority: 100
       service: api-service
 
     frontend-router:
-      rule: "(Host(`localhost`) || Host(`127.0.0.1`) || Host(`host.docker.internal`)) && PathPrefix(`/`)"
+      rule: "(Host(`localhost`) || Host(`127.0.0.1`) || Host(`host.docker.internal`) || HostRegexp(`^(10([.][0-9]{1,3}){3}|192[.]168([.][0-9]{1,3}){2}|172[.](1[6-9]|2[0-9]|3[01])([.][0-9]{1,3}){2})$`)) && PathPrefix(`/`)"
       entryPoints:
         - web
       priority: 1

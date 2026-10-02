@@ -1,11 +1,11 @@
 <script setup lang="ts">
 /**
  * Form-level message shared by every migrated form (sign in, registration, settings).
- * Errors are announced assertively (`role="alert"`); warnings and successes politely (`role="status"`).
+ * Errors are announced assertively (`role="alert"`); warnings, successes and notices politely (`role="status"`).
  */
 import { computed } from 'vue'
 
-type FormMessageTone = 'error' | 'warning' | 'success'
+type FormMessageTone = 'error' | 'warning' | 'success' | 'info'
 
 const props = defineProps<{ tone: FormMessageTone; message: string }>()
 
@@ -13,12 +13,14 @@ const toneIcons: Record<FormMessageTone, string> = {
   error: 'i-lucide-circle-alert',
   warning: 'i-lucide-triangle-alert',
   success: 'i-lucide-circle-check',
+  info: 'i-lucide-info',
 }
 
 const toneText: Record<FormMessageTone, string | false> = {
   error: false,
   warning: 'text-(color:--pocketr-warning-fg)',
   success: 'text-(color:--pocketr-success-fg)',
+  info: false,
 }
 
 const isError = computed(() => props.tone === 'error')

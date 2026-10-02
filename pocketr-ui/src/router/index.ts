@@ -38,7 +38,7 @@ const routes = [
     path: '/transactions',
     name: 'transactions',
     component: TransactionsPage,
-    meta: { requiresAuth: true },
+    meta: { requiresAuth: true, uiV2: true },
   },
   {
     path: '/accounts',

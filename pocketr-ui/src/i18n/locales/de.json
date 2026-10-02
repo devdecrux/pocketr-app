@@ -13,10 +13,15 @@
       "save": "Speichern",
       "signIn": "Anmelden",
       "share": "Teilen",
-      "unshare": "Nicht mehr teilen"
+      "unshare": "Nicht mehr teilen",
+      "clear": "Zurücksetzen"
     },
     "amounts": {
       "mixedCurrencies": "Gemischte Währungen"
+    },
+    "dateRange": {
+      "from": "Ab {date}",
+      "until": "Bis {date}"
     },
     "feedback": {
       "creating": "Wird erstellt...",
@@ -27,17 +32,28 @@
       "sending": "Wird gesendet..."
     },
     "fields": {
+      "account": "Konto",
+      "amount": "Betrag",
+      "category": "Kategorie",
       "color": "Farbe",
       "confirmPassword": "Passwort bestätigen",
+      "date": "Datum",
+      "dateRange": "Zeitraum",
+      "description": "Beschreibung",
       "email": "E-Mail",
       "firstName": "Vorname",
       "householdName": "Haushaltsname",
       "lastName": "Nachname",
       "name": "Name",
-      "password": "Passwort"
+      "password": "Passwort",
+      "search": "Suche",
+      "type": "Typ"
     },
     "formHints": {
-      "householdName": "Name meines Haushalts (mind. 3 Zeichen)"
+      "householdName": "Name meines Haushalts (mind. 3 Zeichen)",
+      "money": "0,00",
+      "selectAccount": "Konto auswählen",
+      "selectCategory": "Kategorie auswählen..."
     },
     "states": {
       "archived": "Archiviert",
@@ -46,11 +62,19 @@
     },
     "table": {
       "actions": "Aktionen",
+      "amount": "Betrag",
       "category": "Kategorie",
       "created": "Erstellt",
+      "date": "Datum",
+      "description": "Beschreibung",
+      "member": "Mitglied",
+      "nextPage": "Nächste Seite",
       "pageOf": "Seite {page} von {totalPages}",
+      "previousPage": "Vorherige Seite",
+      "range": "{from}–{to} von {total}",
       "rowsPerPage": "Zeilen pro Seite",
-      "total": "{totalElements} insgesamt"
+      "total": "{totalElements} insgesamt",
+      "type": "Typ"
     }
   },
   "display": {
@@ -69,6 +93,14 @@
     "memberStatuses": {
       "ACTIVE": "Aktiv",
       "INVITED": "Eingeladen"
+    },
+    "transactionKinds": {
+      "DEBT_PAYMENT": "Schuldenzahlung",
+      "EXPENSE": "Ausgabe",
+      "INCOME": "Einnahme",
+      "OPENING_BALANCE": "Anfangssaldo",
+      "OPENING_DEBT": "Anfangsschuld",
+      "TRANSFER": "Überweisung"
     }
   },
   "views": {
@@ -247,6 +279,87 @@
         "members": "Mitglieder"
       },
       "title": "Haushalt"
+    },
+    "transactions": {
+      "actions": {
+        "new": "Transaktion hinzufügen"
+      },
+      "confirmDelete": "Transaktion „{description}“ löschen?",
+      "create": {
+        "description": "Erfasse eine Ausgabe, Einnahme, Überweisung oder Schuldenzahlung.",
+        "submit": "Transaktion erstellen",
+        "tabs": {
+          "debtPayment": "Schuldenzahlung",
+          "expense": "Ausgabe",
+          "income": "Einnahme",
+          "transfer": "Überweisung"
+        },
+        "title": "Transaktion erstellen",
+        "typeLabel": "Transaktionstyp"
+      },
+      "delete": {
+        "confirm": "Transaktion löschen",
+        "description": "Die Transaktion wird aus deinen Aufzeichnungen entfernt."
+      },
+      "details": {
+        "category": "Kategorie: {name}",
+        "column": "Details",
+        "title": "Transaktionsdetails"
+      },
+      "empty": "Keine Transaktionen gefunden. Erstelle deine erste Transaktion.",
+      "fields": {
+        "debtPaymentLiabilityAccount": "Verbindlichkeitskonto",
+        "depositTo": "Einzahlen auf",
+        "expenseAccount": "Ausgabenkonto",
+        "fromAccount": "Vom Konto",
+        "incomeAccount": "Einnahmenkonto",
+        "payFromAsset": "Zahlen von",
+        "payFromAssetOrLiability": "Zahlen von",
+        "toAccount": "Zum Konto"
+      },
+      "filters": {
+        "button": "Filter",
+        "clear": "Filter zurücksetzen",
+        "title": "Filter"
+      },
+      "formHints": {
+        "allAccounts": "Alle Konten",
+        "allCategories": "Alle Kategorien",
+        "debtPaymentNote": "Notiz zur Zahlung",
+        "incomeSource": "Einnahmequelle",
+        "noCategory": "Keine Kategorie",
+        "searchDescriptions": "Beschreibungen durchsuchen",
+        "selectAssetAccount": "Vermögenskonto wählen",
+        "selectDepositAccount": "Einzahlungskonto wählen",
+        "selectDestinationAccount": "Zielkonto wählen",
+        "selectExpenseAccount": "Ausgabenkonto wählen",
+        "selectIncomeAccount": "Einnahmenkonto wählen",
+        "selectLiabilityAccount": "Verbindlichkeitskonto wählen",
+        "selectPayFromAccount": "Zahlungskonto wählen",
+        "selectSourceAccount": "Quellkonto wählen",
+        "transferReason": "Grund der Überweisung",
+        "whatWasThisFor": "Wofür war das?"
+      },
+      "groups": {
+        "earlierThisMonth": "Früher in diesem Monat",
+        "today": "Heute",
+        "upcoming": "Bevorstehend",
+        "yesterday": "Gestern"
+      },
+      "loading": "Transaktionen werden geladen...",
+      "notices": {
+        "crossUserTransfer": "Dies ist eine Überweisung zwischen Haushaltsmitgliedern.",
+        "householdTransfers": "Überweisungen zwischen Haushaltskonten sind erlaubt. Du kannst keine Ausgaben auf Konten anderer Nutzer buchen."
+      },
+      "rowActions": {
+        "collapse": "Details zu {description} ausblenden",
+        "collapseAll": "Alle Zeilen zuklappen",
+        "delete": "{description} löschen",
+        "expand": "Details zu {description} anzeigen",
+        "expandAll": "Alle Zeilen aufklappen"
+      },
+      "subtitle": "Jede Bewegung, klar erfasst.",
+      "title": "Transaktionen"
     }
   },
   "validation": {
@@ -260,6 +373,10 @@
     "category": {
       "duplicate": "Die Kategorie „{name}“ existiert bereits.",
       "nameRequired": "Der Kategoriename ist erforderlich."
+    },
+    "transactions": {
+      "requiredPositiveAmount": "Fülle alle Pflichtfelder aus und gib einen positiven Betrag ein.",
+      "unknownTab": "Unbekannter Tab."
     }
   },
   "errors": {
@@ -295,6 +412,11 @@
       "delete": "Die Kategorie konnte nicht gelöscht werden.",
       "load": "Die Kategorien konnten nicht geladen werden.",
       "rename": "Die Kategorie konnte nicht gespeichert werden."
+    },
+    "transactions": {
+      "create": "Die Transaktion konnte nicht erstellt werden.",
+      "delete": "Die Transaktion konnte nicht gelöscht werden.",
+      "load": "Die Transaktionen konnten nicht geladen werden."
     }
   },
   "success": {
@@ -341,6 +463,13 @@
       "custom": "Eigene Farbe, öffnet eine Farbauswahl",
       "noColor": "Keine Farbe",
       "picker": "Farbauswahl für eigene Farbe"
+    },
+    "accountSelector": {
+      "ownerGroup": "Besitzer: {ownerId}"
+    },
+    "categoryTagSelector": {
+      "empty": "Keine Kategorien gefunden.",
+      "searchPlaceholder": "Kategorien durchsuchen..."
     }
   }
 }

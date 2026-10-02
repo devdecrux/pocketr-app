@@ -103,6 +103,7 @@
   --pocketr-nav-active: #e5f5f9;
   --pocketr-icon-bg: #eef9fc;
   --pocketr-tile-bg: #e8f7fb;
+  --pocketr-detail-bg: #f1f6f9;
   --pocketr-choice-active: #dff3f8;
   --pocketr-avatar-bg: #dee3e8;
   --pocketr-track: #f0f2f5;
@@ -142,6 +143,7 @@
   --pocketr-nav-active: #11333e;
   --pocketr-icon-bg: #17313b;
   --pocketr-tile-bg: #17313b;
+  --pocketr-detail-bg: #1f2a31;
   --pocketr-choice-active: #093644;
   --pocketr-avatar-bg: #2e3941;
   --pocketr-track: #28323a;
@@ -909,4 +911,25 @@
 .dark [data-slot='dropdown-menu-sub-content'],
 .dark [data-slot='popover-content'] {
   border-color: var(--app-control-border);
+}
+
+/*
+ * Migrated pages, below `lg`: text-entry controls render at 16px. iOS Safari zooms the page when a
+ * focused input, textarea or select computes below 16px. Unlayered so it beats the `text-sm` utilities
+ * on the individual fields; popovers teleport into <body>, so this covers the searchable menus too.
+ * Pinch zoom stays enabled; the viewport meta is untouched.
+ */
+@media (max-width: 1023.98px) {
+  body[data-ui-migration='v2']
+    :is(input:not([type='checkbox'], [type='radio'], [type='hidden']), textarea, select) {
+    font-size: 16px;
+  }
+}
+
+/* vaul animates the drawer with fixed 0.5s keyframes and has no reduced-motion handling of its own. */
+@media (prefers-reduced-motion: reduce) {
+  body[data-ui-migration='v2'] [data-vaul-drawer],
+  body[data-ui-migration='v2'] [data-vaul-overlay] {
+    animation-duration: 1ms;
+  }
 }
