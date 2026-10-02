@@ -113,8 +113,9 @@
         "rose": "Rose",
         "slate": "Slate"
       },
-      "current": "Current color",
-      "noColor": "No color"
+      "custom": "Custom color, opens a color picker",
+      "noColor": "No color",
+      "picker": "Custom color picker"
     },
     "categoryTagSelector": {
       "empty": "No categories found.",
@@ -334,37 +335,45 @@
     "householdSettings": {
       "accounts": {
         "emptyMine": "You have no accounts to share. Create accounts first.",
+        "privateBadge": "Private",
+        "shareAction": "Share {name}",
         "sharedAt": "Shared {date}",
         "sharedBadge": "Shared",
         "sharedBy": "Shared by {name}",
-        "sharedDescription": "Accounts currently shared in this household.",
+        "sharedDescription": "Visible to everyone in this household.",
         "sharedEmpty": "No accounts are shared yet.",
-        "sharedTitle": "Shared Accounts",
-        "yoursDescription": "Toggle sharing for your own accounts in this household.",
-        "yoursTitle": "Your Accounts"
+        "sharedTitle": "Shared accounts",
+        "unshareAction": "Unshare {name}",
+        "yoursDescription": "You choose what to share.",
+        "yoursTitle": "Your accounts"
       },
       "header": {
         "created": "Created {date}"
       },
       "invite": {
-        "description": "Send an invitation to join this household by email.",
+        "description": "Invite someone who already has a Pocketr account.",
         "placeholder": "name{'@'}example.com",
-        "sendAction": "Send Invitation",
+        "sendAction": "Send invitation",
         "success": "Invitation sent to {email}.",
-        "title": "Invite Member"
+        "title": "Invite a member"
       },
       "members": {
-        "description": "Manage household members and their roles.",
         "empty": "No members found.",
         "joined": "Joined {date}",
         "loading": "Loading members...",
         "title": "Members"
       },
       "rollover": {
-        "day": "Expense rollover day",
+        "day": "Rollover period",
         "help": "Household expense balances and reports use this rollover day for all members.",
+        "helpLabel": "About the household rollover period",
         "updated": "Household expense rollover day updated."
-      }
+      },
+      "tabs": {
+        "accounts": "Accounts",
+        "members": "Members"
+      },
+      "title": "Household"
     },
     "notFound": {
       "description": "The page you’re looking for doesn’t exist or has moved.",

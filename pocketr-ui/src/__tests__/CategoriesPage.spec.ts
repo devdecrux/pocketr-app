@@ -6,6 +6,7 @@ import { h } from 'vue'
 import { createMemoryHistory, createRouter, RouterView } from 'vue-router'
 import ui from '@nuxt/ui/vue-plugin'
 import UApp from '@nuxt/ui/components/App.vue'
+import UColorPicker from '@nuxt/ui/components/ColorPicker.vue'
 import UDashboardGroup from '@nuxt/ui/components/DashboardGroup.vue'
 import { i18n } from '@/i18n'
 import { useAuthStore } from '@/stores/auth'
@@ -118,6 +119,10 @@ async function typeName(root: ParentNode, value: string) {
   input.dispatchEvent(new Event('input', { bubbles: true }))
   await flushPromises()
 }
+
+const CUSTOM_LABEL = 'Custom color, opens a color picker'
+const PICKER_LABEL = 'Custom color picker'
+const CUSTOM_SWATCH = '[data-testid="custom-color-swatch"]'
 
 function rowNames(wrapper: VueWrapper): string[] {
   return wrapper.findAll('main tbody tr').map((row) => row.find('td').text())
@@ -295,26 +300,101 @@ describe('CategoriesPage', () => {
     wrapper.unmount()
   })
 
-  it('keeps the list in the same columns while editing on desktop', async () => {
+  it('shows the desktop table full width with every column end-aligned', async () => {
     const wrapper = await mountCategories()
 
-    const listColumn = wrapper.get('main table').element.closest('.lg\\:col-span-3')
-    expect(listColumn).not.toBeNull()
+    const table = wrapper.get('main table').element
+    expect(table.closest('.grid')).toBeNull()
+    const headers = wrapper.findAll('main thead th')
+    expect(headers).toHaveLength(3)
+    for (const header of headers) expect(header.classes()).toContain('text-end')
+    for (const cell of wrapper.findAll('main tbody tr:first-child td'))
+      expect(cell.classes()).toContain('text-end')
+
     await click(buttonIn(document.body, 'Edit Health'))
-    expect(wrapper.get('main table').element.closest('.lg\\:col-span-3')).toBe(listColumn)
+    expect(wrapper.get('main table').element).toBe(table)
 
     wrapper.unmount()
   })
 
-  it('keeps an off-palette colour selectable when editing', async () => {
+  it('shows a saved custom colour as the selected custom swatch when editing', async () => {
     mocks.listCategories.mockResolvedValue([category('c7', 'Legacy', '#ef4444')])
+    mocks.updateCategory.mockImplementation(
+      async (id: string, req: { name: string; color: string | null }) =>
+        category(id, req.name, req.color),
+    )
     const wrapper = await mountCategories()
 
     await click(buttonIn(document.body, 'Edit Legacy'))
-    const current = dialogByTitle('Edit category').querySelector<HTMLInputElement>(
-      'input[aria-label="Current color"]',
+    const dialog = dialogByTitle('Edit category')
+    const custom = dialog.querySelector<HTMLInputElement>(`input[aria-label="${CUSTOM_LABEL}"]`)
+    expect(custom?.checked).toBe(true)
+    expect(dialog.querySelector<HTMLElement>(CUSTOM_SWATCH)?.style.backgroundColor).toBe(
+      'rgb(239, 68, 68)',
     )
-    expect(current?.checked).toBe(true)
+    expect(dialog.querySelectorAll('input[type="radio"]:checked')).toHaveLength(1)
+
+    await click(buttonIn(dialog, 'Save changes'))
+    expect(mocks.updateCategory).toHaveBeenCalledWith('c7', { name: 'Legacy', color: '#ef4444' })
+
+    wrapper.unmount()
+  })
+
+  it('creates a category with a colour picked from the custom picker', async () => {
+    mocks.createCategory.mockImplementation(async (req: { name: string; color: string | null }) =>
+      category('c9', req.name, req.color),
+    )
+    const wrapper = await mountCategories()
+
+    await click(buttonIn(document.body, 'New category'))
+    const dialog = dialogByTitle('Create Category')
+    const custom = dialog.querySelector<HTMLInputElement>(`input[aria-label="${CUSTOM_LABEL}"]`)
+    expect(custom?.checked).toBe(false)
+    expect(dialog.querySelector(CUSTOM_SWATCH)?.getAttribute('style')).toBeNull()
+    expect(document.querySelector(`[aria-label="${PICKER_LABEL}"]`)).toBeNull()
+
+    await typeName(dialog, 'Hobbies')
+    custom?.closest('label')?.dispatchEvent(new Event('pointerdown', { bubbles: true }))
+    custom?.click()
+    await flushPromises()
+
+    expect(custom?.checked).toBe(true)
+    expect(document.querySelector(`[aria-label="${PICKER_LABEL}"]`)).not.toBeNull()
+    wrapper.findComponent(UColorPicker).vm.$emit('update:modelValue', '#1A2B3C')
+    await flushPromises()
+
+    expect(dialog.querySelector<HTMLElement>(CUSTOM_SWATCH)?.style.backgroundColor).toBe(
+      'rgb(26, 43, 60)',
+    )
+    expect(custom?.checked).toBe(true)
+    await click(buttonIn(dialog, 'Create Category'))
+
+    expect(mocks.createCategory).toHaveBeenCalledWith({ name: 'Hobbies', color: '#1a2b3c' })
+    const row = wrapper.findAll('main tbody tr').find((tr) => tr.text().includes('Hobbies'))
+    expect(row?.find('span[aria-hidden="true"]').attributes('style')).toContain(
+      'background-color: rgb(26, 43, 60)',
+    )
+
+    wrapper.unmount()
+  })
+
+  it('opens the custom picker from the keyboard but not while arrowing through swatches', async () => {
+    const wrapper = await mountCategories()
+
+    await click(buttonIn(document.body, 'New category'))
+    const dialog = dialogByTitle('Create Category')
+    const custom = dialog.querySelector<HTMLInputElement>(`input[aria-label="${CUSTOM_LABEL}"]`)
+
+    custom?.click()
+    await flushPromises()
+    expect(custom?.checked).toBe(true)
+    expect(document.querySelector(`[aria-label="${PICKER_LABEL}"]`)).toBeNull()
+
+    const enter = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true })
+    custom?.dispatchEvent(enter)
+    await flushPromises()
+    expect(enter.defaultPrevented).toBe(true)
+    expect(document.querySelector(`[aria-label="${PICKER_LABEL}"]`)).not.toBeNull()
 
     wrapper.unmount()
   })

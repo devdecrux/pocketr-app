@@ -11,7 +11,9 @@
       "delete": "Löschen",
       "edit": "Bearbeiten",
       "save": "Speichern",
-      "signIn": "Anmelden"
+      "signIn": "Anmelden",
+      "share": "Teilen",
+      "unshare": "Nicht mehr teilen"
     },
     "amounts": {
       "mixedCurrencies": "Gemischte Währungen"
@@ -21,7 +23,8 @@
       "creatingAccount": "Konto wird erstellt...",
       "leaving": "Wird verlassen...",
       "saving": "Wird gespeichert...",
-      "uploading": "Wird hochgeladen..."
+      "uploading": "Wird hochgeladen...",
+      "sending": "Wird gesendet..."
     },
     "fields": {
       "color": "Farbe",
@@ -38,7 +41,8 @@
     },
     "states": {
       "archived": "Archiviert",
-      "noData": "Keine Daten."
+      "noData": "Keine Daten.",
+      "unknownUser": "Unbekannter Benutzer"
     },
     "table": {
       "actions": "Aktionen",
@@ -54,6 +58,17 @@
       "ADMIN": "Admin",
       "MEMBER": "Mitglied",
       "OWNER": "Eigentümer"
+    },
+    "accountTypes": {
+      "ASSET": "Vermögen",
+      "EQUITY": "Eigenkapital",
+      "EXPENSE": "Ausgabe",
+      "INCOME": "Einnahme",
+      "LIABILITY": "Verbindlichkeit"
+    },
+    "memberStatuses": {
+      "ACTIVE": "Aktiv",
+      "INVITED": "Eingeladen"
     }
   },
   "views": {
@@ -189,11 +204,55 @@
         "more": "Weitere Aktionen für {name}"
       },
       "title": "Kategorien"
+    },
+    "householdSettings": {
+      "accounts": {
+        "emptyMine": "Du hast keine Konten zum Teilen. Erstelle zuerst ein Konto.",
+        "privateBadge": "Privat",
+        "shareAction": "{name} teilen",
+        "sharedAt": "Geteilt am {date}",
+        "sharedBadge": "Geteilt",
+        "sharedBy": "Geteilt von {name}",
+        "sharedDescription": "Für alle in diesem Haushalt sichtbar.",
+        "sharedEmpty": "Noch keine Konten geteilt.",
+        "sharedTitle": "Geteilte Konten",
+        "unshareAction": "Teilen von {name} beenden",
+        "yoursDescription": "Du entscheidest, was du teilst.",
+        "yoursTitle": "Deine Konten"
+      },
+      "header": {
+        "created": "Erstellt am {date}"
+      },
+      "invite": {
+        "description": "Lade jemanden ein, der bereits ein Pocketr-Konto hat.",
+        "placeholder": "name{'@'}example.com",
+        "sendAction": "Einladung senden",
+        "success": "Einladung an {email} gesendet.",
+        "title": "Mitglied einladen"
+      },
+      "members": {
+        "empty": "Keine Mitglieder gefunden.",
+        "joined": "Beigetreten am {date}",
+        "loading": "Mitglieder werden geladen...",
+        "title": "Mitglieder"
+      },
+      "rollover": {
+        "day": "Abrechnungszeitraum",
+        "help": "Ausgabensalden und Berichte des Haushalts verwenden diesen Tag für alle Mitglieder.",
+        "helpLabel": "Über den Abrechnungszeitraum des Haushalts",
+        "updated": "Abrechnungstag des Haushalts aktualisiert."
+      },
+      "tabs": {
+        "accounts": "Konten",
+        "members": "Mitglieder"
+      },
+      "title": "Haushalt"
     }
   },
   "validation": {
     "household": {
-      "nameMinLength": "Der Haushaltsname muss mindestens 3 Zeichen lang sein."
+      "nameMinLength": "Der Haushaltsname muss mindestens 3 Zeichen lang sein.",
+      "emailRequired": "E-Mail ist erforderlich."
     },
     "rollover": {
       "dayRange": "Der Tag muss zwischen 1 und 31 liegen."
@@ -216,7 +275,14 @@
     "households": {
       "acceptInvite": "Die Einladung konnte nicht angenommen werden.",
       "create": "Der Haushalt konnte nicht erstellt werden.",
-      "leave": "Der Haushalt konnte nicht verlassen werden."
+      "leave": "Der Haushalt konnte nicht verlassen werden.",
+      "inviteMember": "Das Mitglied konnte nicht eingeladen werden.",
+      "loadDetails": "Die Haushaltsdetails konnten nicht geladen werden.",
+      "loadSharedAccounts": "Die geteilten Konten konnten nicht geladen werden.",
+      "sendInvitation": "Die Einladung konnte nicht gesendet werden.",
+      "shareAccount": "Das Konto konnte nicht geteilt werden.",
+      "unshareAccount": "Das Teilen des Kontos konnte nicht beendet werden.",
+      "updateRollover": "Der Abrechnungstag des Haushalts konnte nicht aktualisiert werden."
     },
     "language": {
       "update": "Die Sprache konnte nicht aktualisiert werden."
@@ -272,8 +338,9 @@
         "rose": "Rosa",
         "slate": "Schiefergrau"
       },
-      "current": "Aktuelle Farbe",
-      "noColor": "Keine Farbe"
+      "custom": "Eigene Farbe, öffnet eine Farbauswahl",
+      "noColor": "Keine Farbe",
+      "picker": "Farbauswahl für eigene Farbe"
     }
   }
 }

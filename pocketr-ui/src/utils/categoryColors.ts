@@ -14,3 +14,6 @@ export function isPresetCategoryColor(color: string | null | undefined): boolean
   const normalized = color?.toLowerCase()
   return CATEGORY_COLOR_PRESETS.some((preset) => preset.value === normalized)
 }
+
+/** Starting point of the custom colour picker when the category has no custom colour yet. */
+export const DEFAULT_CUSTOM_CATEGORY_COLOR = '#8b5cf6'

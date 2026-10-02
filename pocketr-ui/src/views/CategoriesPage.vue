@@ -159,7 +159,7 @@ const columns = computed<AppTableColumn<CategoryTag>[]>(() => [
   {
     accessorKey: 'name',
     header: t('common.table.category'),
-    meta: { class: { th: 'w-full', td: 'w-full max-w-0' } },
+    meta: { align: 'end', class: { th: 'w-full', td: 'w-full max-w-0' } },
   },
   {
     accessorKey: 'createdAt',
@@ -194,135 +194,133 @@ const iconButtonClass = 'rounded-lg text-default'
 
 <template>
   <AppPagePanel :title="t('views.categories.title')">
-    <div class="grid gap-4 lg:grid-cols-5">
-      <div class="flex min-w-0 flex-col gap-3 lg:col-span-3">
-        <div class="flex items-center justify-between gap-4">
-          <h1 class="min-w-0 text-[22px] leading-8 font-bold text-highlighted lg:hidden">
-            {{ t('views.categories.title') }}
-          </h1>
-          <h2 class="hidden min-w-0 text-2xl leading-8 font-bold text-highlighted lg:block">
-            {{ t('views.categories.title') }}
-          </h2>
-          <UButton
-            icon="i-lucide-plus"
-            size="md"
-            :label="t('views.categories.actions.new')"
-            class="hidden shrink-0 rounded-lg lg:inline-flex"
-            @click="openCreate"
-          />
-        </div>
+    <div class="flex min-w-0 flex-col gap-3">
+      <div class="flex items-center justify-between gap-4">
+        <h1 class="min-w-0 text-[22px] leading-8 font-bold text-highlighted lg:hidden">
+          {{ t('views.categories.title') }}
+        </h1>
+        <h2 class="hidden min-w-0 text-2xl leading-8 font-bold text-highlighted lg:block">
+          {{ t('views.categories.title') }}
+        </h2>
+        <UButton
+          icon="i-lucide-plus"
+          size="md"
+          :label="t('views.categories.actions.new')"
+          class="hidden shrink-0 rounded-lg lg:inline-flex"
+          @click="openCreate"
+        />
+      </div>
 
-        <FormMessage v-if="deleteError" tone="error" :message="deleteError" />
+      <FormMessage v-if="deleteError" tone="error" :message="deleteError" />
 
-        <FormMessage v-if="loadError" tone="error" :message="loadError" />
+      <FormMessage v-if="loadError" tone="error" :message="loadError" />
 
-        <AppDataTable
-          v-else-if="isDesktop"
-          :data="sortedCategories"
-          :columns="columns"
-          :loading="categoryStore.isLoading"
-          :empty-text="t('views.categories.empty')"
-          :get-row-id="(category: CategoryTag) => category.id"
-        >
-          <template #name-cell="{ row }">
-            <span class="flex min-w-0 items-center gap-3">
-              <CategoryColorDot :color="row.original.color" />
-              <span class="truncate font-medium text-highlighted">{{ row.original.name }}</span>
-            </span>
-          </template>
-          <template #createdAt-cell="{ row }">
-            <span class="whitespace-nowrap text-muted tabular-nums">
-              {{ formatCreated(row.original.createdAt) }}
-            </span>
-          </template>
-          <template #actions-cell="{ row }">
-            <div class="-me-2 inline-flex items-center gap-1">
-              <UTooltip :text="t('common.actions.edit')">
-                <UButton
-                  color="neutral"
-                  variant="ghost"
-                  size="md"
-                  icon="i-lucide-pencil"
-                  :aria-label="t('views.categories.rowActions.edit', { name: row.original.name })"
-                  :class="iconButtonClass"
-                  @click="openEdit(row.original)"
-                />
-              </UTooltip>
-              <UTooltip :text="t('common.actions.delete')">
-                <UButton
-                  color="neutral"
-                  variant="ghost"
-                  size="md"
-                  icon="i-lucide-trash-2"
-                  :aria-label="t('views.categories.rowActions.delete', { name: row.original.name })"
-                  :class="iconButtonClass"
-                  @click="requestDelete(row.original)"
-                />
-              </UTooltip>
-            </div>
-          </template>
-          <template #loading>{{ t('views.categories.loading') }}</template>
-        </AppDataTable>
-
-        <template v-else>
-          <div
-            v-if="categoryStore.isLoading"
-            class="space-y-2"
-            :aria-label="t('views.categories.loading')"
-          >
-            <USkeleton v-for="index in 4" :key="index" class="h-14 w-full rounded-xl" />
+      <AppDataTable
+        v-else-if="isDesktop"
+        :data="sortedCategories"
+        :columns="columns"
+        :loading="categoryStore.isLoading"
+        :empty-text="t('views.categories.empty')"
+        :get-row-id="(category: CategoryTag) => category.id"
+      >
+        <template #name-cell="{ row }">
+          <span class="flex min-w-0 items-center justify-end gap-3">
+            <CategoryColorDot :color="row.original.color" />
+            <span class="truncate font-medium text-highlighted">{{ row.original.name }}</span>
+          </span>
+        </template>
+        <template #createdAt-cell="{ row }">
+          <span class="whitespace-nowrap text-muted tabular-nums">
+            {{ formatCreated(row.original.createdAt) }}
+          </span>
+        </template>
+        <template #actions-cell="{ row }">
+          <div class="-me-2 inline-flex items-center gap-1">
+            <UTooltip :text="t('common.actions.edit')">
+              <UButton
+                color="neutral"
+                variant="ghost"
+                size="md"
+                icon="i-lucide-pencil"
+                :aria-label="t('views.categories.rowActions.edit', { name: row.original.name })"
+                :class="iconButtonClass"
+                @click="openEdit(row.original)"
+              />
+            </UTooltip>
+            <UTooltip :text="t('common.actions.delete')">
+              <UButton
+                color="neutral"
+                variant="ghost"
+                size="md"
+                icon="i-lucide-trash-2"
+                :aria-label="t('views.categories.rowActions.delete', { name: row.original.name })"
+                :class="iconButtonClass"
+                @click="requestDelete(row.original)"
+              />
+            </UTooltip>
           </div>
-          <p
-            v-else-if="sortedCategories.length === 0"
-            class="rounded-xl border border-default bg-default px-4 py-8 text-center text-sm text-muted"
+        </template>
+        <template #loading>{{ t('views.categories.loading') }}</template>
+      </AppDataTable>
+
+      <template v-else>
+        <div
+          v-if="categoryStore.isLoading"
+          class="space-y-2"
+          :aria-label="t('views.categories.loading')"
+        >
+          <USkeleton v-for="index in 4" :key="index" class="h-14 w-full rounded-xl" />
+        </div>
+        <p
+          v-else-if="sortedCategories.length === 0"
+          class="rounded-xl border border-default bg-default px-4 py-8 text-center text-sm text-muted"
+        >
+          {{ t('views.categories.empty') }}
+        </p>
+        <ul
+          v-else
+          class="divide-y divide-default overflow-hidden rounded-xl border border-default bg-default"
+        >
+          <li
+            v-for="category in sortedCategories"
+            :key="category.id"
+            class="flex items-center gap-3 py-2.5 ps-4 pe-2"
           >
-            {{ t('views.categories.empty') }}
-          </p>
-          <ul
-            v-else
-            class="divide-y divide-default overflow-hidden rounded-xl border border-default bg-default"
-          >
-            <li
-              v-for="category in sortedCategories"
-              :key="category.id"
-              class="flex items-center gap-3 py-2.5 ps-4 pe-2"
+            <CategoryColorDot :color="category.color" class="size-4" />
+            <div class="min-w-0 flex-1">
+              <p class="truncate text-[15px] font-medium text-highlighted">{{ category.name }}</p>
+              <p class="text-[13px] text-muted tabular-nums">
+                {{ formatCreated(category.createdAt) }}
+              </p>
+            </div>
+            <UButton
+              color="neutral"
+              variant="ghost"
+              size="lg"
+              icon="i-lucide-pencil"
+              :aria-label="t('views.categories.rowActions.edit', { name: category.name })"
+              :class="iconButtonClass"
+              @click="openEdit(category)"
+            />
+            <!-- Non-modal: a modal menu's pointer lock would outlive the drawer its item opens. -->
+            <UDropdownMenu
+              :items="rowMenuItems(category)"
+              :modal="false"
+              :content="{ align: 'end' }"
             >
-              <CategoryColorDot :color="category.color" class="size-4" />
-              <div class="min-w-0 flex-1">
-                <p class="truncate text-[15px] font-medium text-highlighted">{{ category.name }}</p>
-                <p class="text-[13px] text-muted tabular-nums">
-                  {{ formatCreated(category.createdAt) }}
-                </p>
-              </div>
               <UButton
                 color="neutral"
                 variant="ghost"
                 size="lg"
-                icon="i-lucide-pencil"
-                :aria-label="t('views.categories.rowActions.edit', { name: category.name })"
+                icon="i-lucide-ellipsis"
+                :aria-label="t('views.categories.rowActions.more', { name: category.name })"
                 :class="iconButtonClass"
-                @click="openEdit(category)"
+                @click="onMenuTriggerClick"
               />
-              <!-- Non-modal: a modal menu's pointer lock would outlive the drawer its item opens. -->
-              <UDropdownMenu
-                :items="rowMenuItems(category)"
-                :modal="false"
-                :content="{ align: 'end' }"
-              >
-                <UButton
-                  color="neutral"
-                  variant="ghost"
-                  size="lg"
-                  icon="i-lucide-ellipsis"
-                  :aria-label="t('views.categories.rowActions.more', { name: category.name })"
-                  :class="iconButtonClass"
-                  @click="onMenuTriggerClick"
-                />
-              </UDropdownMenu>
-            </li>
-          </ul>
-        </template>
-      </div>
+            </UDropdownMenu>
+          </li>
+        </ul>
+      </template>
     </div>
 
     <AppFormOverlay

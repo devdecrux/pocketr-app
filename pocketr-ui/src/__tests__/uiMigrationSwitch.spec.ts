@@ -68,10 +68,11 @@ describe('UI migration switch (temporary)', () => {
     expect(isUiV2Route({ meta: { uiV2: true } })).toBe(true)
   })
 
-  it('flags only the sign-in, registration, dashboard, categories, settings and not-found routes (Phases 1-3, 6, 7, 9)', () => {
+  it('flags only the sign-in, registration, dashboard, categories, settings, household and not-found routes (Phases 1-3, 6-9)', () => {
     const flagged = appRouter.getRoutes().filter((route) => isUiV2Route(route))
 
     expect(flagged.map((route) => route.path)).toEqual([
+      '/household/:householdId/settings',
       '/login',
       '/registration',
       '/dashboard',

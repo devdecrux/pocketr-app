@@ -62,7 +62,7 @@ const routes = [
     path: '/household/:householdId/settings',
     name: 'household-settings',
     component: HouseholdSettingsPage,
-    meta: { requiresAuth: true },
+    meta: { requiresAuth: true, uiV2: true },
   },
   {
     path: '/:pathMatch(.*)*',
