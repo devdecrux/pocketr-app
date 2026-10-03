@@ -1,18 +1,20 @@
 <script setup lang="ts">
-import type { DropdownMenuItem } from '@nuxt/ui'
 import { useMediaQuery } from '@vueuse/core'
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, useTemplateRef } from 'vue'
 import { useI18n } from 'vue-i18n'
 import CategoryForm from '@/components/forms/CategoryForm.vue'
 import FormMessage from '@/components/forms/FormMessage.vue'
 import AppPagePanel from '@/components/layout/AppPagePanel.vue'
 import AppConfirmDialog from '@/components/shared/AppConfirmDialog.vue'
 import AppDataTable from '@/components/shared/AppDataTable.vue'
+import AppExpandableRow from '@/components/shared/AppExpandableRow.vue'
 import AppFormOverlay from '@/components/shared/AppFormOverlay.vue'
 import CategoryColorDot from '@/components/shared/CategoryColorDot.vue'
 import { useCategoryStore } from '@/stores/category'
 import type { AppTableColumn } from '@/types/dataTable'
 import type { CategoryTag } from '@/types/ledger'
+import { APP_ICONS } from '@/utils/appIcons'
+import { formatTimestampDate } from '@/utils/dates'
 
 const CREATE_FORM_ID = 'create-category-form'
 const EDIT_FORM_ID = 'edit-category-form'
@@ -32,13 +34,6 @@ onMounted(async () => {
 const sortedCategories = computed(() =>
   [...categoryStore.categories].sort((a, b) => a.name.localeCompare(b.name)),
 )
-
-const dateFormatter = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' })
-
-function formatCreated(createdAt: string): string {
-  const date = new Date(createdAt)
-  return Number.isNaN(date.getTime()) ? '' : dateFormatter.format(date)
-}
 
 // One editor state for create and edit, so the two overlays can never be open together.
 type Editor = { mode: 'create' } | { mode: 'edit'; category: CategoryTag }
@@ -70,26 +65,23 @@ const isEditOpen = computed({
   },
 })
 
+// Rows are expanded by category id on the mobile list, which shows the row actions in place.
+const expanded = ref<Record<string, boolean>>({})
+
+function toggleRow(category: CategoryTag): void {
+  expanded.value = { ...expanded.value, [category.id]: !expanded.value[category.id] }
+}
+
 function openCreate(): void {
   if (isSaving.value) return
-  returnFocusTo.value = null
   draftName.value = ''
   draftColor.value = null
   saveError.value = ''
   editor.value = { mode: 'create' }
 }
 
-// Actions chosen from a row menu return focus to its trigger; the menu item is gone by then.
-const menuTrigger = ref<HTMLElement | null>(null)
-const returnFocusTo = ref<HTMLElement | null>(null)
-
-function onMenuTriggerClick(event: MouseEvent): void {
-  menuTrigger.value = event.currentTarget as HTMLElement
-}
-
-function openEdit(category: CategoryTag, fromMenu = false): void {
+function openEdit(category: CategoryTag): void {
   if (isSaving.value) return
-  returnFocusTo.value = fromMenu ? menuTrigger.value : null
   draftName.value = category.name
   draftColor.value = category.color ?? null
   saveError.value = ''
@@ -131,8 +123,13 @@ const isDeleteDialogOpen = computed({
   },
 })
 
-function requestDelete(category: CategoryTag, fromMenu = false): void {
-  returnFocusTo.value = fromMenu ? menuTrigger.value : null
+// A deleted category's button is gone, so focus returns to the New category button instead.
+const deleteReturnFocus = ref<HTMLElement | null>(null)
+const desktopNewButton = useTemplateRef<{ $el: HTMLElement }>('desktopNewButton')
+const footerNewButton = useTemplateRef<{ $el: HTMLElement }>('footerNewButton')
+
+function requestDelete(category: CategoryTag): void {
+  deleteReturnFocus.value = null
   deleteError.value = ''
   deleteTargetName.value = category.name
   deleteTarget.value = category
@@ -145,6 +142,11 @@ async function confirmDelete(): Promise<void> {
   isDeleting.value = true
   const removed = await categoryStore.remove(category.id)
   isDeleting.value = false
+  // Set before the dialog closes: the focus target is read as it finishes closing.
+  if (removed) {
+    deleteReturnFocus.value =
+      (isDesktop.value ? desktopNewButton : footerNewButton).value?.$el ?? null
+  }
   deleteTarget.value = null
 
   if (removed) {
@@ -173,22 +175,6 @@ const columns = computed<AppTableColumn<CategoryTag>[]>(() => [
   },
 ])
 
-function rowMenuItems(category: CategoryTag): DropdownMenuItem[] {
-  return [
-    {
-      label: t('common.actions.edit'),
-      icon: 'i-lucide-pencil',
-      onSelect: () => openEdit(category, true),
-    },
-    {
-      label: t('common.actions.delete'),
-      icon: 'i-lucide-trash-2',
-      color: 'error',
-      onSelect: () => requestDelete(category, true),
-    },
-  ]
-}
-
 const iconButtonClass = 'rounded-lg text-default'
 </script>
 
@@ -203,10 +189,11 @@ const iconButtonClass = 'rounded-lg text-default'
           {{ t('views.categories.title') }}
         </h2>
         <UButton
-          icon="i-lucide-plus"
+          ref="desktopNewButton"
+          :icon="APP_ICONS.add"
           size="md"
           :label="t('views.categories.actions.new')"
-          class="hidden shrink-0 rounded-lg lg:inline-flex"
+          class="hidden h-10 shrink-0 rounded-lg px-5 lg:inline-flex"
           @click="openCreate"
         />
       </div>
@@ -231,7 +218,7 @@ const iconButtonClass = 'rounded-lg text-default'
         </template>
         <template #createdAt-cell="{ row }">
           <span class="whitespace-nowrap text-muted tabular-nums">
-            {{ formatCreated(row.original.createdAt) }}
+            {{ formatTimestampDate(row.original.createdAt) }}
           </span>
         </template>
         <template #actions-cell="{ row }">
@@ -241,7 +228,7 @@ const iconButtonClass = 'rounded-lg text-default'
                 color="neutral"
                 variant="ghost"
                 size="md"
-                icon="i-lucide-pencil"
+                :icon="APP_ICONS.edit"
                 :aria-label="t('views.categories.rowActions.edit', { name: row.original.name })"
                 :class="iconButtonClass"
                 @click="openEdit(row.original)"
@@ -252,7 +239,7 @@ const iconButtonClass = 'rounded-lg text-default'
                 color="neutral"
                 variant="ghost"
                 size="md"
-                icon="i-lucide-trash-2"
+                :icon="APP_ICONS.remove"
                 :aria-label="t('views.categories.rowActions.delete', { name: row.original.name })"
                 :class="iconButtonClass"
                 @click="requestDelete(row.original)"
@@ -281,43 +268,48 @@ const iconButtonClass = 'rounded-lg text-default'
           v-else
           class="divide-y divide-default overflow-hidden rounded-xl border border-default bg-default"
         >
-          <li
-            v-for="category in sortedCategories"
-            :key="category.id"
-            class="flex items-center gap-3 py-2.5 ps-4 pe-2"
-          >
-            <CategoryColorDot :color="category.color" class="size-4" />
-            <div class="min-w-0 flex-1">
-              <p class="truncate text-[15px] font-medium text-highlighted">{{ category.name }}</p>
-              <p class="text-[13px] text-muted tabular-nums">
-                {{ formatCreated(category.createdAt) }}
-              </p>
-            </div>
-            <UButton
-              color="neutral"
-              variant="ghost"
-              size="lg"
-              icon="i-lucide-pencil"
-              :aria-label="t('views.categories.rowActions.edit', { name: category.name })"
-              :class="iconButtonClass"
-              @click="openEdit(category)"
-            />
-            <!-- Non-modal: a modal menu's pointer lock would outlive the drawer its item opens. -->
-            <UDropdownMenu
-              :items="rowMenuItems(category)"
-              :modal="false"
-              :content="{ align: 'end' }"
+          <li v-for="category in sortedCategories" :key="category.id">
+            <AppExpandableRow
+              :panel-id="`category-actions-${category.id}`"
+              :expanded="Boolean(expanded[category.id])"
+              @toggle="toggleRow(category)"
             >
-              <UButton
-                color="neutral"
-                variant="ghost"
-                size="lg"
-                icon="i-lucide-ellipsis"
-                :aria-label="t('views.categories.rowActions.more', { name: category.name })"
-                :class="iconButtonClass"
-                @click="onMenuTriggerClick"
-              />
-            </UDropdownMenu>
+              <CategoryColorDot :color="category.color" class="size-4" />
+              <span class="min-w-0 flex-1">
+                <span class="block truncate text-[15px] font-medium text-highlighted">
+                  {{ category.name }}
+                </span>
+                <span class="block text-[13px] text-muted tabular-nums">
+                  {{ formatTimestampDate(category.createdAt) }}
+                </span>
+              </span>
+              <template #details>
+                <div class="grid grid-cols-2 gap-2.5">
+                  <UButton
+                    block
+                    color="neutral"
+                    variant="soft"
+                    size="md"
+                    :icon="APP_ICONS.edit"
+                    :label="t('common.actions.edit')"
+                    :aria-label="t('views.categories.rowActions.edit', { name: category.name })"
+                    class="h-11 justify-center rounded-lg"
+                    @click="openEdit(category)"
+                  />
+                  <UButton
+                    block
+                    color="error"
+                    variant="soft"
+                    size="md"
+                    :icon="APP_ICONS.remove"
+                    :label="t('common.actions.delete')"
+                    :aria-label="t('views.categories.rowActions.delete', { name: category.name })"
+                    class="h-11 justify-center rounded-lg"
+                    @click="requestDelete(category)"
+                  />
+                </div>
+              </template>
+            </AppExpandableRow>
           </li>
         </ul>
       </template>
@@ -331,7 +323,6 @@ const iconButtonClass = 'rounded-lg text-default'
       :submit-label="t('views.categories.edit.submit')"
       :loading="isSaving"
       :submit-disabled="!draftName.trim()"
-      :return-focus-to="returnFocusTo"
     >
       <CategoryForm
         v-if="editedCategory"
@@ -373,14 +364,15 @@ const iconButtonClass = 'rounded-lg text-default'
       :description="t('views.categories.delete.description')"
       :confirm-label="t('views.categories.delete.confirm')"
       :loading="isDeleting"
-      :return-focus-to="returnFocusTo"
+      :return-focus-to="deleteReturnFocus"
       @confirm="confirmDelete"
     />
 
     <template #footer>
       <UButton
+        ref="footerNewButton"
         block
-        icon="i-lucide-plus"
+        :icon="APP_ICONS.add"
         size="md"
         :label="t('views.categories.actions.new')"
         class="h-11 justify-center rounded-lg"

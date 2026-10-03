@@ -5,6 +5,7 @@ import { HTTPError } from 'ky'
 import { h } from 'vue'
 import { createMemoryHistory, createRouter, RouterView } from 'vue-router'
 import ui from '@nuxt/ui/vue-plugin'
+import UIcon from '@nuxt/ui/components/Icon.vue'
 import UApp from '@nuxt/ui/components/App.vue'
 import UColorPicker from '@nuxt/ui/components/ColorPicker.vue'
 import UDashboardGroup from '@nuxt/ui/components/DashboardGroup.vue'
@@ -120,9 +121,23 @@ async function typeName(root: ParentNode, value: string) {
   await flushPromises()
 }
 
+// The mobile list shows a row's actions only after the row is expanded.
+async function expandRow(wrapper: VueWrapper, name: string) {
+  const toggle = wrapper
+    .findAll('main ul li > button')
+    .find((candidate) => candidate.text().includes(name))
+  if (!toggle) throw new Error(`No row "${name}"`)
+  await toggle.trigger('click')
+  await flushPromises()
+}
+
 const CUSTOM_LABEL = 'Custom color, opens a color picker'
 const PICKER_LABEL = 'Custom color picker'
 const CUSTOM_SWATCH = '[data-testid="custom-color-swatch"]'
+
+function mobileRowNames(wrapper: VueWrapper): string[] {
+  return wrapper.findAll('main ul li > button').map((row) => row.find('span.truncate').text())
+}
 
 function rowNames(wrapper: VueWrapper): string[] {
   return wrapper.findAll('main tbody tr').map((row) => row.find('td').text())
@@ -159,6 +174,8 @@ describe('CategoriesPage', () => {
   it('lists categories alphabetically with one h1 per breakpoint', async () => {
     const wrapper = await mountCategories()
 
+    expect(wrapper.get('main tbody tr').text()).toContain('12/09/2026')
+
     expect(rowNames(wrapper)).toEqual(['Groceries', 'Health', 'Transport'])
     expect(wrapper.findAll('h1')).toHaveLength(2)
     expect(wrapper.find('h1.lg\\:hidden').exists()).toBe(true)
@@ -170,17 +187,29 @@ describe('CategoriesPage', () => {
     wrapper.unmount()
   })
 
-  it('shows a readable list with row menus on mobile', async () => {
+  it('shows a readable list on mobile and expands a row in place to Edit and Delete', async () => {
     mocks.desktop.value = false
     const wrapper = await mountCategories()
 
     expect(wrapper.find('main table').exists()).toBe(false)
-    expect(wrapper.findAll('main ul li').map((row) => row.find('p').text())).toEqual([
-      'Groceries',
-      'Health',
-      'Transport',
-    ])
-    expect(wrapper.find('[aria-label="More actions for Health"]').exists()).toBe(true)
+    expect(mobileRowNames(wrapper)).toEqual(['Groceries', 'Health', 'Transport'])
+    expect(wrapper.find('[aria-label="Edit Health"]').exists()).toBe(false)
+    expect(wrapper.find('[aria-label^="More actions"]').exists()).toBe(false)
+
+    const toggle = wrapper.findAll('main ul li > button')[1]!
+    expect(toggle.attributes('aria-expanded')).toBe('false')
+    expect(toggle.findComponent(UIcon).props('name')).toBe('i-lucide-chevron-left')
+    await toggle.trigger('click')
+
+    expect(toggle.attributes('aria-expanded')).toBe('true')
+    expect(toggle.findComponent(UIcon).props('name')).toBe('i-lucide-chevron-down')
+    const panel = wrapper.get(`#${toggle.attributes('aria-controls')}`)
+    expect(panel.findAll('button').map((button) => button.text())).toEqual(['Edit', 'Delete'])
+    expect(wrapper.find('[aria-label="Edit Groceries"]').exists()).toBe(false)
+
+    await toggle.trigger('click')
+    expect(toggle.attributes('aria-expanded')).toBe('false')
+    expect(wrapper.find('[aria-label="Edit Health"]').exists()).toBe(false)
 
     wrapper.unmount()
   })
@@ -274,6 +303,7 @@ describe('CategoriesPage', () => {
     )
     const wrapper = await mountCategories()
 
+    if (!desktop) await expandRow(wrapper, 'Health')
     await click(buttonIn(document.body, 'Edit Health'))
     const dialog = dialogByTitle('Edit category')
     expect(
@@ -292,9 +322,7 @@ describe('CategoriesPage', () => {
 
     expect(mocks.updateCategory).toHaveBeenCalledWith('c3', { name: 'Wellbeing', color: null })
     expect(dialogs()).toHaveLength(0)
-    const names = desktop
-      ? rowNames(wrapper)
-      : wrapper.findAll('main ul li').map((row) => row.find('p').text())
+    const names = desktop ? rowNames(wrapper) : mobileRowNames(wrapper)
     expect(names).toEqual(['Groceries', 'Transport', 'Wellbeing'])
 
     wrapper.unmount()
@@ -435,6 +463,7 @@ describe('CategoriesPage', () => {
     mocks.desktop.value = false
     const wrapper = await mountCategories()
 
+    await expandRow(wrapper, 'Health')
     await click(buttonIn(document.body, 'Edit Health'))
     expect(dialogs()).toHaveLength(1)
     expect(dialogs()[0]?.textContent).toContain('Edit category')
@@ -463,6 +492,26 @@ describe('CategoriesPage', () => {
 
     expect(mocks.deleteCategory).toHaveBeenCalledWith('c2')
     expect(rowNames(wrapper)).toEqual(['Groceries', 'Health'])
+
+    wrapper.unmount()
+  })
+
+  it('deletes from the expanded mobile row after confirmation', async () => {
+    mocks.desktop.value = false
+    mocks.deleteCategory.mockResolvedValue(undefined)
+    const wrapper = await mountCategories()
+
+    await expandRow(wrapper, 'Transport')
+    await click(buttonIn(document.body, 'Delete Transport'))
+    expect(mocks.deleteCategory).not.toHaveBeenCalled()
+    await click(buttonIn(dialogByTitle('Delete category "Transport"?'), 'Cancel'))
+    expect(mocks.deleteCategory).not.toHaveBeenCalled()
+
+    await click(buttonIn(document.body, 'Delete Transport'))
+    await click(buttonIn(dialogByTitle('Delete category "Transport"?'), 'Delete category'))
+
+    expect(mocks.deleteCategory).toHaveBeenCalledWith('c2')
+    expect(mobileRowNames(wrapper)).toEqual(['Groceries', 'Health'])
 
     wrapper.unmount()
   })

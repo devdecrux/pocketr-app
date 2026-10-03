@@ -22,6 +22,7 @@ import {
   formatPickerRange,
   isoToCalendarDate,
 } from '@/utils/dates'
+import { APP_ICONS } from '@/utils/appIcons'
 
 const props = defineProps<{
   id?: string
@@ -87,7 +88,7 @@ function clear(): void {
       "
       :class="[FIELD_TRIGGER_CLASS, triggerClass]"
     >
-      <UIcon name="i-lucide-calendar" class="ms-3 size-5 shrink-0 text-default" />
+      <UIcon :name="APP_ICONS.date" class="ms-3 size-5 shrink-0 text-default" />
       <span
         class="min-w-0 flex-1 truncate px-3 text-start tabular-nums"
         :class="label ? undefined : 'text-muted'"

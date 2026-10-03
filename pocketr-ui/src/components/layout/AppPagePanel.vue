@@ -50,7 +50,7 @@ const userInitials = computed(() =>
 
         <template #right>
           <template v-if="isDesktop">
-            <AppModeSelect class="w-auto min-w-[137px]" />
+            <AppModeSelect class="w-auto max-w-64 min-w-[137px]" />
             <slot name="context" />
           </template>
           <AppUserMenu v-else-if="authStore.user" placement="header">

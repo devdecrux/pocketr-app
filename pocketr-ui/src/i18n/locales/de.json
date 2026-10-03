@@ -14,7 +14,8 @@
       "signIn": "Anmelden",
       "share": "Teilen",
       "unshare": "Nicht mehr teilen",
-      "clear": "Zurücksetzen"
+      "clear": "Zurücksetzen",
+      "archive": "Archivieren"
     },
     "amounts": {
       "mixedCurrencies": "Gemischte Währungen"
@@ -29,7 +30,13 @@
       "leaving": "Wird verlassen...",
       "saving": "Wird gespeichert...",
       "uploading": "Wird hochgeladen...",
-      "sending": "Wird gesendet..."
+      "sending": "Wird gesendet...",
+      "loading": "Wird geladen..."
+    },
+    "filters": {
+      "button": "Filter",
+      "clear": "Filter zurücksetzen",
+      "title": "Filter"
     },
     "fields": {
       "account": "Konto",
@@ -47,13 +54,16 @@
       "name": "Name",
       "password": "Passwort",
       "search": "Suche",
-      "type": "Typ"
+      "currency": "Währung"
     },
     "formHints": {
       "householdName": "Name meines Haushalts (mind. 3 Zeichen)",
       "money": "0,00",
       "selectAccount": "Konto auswählen",
-      "selectCategory": "Kategorie auswählen..."
+      "selectCategory": "Kategorie auswählen...",
+      "accountName": "Kontoname",
+      "filterCurrency": "Nach Währung filtern",
+      "filterType": "Nach Typ filtern"
     },
     "states": {
       "archived": "Archiviert",
@@ -69,12 +79,13 @@
       "description": "Beschreibung",
       "member": "Mitglied",
       "nextPage": "Nächste Seite",
-      "pageOf": "Seite {page} von {totalPages}",
       "previousPage": "Vorherige Seite",
       "range": "{from}–{to} von {total}",
       "rowsPerPage": "Zeilen pro Seite",
-      "total": "{totalElements} insgesamt",
-      "type": "Typ"
+      "type": "Typ",
+      "balance": "Saldo",
+      "currency": "Währung",
+      "shared": "Geteilt"
     }
   },
   "display": {
@@ -107,12 +118,54 @@
     "accounts": {
       "archive": {
         "actionLabel": "Konto {name} archivieren",
-        "archiving": "Wird archiviert...",
         "confirm": "Konto archivieren",
         "description": "„{name}“ archivieren? Das Konto kann nicht mehr für neue Transaktionen verwendet werden, aber sein bestehender Transaktionsverlauf bleibt erhalten. Diese Aktion kann derzeit nicht rückgängig gemacht werden.",
         "title": "Konto archivieren"
       },
-      "sharedFromOtherMember": "Nicht dein Konto · Von einem anderen Haushaltsmitglied geteilt"
+      "sharedFromOtherMember": "Nicht dein Konto · Von einem anderen Haushaltsmitglied geteilt",
+      "subtitle": "Ein klarer Platz für jeden Kontostand.",
+      "summary": {
+        "available": "Verfügbares Geld",
+        "currencyAccounts": "Konten in {currency}",
+        "debt": "Offene Schulden"
+      },
+      "rowActions": {
+        "edit": "{name} bearbeiten"
+      },
+      "create": {
+        "typeLabel": "Kontotyp",
+        "submit": "Konto erstellen",
+        "descriptions": {
+          "assetOpeningBalance": "Wird als Anfangssaldo-Buchung gegen das Anfangskapital erfasst.",
+          "liabilityOpeningBalance": "Wird als Anfangsschuld gegen das Anfangskapital erfasst. Der Betrag einer Verbindlichkeit muss positiv sein.",
+          "main": "Füge deinem Hauptbuch ein neues Konto hinzu."
+        },
+        "fields": {
+          "initialBalance": "Anfangssaldo",
+          "openingDate": "Eröffnungsdatum"
+        },
+        "formHints": {
+          "assetName": "z. B. Girokonto, Sparkonto",
+          "expenseName": "z. B. Lebensmittel, Nebenkosten",
+          "incomeName": "z. B. Gehalt, Freiberuflich",
+          "liabilityName": "z. B. Hypothek, Autokredit"
+        },
+        "title": "Konto erstellen"
+      },
+      "actions": {
+        "new": "Neues Konto"
+      },
+      "empty": "Keine Konten gefunden.",
+      "filters": {
+        "allCurrencies": "Alle Währungen",
+        "allTypes": "Alle Typen"
+      },
+      "loading": "Konten werden geladen...",
+      "rename": {
+        "description": "Gib einen neuen Namen für „{name}“ ein.",
+        "title": "Konto umbenennen"
+      },
+      "title": "Konten"
     },
     "auth": {
       "login": {
@@ -232,8 +285,7 @@
       "loading": "Kategorien werden geladen...",
       "rowActions": {
         "delete": "{name} löschen",
-        "edit": "{name} bearbeiten",
-        "more": "Weitere Aktionen für {name}"
+        "edit": "{name} bearbeiten"
       },
       "title": "Kategorien"
     },
@@ -317,11 +369,6 @@
         "payFromAssetOrLiability": "Zahlen von",
         "toAccount": "Zum Konto"
       },
-      "filters": {
-        "button": "Filter",
-        "clear": "Filter zurücksetzen",
-        "title": "Filter"
-      },
       "formHints": {
         "allAccounts": "Alle Konten",
         "allCategories": "Alle Kategorien",
@@ -381,7 +428,10 @@
   },
   "errors": {
     "accounts": {
-      "archive": "Das Konto konnte nicht archiviert werden."
+      "archive": "Das Konto konnte nicht archiviert werden.",
+      "create": "Das Konto konnte nicht erstellt werden.",
+      "load": "Die Konten konnten nicht geladen werden.",
+      "rename": "Das Konto konnte nicht umbenannt werden."
     },
     "avatar": {
       "chooseImage": "Wähle vor dem Hochladen ein Bild aus.",

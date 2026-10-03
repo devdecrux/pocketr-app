@@ -9,6 +9,7 @@ import { useI18n } from 'vue-i18n'
 import { FIELD_MENU_UI } from '@/components/forms/fieldStyles'
 import CategoryColorDot from '@/components/shared/CategoryColorDot.vue'
 import { useCategoryStore } from '@/stores/category'
+import { APP_ICONS } from '@/utils/appIcons'
 
 const NONE_VALUE = '__none__'
 
@@ -22,7 +23,7 @@ const props = withDefaults(
     /** Extra classes for the trigger, for example a taller height. */
     triggerClass?: string
   }>(),
-  { icon: 'i-lucide-tag' },
+  { icon: APP_ICONS.categories },
 )
 
 const model = defineModel<string | null>({ default: null })

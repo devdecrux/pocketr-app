@@ -17,8 +17,7 @@ vi.mock('@vueuse/core', async () => {
 interface HarnessOptions {
   formId?: string
   footer?: boolean
-  size?: 'md' | 'lg'
-  cancelVariant?: 'outline' | 'ghost'
+  size?: 'md' | 'wide' | 'lg'
 }
 
 function mountOverlay(options: HarnessOptions = {}) {
@@ -43,7 +42,6 @@ function mountOverlay(options: HarnessOptions = {}) {
                   submitLabel: 'Create',
                   formId: options.formId,
                   size: options.size,
-                  cancelVariant: options.cancelVariant,
                   onSubmit: submitted,
                 },
                 {
@@ -123,18 +121,43 @@ describe('AppFormOverlay', () => {
     wrapper.unmount()
   })
 
-  it('widens the desktop modal for the large size and can render Cancel as plain text', async () => {
+  it('widens the desktop modal for the large size and always renders Cancel as plain text', async () => {
     const regular = mountOverlay({ formId: 'thing-form' })
     await openOverlay(regular.open)
     expect(dialog()?.className).toContain('max-w-[440px]')
-    expect(dialogButton('Cancel').className).toContain('ring-accented')
+    // Centred with margins, not a transform, so the content sits on whole pixels.
+    expect(dialog()?.className).toContain('m-auto')
+    expect(dialog()?.className).not.toContain('-translate-y-1/2')
+    expect(dialogButton('Cancel').className).not.toContain('ring-accented')
     regular.wrapper.unmount()
     document.body.innerHTML = ''
 
-    const wide = mountOverlay({ formId: 'thing-form', size: 'lg', cancelVariant: 'ghost' })
+    const wide = mountOverlay({ formId: 'thing-form', size: 'lg' })
     await openOverlay(wide.open)
     expect(dialog()?.className).toContain('max-w-[536px]')
     expect(dialogButton('Cancel').className).not.toContain('ring-accented')
+    wide.wrapper.unmount()
+    document.body.innerHTML = ''
+
+    const single = mountOverlay({ formId: 'thing-form', size: 'wide' })
+    await openOverlay(single.open)
+    expect(dialog()?.className).toContain('max-w-[485px]')
+    expect(dialogButton('Create').className).toContain('h-11')
+    single.wrapper.unmount()
+  })
+
+  it('gives the wide drawer roomier margins than the default one', async () => {
+    mocks.desktop.value = false
+    const regular = mountOverlay({ formId: 'thing-form' })
+    await openOverlay(regular.open)
+    expect(document.body.querySelector('.px-6')).toBeNull()
+    regular.wrapper.unmount()
+    document.body.innerHTML = ''
+
+    const wide = mountOverlay({ formId: 'thing-form', size: 'wide' })
+    await openOverlay(wide.open)
+    expect(document.body.querySelector('.px-6')).not.toBeNull()
+
     wide.wrapper.unmount()
   })
 

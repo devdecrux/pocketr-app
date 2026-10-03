@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * Form-level message shared by every migrated form (sign in, registration, settings).
+ * Form-level message shared by every form (sign in, registration, settings).
  * Errors are announced assertively (`role="alert"`); warnings, successes and notices politely (`role="status"`).
  */
 import { computed } from 'vue'

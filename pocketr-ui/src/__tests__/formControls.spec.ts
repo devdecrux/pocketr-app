@@ -159,6 +159,25 @@ describe('AppDateField', () => {
 
     wrapper.unmount()
   })
+
+  it('shows the date but cannot be opened while disabled', async () => {
+    const wrapper = mountInApp(() =>
+      h(AppDateField, { id: 'date', modelValue: '2026-09-20', disabled: true }),
+    )
+
+    const trigger = wrapper.get('button#date')
+    expect(trigger.text()).toBe('20/09/2026')
+    expect(trigger.attributes('disabled')).toBeDefined()
+    // Dimming the whole button would wash out its inset ring; only the content is dimmed.
+    expect(trigger.classes()).toContain('disabled:opacity-100')
+    expect(trigger.findAll('span.opacity-60')).toHaveLength(2)
+
+    await trigger.trigger('click')
+    await flushPromises()
+    expect(wrapper.findComponent(UCalendar).exists()).toBe(false)
+
+    wrapper.unmount()
+  })
 })
 
 describe('AppDateRangePicker', () => {

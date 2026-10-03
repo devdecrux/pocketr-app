@@ -1,30 +1,22 @@
 {
   "app": {
-    "name": "Pocketr",
-    "tagline": "Твоят път към финансово спокойствие"
+    "name": "Pocketr"
   },
   "common": {
     "actions": {
       "accept": "Приеми",
+      "archive": "Архивирай",
       "backToDashboard": "Обратно към таблото",
-      "browse": "Избери файл",
       "cancel": "Отказ",
       "clear": "Изчисти",
       "close": "Затвори",
-      "create": "Създай",
       "delete": "Изтрий",
       "edit": "Редактирай",
-      "leave": "Напусни",
-      "logOut": "Изход",
-      "manage": "Управление",
-      "rename": "Преименувай",
       "save": "Запази",
       "settings": "Настройки",
       "share": "Сподели",
       "signIn": "Вход",
-      "signUp": "Регистрация",
-      "unshare": "Спри споделянето",
-      "upload": "Качи"
+      "unshare": "Спри споделянето"
     },
     "amounts": {
       "mixedCurrencies": "Смесени валути"
@@ -43,6 +35,11 @@
       "sending": "Изпращане...",
       "uploading": "Качване..."
     },
+    "filters": {
+      "button": "Филтри",
+      "clear": "Изчисти филтрите",
+      "title": "Филтри"
+    },
     "fields": {
       "account": "Сметка",
       "amount": "Сума",
@@ -58,24 +55,17 @@
       "householdName": "Име на домакинството",
       "lastName": "Фамилия",
       "name": "Име",
-      "openingDate": "Начална дата",
       "password": "Парола",
-      "search": "Търсене",
-      "type": "Тип"
+      "search": "Търсене"
     },
     "formHints": {
       "accountName": "Име на сметката",
-      "categoryExamples": "напр. Хранителни стоки, Комунални услуги",
-      "email": "email{'@'}example.com",
       "filterCurrency": "Филтрирай по валута",
       "filterType": "Филтрирай по тип",
       "householdName": "Име на домакинството (поне 3 знака)",
       "money": "0.00",
-      "personFirstName": "Иван",
-      "personLastName": "Иванов",
       "selectAccount": "Избери сметка",
-      "selectCategory": "Избери категория...",
-      "selectMode": "Избери режим"
+      "selectCategory": "Избери категория..."
     },
     "states": {
       "archived": "Архивирана",
@@ -92,14 +82,11 @@
       "date": "Дата",
       "description": "Описание",
       "member": "Член",
-      "name": "Име",
       "nextPage": "Следваща страница",
-      "pageOf": "Страница {page} от {totalPages}",
       "previousPage": "Предишна страница",
       "range": "{from}–{to} от {total}",
       "rowsPerPage": "Редове на страница",
       "shared": "Споделена",
-      "total": "Общо: {totalElements}",
       "type": "Тип"
     }
   },
@@ -128,9 +115,6 @@
       "empty": "Няма намерени категории.",
       "searchPlaceholder": "Търси категории..."
     },
-    "dateRangePicker": {
-      "clearAriaLabel": "Изчисти периода"
-    },
     "passwordInput": {
       "hide": "Скрий паролата",
       "show": "Покажи паролата"
@@ -142,36 +126,20 @@
         "accounts": "Сметки",
         "categories": "Категории",
         "dashboard": "Табло",
-        "subscriptions": "Абонаменти",
         "transactions": "Транзакции"
       }
     },
     "theme": {
-      "label": "Тема",
       "modes": {
         "auto": "Системна",
         "dark": "Тъмна",
         "light": "Светла"
-      },
-      "presets": {
-        "pocketr": "Pocketr"
       }
     },
     "themeToggle": {
       "auto": "Тема: Системна. Превключи на Светла",
       "dark": "Тема: Тъмна. Превключи на Системна",
       "light": "Тема: Светла. Превключи на Тъмна"
-    },
-    "ui": {
-      "commandPalette": {
-        "description": "Търси команда за изпълнение...",
-        "title": "Команди"
-      },
-      "sidebar": {
-        "description": "Показва страничното меню на мобилно устройство.",
-        "title": "Странично меню",
-        "toggle": "Превключи страничното меню"
-      }
     },
     "userMenu": {
       "appearance": "Външен вид",
@@ -180,7 +148,6 @@
     },
     "viewMode": {
       "household": "Домакинство",
-      "individual": "Личен",
       "personal": "Лично",
       "selectMode": "Изберете режим на преглед"
     }
@@ -192,14 +159,13 @@
       },
       "archive": {
         "actionLabel": "Архивиране на сметка {name}",
-        "archiving": "Архивиране...",
         "confirm": "Архивирай сметката",
         "description": "Да се архивира ли „{name}“? Тя вече няма да може да се използва за нови транзакции, но съществуващата ѝ история ще бъде запазена. Това действие засега не може да бъде отменено.",
         "title": "Архивиране на сметка"
       },
       "create": {
         "descriptions": {
-          "assetOpeningBalance": "Началното салдо се записва като счетоводна операция срещу начален собствен капитал. Началната дата се използва само когато салдото не е нула.",
+          "assetOpeningBalance": "Началното салдо се записва като счетоводна операция срещу начален собствен капитал.",
           "liabilityOpeningBalance": "Началният дълг се записва срещу начален собствен капитал. Сумата трябва да е положителна.",
           "main": "Добави нова сметка към счетоводния регистър."
         },
@@ -213,7 +179,9 @@
           "incomeName": "напр. Заплата, Свободна практика",
           "liabilityName": "напр. Ипотека, Автомобилен кредит"
         },
-        "title": "Създаване на сметка"
+        "submit": "Създай сметката",
+        "title": "Създаване на сметка",
+        "typeLabel": "Тип сметка"
       },
       "empty": "Няма намерени сметки.",
       "filters": {
@@ -225,7 +193,16 @@
         "description": "Въведи ново име за „{name}“.",
         "title": "Преименуване на сметка"
       },
+      "rowActions": {
+        "edit": "Редактирай {name}"
+      },
       "sharedFromOtherMember": "Не е твоя сметка · Споделена от друг член на домакинството",
+      "subtitle": "Ясен дом за всяко салдо.",
+      "summary": {
+        "available": "Налични средства",
+        "currencyAccounts": "Сметки в {currency}",
+        "debt": "Дължими суми"
+      },
       "title": "Сметки"
     },
     "auth": {
@@ -284,24 +261,11 @@
       "loading": "Зареждане на категориите...",
       "rowActions": {
         "delete": "Изтрий {name}",
-        "edit": "Редактирай {name}",
-        "more": "Още действия за {name}"
+        "edit": "Редактирай {name}"
       },
       "title": "Категории"
     },
     "dashboard": {
-      "cards": {
-        "accountBalances": "Салда по сметки",
-        "availableMoney": "Налични средства",
-        "recentTransactions": "Последни транзакции",
-        "recentExpenses": "Последни разходи",
-        "spendingByAccount": "Разходи по сметки",
-        "spendingByCategory": "Разходи по категории",
-        "spendingsForMonth": "Разходи за месец {month}",
-        "spendingThisPeriod": "Разходи за периода",
-        "spendingTrend": "Тенденция на разходите",
-        "topSpendingCategories": "Категории с най-много разходи"
-      },
       "debtPayment": "Погасяване на дълг",
       "empty": {
         "accounts": "Все още няма сметки.",
@@ -329,12 +293,10 @@
         "yesterday": "Вчера"
       },
       "periodViews": {
-        "lifetime": "От началото",
-        "rollover": "Месечен период"
+        "lifetime": "От началото"
       },
       "subtitle": {
-        "household": "Преглед на домакинството",
-        "individual": "Твоят личен преглед"
+        "household": "Преглед на домакинството"
       },
       "title": "Табло",
       "uncategorized": "Без категория"
@@ -482,11 +444,6 @@
         "column": "Подробности",
         "title": "Подробности за транзакцията"
       },
-      "filters": {
-        "button": "Филтри",
-        "clear": "Изчисти филтрите",
-        "title": "Филтри"
-      },
       "groups": {
         "earlierThisMonth": "По-рано този месец",
         "today": "Днес",
@@ -518,10 +475,6 @@
     "memberStatuses": {
       "ACTIVE": "Активен",
       "INVITED": "Поканен"
-    },
-    "splitSides": {
-      "CREDIT": "Кредит",
-      "DEBIT": "Дебит"
     },
     "transactionKinds": {
       "DEBT_PAYMENT": "Погасяване на дълг",
@@ -600,129 +553,5 @@
     "avatar": {
       "updated": "Снимката е обновена."
     }
-  },
-  "api": {
-    "auth": {
-      "authenticatedUserIdMissing": "Липсва идентификаторът на влезлия потребител",
-      "authenticatedUserIdRequired": "Изисква се идентификатор на влезлия потребител",
-      "userNotFound": "Потребителят не е намерен",
-      "userWithEmailNotFound": "Не е намерен потребител с имейл {email}"
-    },
-    "accounts": {
-      "equitySystemManaged": "Сметките за собствен капитал се управляват от системата и не могат да се създават ръчно",
-      "invalidAccountType": "Невалиден тип сметка: {type}",
-      "invalidCurrency": "Невалидна валута: {currency}",
-      "notFound": "Сметката не е намерена",
-      "notOwner": "Не си собственик на тази сметка",
-      "openingBalanceDateRequiresAmount": "Началната дата изисква ненулево начално салдо",
-      "openingBalanceOnlyAssetLiability": "Начално салдо се поддържа само за сметки за активи и пасиви",
-      "openingBalanceOutOfRange": "Началното салдо е извън допустимия диапазон",
-      "openingBalanceRequired": "Началното салдо не може да е нула",
-      "openingBalanceUnsupportedType": "Неподдържан тип сметка за начално салдо",
-      "openingBalanceValidation": "Начално салдо се поддържа само за сметки за активи и пасиви",
-      "openingDebtPositive": "Началният дълг трябва да е положителен за сметка за пасив",
-      "systemOpeningEquityName": "Начален собствен капитал"
-    },
-    "avatar": {
-      "contentTypeRequired": "Изисква се тип на файла за снимката",
-      "fileRequired": "Изисква се файл за снимка",
-      "fileTooLarge": "Снимката е твърде голяма. Максимален размер: 5 MB",
-      "invalidPath": "Невалиден път до снимката",
-      "invalidRequest": "Невалидна заявка за качване на снимка",
-      "storeFailed": "Снимката не можа да бъде запазена",
-      "unsupportedFormat": "Неподдържан формат на снимката",
-      "unsupportedFormatAllowed": "Неподдържан формат на снимката. Допустими формати: JPEG, PNG, GIF, WEBP"
-    },
-    "categories": {
-      "duplicate": "Категорията „{name}“ вече съществува",
-      "inUse": "Категорията се използва и не може да бъде изтрита",
-      "notFound": "Категорията не е намерена",
-      "notOwner": "Не си собственик на тази категория",
-      "tagNotOwned": "Категорията „{name}“ не ти принадлежи",
-      "tagsNotFound": "Категориите не са намерени: {ids}"
-    },
-    "households": {
-      "accountAlreadyShared": "Сметката вече е споделена с това домакинство",
-      "accountNotShared": "Сметката не е споделена с това домакинство",
-      "cannotCreateWhileMember": "Не можеш да създадеш домакинство, докато участваш в друго",
-      "inviteeAlreadyMember": "Потребителят вече е член или има чакаща покана",
-      "inviteeInAnotherHousehold": "Потребителят вече е активен член на друго домакинство",
-      "leaveBeforeAcceptingInvite": "Напусни текущото домакинство, преди да приемеш друга покана",
-      "membershipNotActive": "Членството не е активно",
-      "noInviteFound": "Няма намерена покана за това домакинство",
-      "noPendingInvite": "Няма чакаща покана за приемане",
-      "notActiveMember": "Не си активен член на това домакинство",
-      "notMember": "Не си член на това домакинство",
-      "notFound": "Домакинството не е намерено",
-      "onlyAccountOwnerCanShare": "Само собственикът може да сподели сметката",
-      "onlyAccountOwnerCanUnshare": "Само собственикът може да спре споделянето на сметката",
-      "onlyActiveMembersCanLeave": "Само активните членове могат да напуснат домакинството",
-      "onlyOwnerOrAdminCanInvite": "Само собственикът или администраторът могат да канят членове",
-      "userNotFoundWithEmail": "Не е намерен потребител с имейл: {email}"
-    },
-    "internal": {
-      "accountIdNull": "Липсва идентификатор на сметката",
-      "accountNameNull": "Липсва име на сметката",
-      "accountNull": "Липсва сметка",
-      "accountTypeNull": "Липсва тип на сметката",
-      "categoryIdNull": "Липсва идентификатор на категорията",
-      "currencyNull": "Липсва валута",
-      "householdIdNull": "Липсва идентификатор на домакинството",
-      "householdNull": "Липсва домакинство",
-      "openingEquityAccountIdNull": "Липсва идентификатор на сметката за начален собствен капитал",
-      "ownerEmailNull": "Липсва имейл на собственика",
-      "ownerUserIdNull": "Липсва идентификатор на собственика",
-      "splitAccountIdNull": "Липсва идентификатор на сметката в разпределението",
-      "splitAccountNull": "Липсва сметка в разпределението",
-      "splitIdNull": "Липсва идентификатор на разпределението",
-      "transactionIdNull": "Липсва идентификатор на транзакцията",
-      "userEmailNull": "Липсва имейл на потребителя",
-      "userIdNull": "Липсва идентификатор на потребителя"
-    },
-    "ledger": {
-      "accountNotSharedIntoHousehold": "Сметката „{accountName}“ не е споделена с домакинството",
-      "accountsNotFound": "Сметките не са намерени: {ids}",
-      "allSplitAmountsPositive": "Всички суми в разпределението трябва да са по-големи от нула",
-      "crossUserPostingsRestricted": "Операциите между членове на домакинството са разрешени само по сметки за активи, освен при погасяване на споделен дълг от собствена сметка за активи",
-      "dateFromBeforeDateTo": "Началната дата трябва да е преди или на крайната дата",
-      "doubleEntryViolation": "Нарушено е двойното счетоводство: дебити ({debits}) и кредити ({credits}) не са равни",
-      "householdIdRequired": "Изисква се идентификатор на домакинството в режим домакинство",
-      "householdIdRequiredUppercase": "Изисква се идентификатор на домакинството в режим ДОМАКИНСТВО",
-      "invalidMode": "Невалиден режим: {mode}",
-      "invalidModeAllowed": "Невалиден режим: {mode}. Допустими са ЛИЧЕН или ДОМАКИНСТВО",
-      "invalidSplitSide": "Невалидна страна на разпределението: {side}",
-      "notOwnerOfTransaction": "Не си собственик на тази транзакция",
-      "notOwnedIndividualMode": "В личен режим не можеш да записваш операции по сметки на други потребители",
-      "transactionNotFound": "Транзакцията не е намерена",
-      "twoSplitsRequired": "Транзакцията трябва да има поне две разпределения"
-    },
-    "reports": {
-      "debtPaymentCategory": "Погасяване на дълг"
-    }
-  },
-  "generatedData": {
-    "openingDescriptions": {
-      "balance": "Начално салдо",
-      "balanceForAccount": "Начално салдо - {accountName}",
-      "debt": "Начален дълг",
-      "debtForAccount": "Начален дълг - {accountName}"
-    }
-  },
-  "currencies": {
-    "AUD": "Австралийски долар",
-    "BHD": "Бахрейнски динар",
-    "CAD": "Канадски долар",
-    "CHF": "Швейцарски франк",
-    "CZK": "Чешка крона",
-    "DKK": "Датска крона",
-    "EUR": "Евро",
-    "GBP": "Британска лира",
-    "HUF": "Унгарски форинт",
-    "JPY": "Японска йена",
-    "NOK": "Норвежка крона",
-    "PLN": "Полска злота",
-    "RON": "Румънска лея",
-    "SEK": "Шведска крона",
-    "USD": "Щатски долар"
   }
 }

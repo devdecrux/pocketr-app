@@ -24,7 +24,7 @@ function declarations(selector: string): Record<string, string> {
   return result
 }
 
-describe('Pocketr v2 Nuxt UI tokens (IMPLEMENTATION.md "Visual rules")', () => {
+describe('Pocketr Nuxt UI tokens (IMPLEMENTATION.md "Visual rules")', () => {
   it('maps the light palette exactly', () => {
     expect(declarations(':root')).toEqual({
       '--ui-primary': '#0891b2',
@@ -103,28 +103,46 @@ describe('Pocketr v2 Nuxt UI tokens (IMPLEMENTATION.md "Visual rules")', () => {
     })
   })
 
-  it('re-points shared legacy theme keys to Nuxt UI tokens only on migrated pages', () => {
-    expect(declarations("body[data-ui-migration='v2']")).toEqual({
-      '--primary': 'var(--ui-primary)',
-      '--secondary': 'var(--ui-secondary)',
-      '--muted': 'var(--ui-bg-muted)',
-      '--border': 'var(--ui-border)',
-      '--radius-xs': 'calc(var(--ui-radius) * 0.5)',
-      '--radius-sm': 'var(--ui-radius)',
-      '--radius-md': 'calc(var(--ui-radius) * 1.5)',
-      '--radius-lg': 'calc(var(--ui-radius) * 2)',
-      '--radius-xl': 'calc(var(--ui-radius) * 3)',
-      '--radius-2xl': 'calc(var(--ui-radius) * 4)',
-      '--radius-3xl': 'calc(var(--ui-radius) * 6)',
-    })
+  it('keeps the shared base rules and the dark variant', () => {
+    expect(css).toContain('@custom-variant dark (&:is(.dark *));')
+    expect(css).toMatch(
+      /@layer base\s*\{\s*body\s*\{\s*@apply antialiased text-default bg-default scheme-light dark:scheme-dark;/,
+    )
   })
 
-  it('keeps text-entry controls at 16px below lg on migrated pages only (no iOS focus zoom)', () => {
+  it('imports only Tailwind and Nuxt UI', () => {
+    expect([...css.matchAll(/@import\s+['"]([^'"]+)['"]/g)].map((match) => match[1])).toEqual([
+      'tailwindcss',
+      '@nuxt/ui',
+    ])
+  })
+
+  it('keeps no scoped migration selectors or retired design tokens', () => {
+    // Assembled from parts so the retired names never appear verbatim in the source tree.
+    const retired = [
+      ['data-ui-', 'migration'],
+      ['--', 'app-'],
+      ['--', 'sidebar'],
+      ['app-', 'shell'],
+    ]
+    for (const [head, tail] of retired) {
+      expect(css).not.toContain(head! + tail!)
+    }
+    expect(css).not.toMatch(/--(background|card|foreground)\b/)
+  })
+
+  it('keeps text-entry controls at 16px below lg (no iOS focus zoom)', () => {
     const rule = css.match(
-      /@media \(max-width: 1023\.98px\)\s*\{\s*body\[data-ui-migration='v2'\]\s*:is\(([^{}]*)\)\s*\{\s*font-size:\s*16px;\s*\}\s*\}/,
+      /@media \(max-width: 1023\.98px\)\s*\{\s*:root body\s*:is\(([^{}]*)\)\s*\{\s*font-size:\s*16px;\s*\}\s*\}/,
     )
     expect(rule?.[1]).toContain('input:not(')
     expect(rule?.[1]).toContain('textarea')
     expect(rule?.[1]).toContain('select')
+  })
+
+  it('shortens the vaul drawer animation for reduced motion', () => {
+    expect(css).toMatch(
+      /@media \(prefers-reduced-motion: reduce\)\s*\{[^}]*\[data-vaul-drawer\][^}]*animation-duration:\s*1ms/,
+    )
   })
 })

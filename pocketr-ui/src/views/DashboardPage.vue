@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { SELECT_CONTENT_CLASS } from '@/components/forms/fieldStyles'
 import { computed, defineAsyncComponent, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useLocalStorage } from '@vueuse/core'
@@ -17,7 +18,6 @@ import {
   currentRolloverPeriod,
   daysAgo,
   DEFAULT_REPORT_PERIOD_COUNT,
-  formatDayMonthYear,
   formatPeriodAxisLabel,
   formatPeriodLabel,
   REPORT_PERIOD_COUNT_OPTIONS,
@@ -26,6 +26,8 @@ import {
   SELECTABLE_PERIOD_COUNT,
 } from '@/utils/dashboardPeriods'
 import type { LedgerTxn, MonthlyReportEntry, RolloverExpenseReport } from '@/types/ledger'
+import { APP_ICONS } from '@/utils/appIcons'
+import { formatDateRange, formatIsoDate } from '@/utils/dates'
 
 // ECharts is page-only code: loaded with the chart, never by the app shell.
 const SpendingTrendChart = defineAsyncComponent(
@@ -89,7 +91,7 @@ const periodItems = computed(() =>
       return {
         value: period,
         label: formatPeriodLabel(period),
-        description: `${formatDayMonthYear(start)} - ${formatDayMonthYear(end)}`,
+        description: formatDateRange(start, end),
       }
     }),
 )
@@ -398,10 +400,7 @@ function txnDateLabel(txn: LedgerTxn): string {
   const age = daysAgo(txn.txnDate, new Date())
   if (age === 0) return t('views.dashboard.overview.today')
   if (age === 1) return t('views.dashboard.overview.yesterday')
-  const [year = 0, month = 1, day = 1] = txn.txnDate.split('-').map(Number)
-  return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' }).format(
-    new Date(year, month - 1, day),
-  )
+  return formatIsoDate(txn.txnDate)
 }
 
 function resolveCategoryColor(categoryName: string | null, categoryColor: string | null): string {
@@ -417,6 +416,7 @@ function resolveCategoryColor(categoryName: string | null, categoryColor: string
 const selectUi = {
   base: 'rounded-lg bg-default text-[13px] ring-default',
   trailingIcon: 'size-4 text-default',
+  content: SELECT_CONTENT_CLASS,
 }
 </script>
 
@@ -426,7 +426,7 @@ const selectUi = {
       <USelect
         :model-value="selectedPeriod"
         :items="periodItems"
-        icon="i-lucide-calendar"
+        :icon="APP_ICONS.date"
         :aria-label="$t('views.dashboard.overview.selectPeriod')"
         color="neutral"
         size="lg"
@@ -435,6 +435,7 @@ const selectUi = {
           leadingIcon: 'text-default',
           trailingIcon: 'size-4 text-default',
           itemDescription: 'text-xs',
+          content: SELECT_CONTENT_CLASS,
         }"
         @update:model-value="onSelectPeriod"
       >
@@ -470,10 +471,10 @@ const selectUi = {
       </div>
       <UButton
         to="/transactions"
-        icon="i-lucide-plus"
+        :icon="APP_ICONS.add"
         :label="$t('views.dashboard.overview.addTransaction')"
-        size="xl"
-        class="hidden h-10 shrink-0 rounded-lg px-4 text-sm lg:inline-flex"
+        size="md"
+        class="hidden h-10 shrink-0 rounded-lg px-5 lg:inline-flex"
       />
     </div>
 
@@ -489,7 +490,7 @@ const selectUi = {
         <span
           class="flex size-[60px] shrink-0 items-center justify-center rounded-full bg-success/10 lg:col-start-2 lg:row-start-1 lg:size-9"
         >
-          <UIcon name="i-lucide-wallet" class="size-7 text-(--pocketr-success-fg) lg:size-5" />
+          <UIcon :name="APP_ICONS.asset" class="size-7 text-(--pocketr-success-fg) lg:size-5" />
         </span>
         <div class="min-w-0 space-y-0.5 lg:contents">
           <p class="text-sm text-muted lg:col-start-1 lg:row-start-1 lg:truncate lg:text-[13px]">
@@ -542,7 +543,7 @@ const selectUi = {
         <span
           class="flex size-[60px] shrink-0 items-center justify-center rounded-full bg-error/10 lg:col-start-2 lg:row-start-1 lg:size-9"
         >
-          <UIcon name="i-lucide-arrow-up-right" class="size-7 text-error lg:size-5" />
+          <UIcon :name="APP_ICONS.expense" class="size-7 text-error lg:size-5" />
         </span>
         <div class="min-w-0 space-y-0.5 lg:contents">
           <p class="text-sm text-muted lg:col-start-1 lg:row-start-1 lg:truncate lg:text-[13px]">
@@ -630,7 +631,7 @@ const selectUi = {
         <!-- Row-2 headers: title (truncates at 1/5 width) left, action right, one fixed desktop height. -->
         <div class="flex items-center justify-between gap-3 pb-3 lg:mb-3 lg:h-7 lg:gap-2 lg:pb-0">
           <h2 class="flex min-w-0 items-center gap-1.5 text-[15px] font-semibold text-highlighted">
-            <UIcon name="i-lucide-receipt" class="size-4 shrink-0 text-primary" />
+            <UIcon :name="APP_ICONS.expense" class="size-4 shrink-0 text-primary" />
             <span class="truncate">{{ $t('views.dashboard.overview.recentExpenses') }}</span>
           </h2>
           <UTooltip :text="$t('views.dashboard.overview.viewAll')">
@@ -658,7 +659,7 @@ const selectUi = {
             <span
               class="flex size-11 shrink-0 items-center justify-center rounded-lg bg-(--pocketr-tile-bg) lg:hidden"
             >
-              <UIcon name="i-lucide-receipt" class="size-5 text-highlighted dark:text-primary" />
+              <UIcon :name="APP_ICONS.expense" class="size-5 text-highlighted dark:text-primary" />
             </span>
             <!-- Desktop (1/5 width): description on its own line, then category · date and amount. -->
             <div class="min-w-0 flex-1 lg:contents">
@@ -681,10 +682,10 @@ const selectUi = {
       <UCard :ui="{ root: 'rounded-xl', body: 'p-3 sm:p-4 lg:p-4' }">
         <div class="mb-3 flex items-center justify-between gap-3 lg:mb-3 lg:h-7 lg:gap-2 lg:pb-0">
           <h2 class="flex min-w-0 items-center gap-1.5 text-[15px] font-semibold text-highlighted">
-            <UIcon name="i-lucide-shapes" class="size-4 shrink-0 text-primary" />
+            <UIcon :name="APP_ICONS.categories" class="size-4 shrink-0 text-primary" />
             <span class="truncate">{{ $t('views.dashboard.overview.topCategories') }}</span>
           </h2>
-          <!-- Off = current rollover period, on = lifetime (as the legacy dashboard switch). -->
+          <!-- Off = current rollover period, on = lifetime. -->
           <UTooltip :text="$t('views.dashboard.periodViews.lifetime')">
             <USwitch
               v-model="categoryChartView"
@@ -742,11 +743,11 @@ const selectUi = {
     <template #footer>
       <UButton
         to="/transactions"
-        icon="i-lucide-plus"
+        :icon="APP_ICONS.add"
         :label="$t('views.dashboard.overview.addTransaction')"
-        size="xl"
+        size="md"
         block
-        class="h-10 rounded-lg text-[15px]"
+        class="h-11 justify-center rounded-lg"
       />
     </template>
   </AppPagePanel>

@@ -7,8 +7,10 @@
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import FormMessage from '@/components/forms/FormMessage.vue'
+import { FIELD_BASE_CLASS } from '@/components/forms/fieldStyles'
 import CategoryColorDot from '@/components/shared/CategoryColorDot.vue'
 import type { CategoryTag } from '@/types/ledger'
+import { APP_ICONS } from '@/utils/appIcons'
 import {
   CATEGORY_COLOR_PRESETS,
   DEFAULT_CUSTOM_CATEGORY_COLOR,
@@ -151,10 +153,14 @@ const nameInputId = computed(() => `${props.id}-name`)
       <UInput
         :id="nameInputId"
         v-model="name"
+        :icon="APP_ICONS.name"
         autocomplete="off"
         size="lg"
         class="w-full"
-        :ui="{ base: 'h-10 rounded-lg bg-(--pocketr-field-bg) text-sm ring-default' }"
+        :ui="{
+          base: FIELD_BASE_CLASS,
+          leadingIcon: 'size-5 text-default',
+        }"
       />
     </UFormField>
 

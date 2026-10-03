@@ -21,7 +21,6 @@ const emit = defineEmits<{ confirm: [] }>()
 <template>
   <AppFormOverlay
     v-model:open="open"
-    variant="confirm"
     submit-color="error"
     :title="title"
     :description="description"

@@ -26,16 +26,3 @@ export function getLifetimeExpenseReport(params: {
   if (params.householdId) searchParams.householdId = params.householdId
   return api.get(`${BASE}/expenses/lifetime`, { searchParams }).json<MonthlyReportEntry[]>()
 }
-
-export function getLegacyMonthlyReport(params: {
-  mode: 'INDIVIDUAL' | 'HOUSEHOLD'
-  householdId?: string
-  period: string
-}): Promise<MonthlyReportEntry[]> {
-  const searchParams: Record<string, string> = {
-    mode: params.mode,
-    period: params.period,
-  }
-  if (params.householdId) searchParams.householdId = params.householdId
-  return api.get(`${BASE}/monthly`, { searchParams }).json<MonthlyReportEntry[]>()
-}

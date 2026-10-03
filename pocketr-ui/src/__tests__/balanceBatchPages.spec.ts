@@ -58,11 +58,6 @@ const ledgerStore = {
   load: vi.fn(async () => {}),
 }
 
-vi.mock('@tanstack/vue-table', () => ({
-  getCoreRowModel: vi.fn(() => vi.fn()),
-  useVueTable: vi.fn(() => ({})),
-}))
-
 vi.mock('@/api/ledger', () => ({
   getAccountBalances,
   listTxns,

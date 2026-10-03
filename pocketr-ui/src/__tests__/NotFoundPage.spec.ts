@@ -134,7 +134,7 @@ describe('NotFoundPage', () => {
   it('keeps the catch-all route behind sign-in on the Nuxt UI path', () => {
     const route = appRouter.getRoutes().find((record) => record.name === 'not-found')
 
-    expect(route?.meta).toMatchObject({ requiresAuth: true, uiV2: true })
+    expect(route?.meta).toMatchObject({ requiresAuth: true })
     expect(route?.meta.layout).toBeUndefined()
   })
 })

@@ -11,6 +11,7 @@ import { FIELD_SELECT_UI } from '@/components/forms/fieldStyles'
 import { useAccountStore } from '@/stores/account'
 import { useModeStore } from '@/stores/mode'
 import type { Account, AccountType } from '@/types/ledger'
+import { APP_ICONS } from '@/utils/appIcons'
 
 const ALL_VALUE = '__all__'
 
@@ -27,7 +28,7 @@ const props = withDefaults(
     /** Extra classes for the trigger, for example a taller height. */
     triggerClass?: string
   }>(),
-  { icon: 'i-lucide-wallet' },
+  { icon: APP_ICONS.accounts },
 )
 
 const model = defineModel<string>({ default: '' })

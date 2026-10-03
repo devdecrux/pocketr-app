@@ -124,6 +124,25 @@ describe('getTxnAppearance', () => {
     expect(getTxnAppearance('SOMETHING_ELSE')).toEqual(getTxnAppearance('TRANSFER'))
     expect(getTxnAppearance('TRANSFER').icon).toBe('i-lucide-arrow-left-right')
   })
+
+  it('names the kind and gives the direction of its amount', () => {
+    expect(getTxnAppearance('OPENING_BALANCE')).toMatchObject({
+      label: 'Opening Balance',
+      indicator: 'plus',
+    })
+    expect(getTxnAppearance('OPENING_DEBT')).toMatchObject({
+      label: 'Opening Debt',
+      indicator: 'plus',
+    })
+    expect(getTxnAppearance('EXPENSE')).toMatchObject({ label: 'Expense', indicator: 'minus' })
+    expect(getTxnAppearance('DEBT_PAYMENT').indicator).toBe('minus')
+    expect(getTxnAppearance('INCOME').indicator).toBe('plus')
+    expect(getTxnAppearance('TRANSFER')).toMatchObject({ label: 'Transfer', indicator: 'transfer' })
+    expect(getTxnAppearance('SOMETHING_ELSE')).toMatchObject({
+      label: 'Transfer',
+      indicator: 'transfer',
+    })
+  })
 })
 
 describe('buildTxnDetails', () => {

@@ -13,6 +13,9 @@ import { useHouseholdStore } from '@/stores/household'
 import type { HouseholdMember, HouseholdRole, MembershipStatus } from '@/types/household'
 import type { Account, AccountType } from '@/types/ledger'
 import { initialsFromName } from '@/utils/initials'
+import { APP_ICONS } from '@/utils/appIcons'
+import { formatTimestampDate } from '@/utils/dates'
+import { FIELD_BASE_CLASS } from '@/components/forms/fieldStyles'
 
 type HouseholdTab = 'members' | 'accounts'
 
@@ -50,14 +53,6 @@ onMounted(async () => {
   }
   isLoaded.value = true
 })
-
-const dateFormatter = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' })
-
-function formatDate(value: string | null | undefined): string {
-  if (!value) return ''
-  const date = new Date(value)
-  return Number.isNaN(date.getTime()) ? '' : dateFormatter.format(date)
-}
 
 function displayPerson(
   firstName: string | null | undefined,
@@ -288,7 +283,7 @@ const accountsScrollClass = [scrollAreaClass, 'max-h-72']
 const tileClass =
   'flex size-9 shrink-0 items-center justify-center rounded-full bg-(--pocketr-icon-bg) text-default dark:bg-(--pocketr-avatar-bg)'
 const fieldUi = { label: 'text-sm text-highlighted' }
-const inputUi = { base: 'h-10 rounded-lg bg-(--pocketr-field-bg) text-sm' }
+const inputUi = { base: FIELD_BASE_CLASS }
 const actionButtonClass = 'w-full justify-center rounded-lg lg:w-auto'
 </script>
 
@@ -318,7 +313,9 @@ const actionButtonClass = 'w-full justify-center rounded-lg lg:w-auto'
         </div>
         <p v-if="household" class="text-sm text-muted">
           {{
-            t('views.householdSettings.header.created', { date: formatDate(household.createdAt) })
+            t('views.householdSettings.header.created', {
+              date: formatTimestampDate(household.createdAt),
+            })
           }}
         </p>
       </div>
@@ -485,7 +482,7 @@ const actionButtonClass = 'w-full justify-center rounded-lg lg:w-auto'
                       <p v-if="member.joinedAt" class="truncate text-xs text-muted">
                         {{
                           t('views.householdSettings.members.joined', {
-                            date: formatDate(member.joinedAt),
+                            date: formatTimestampDate(member.joinedAt),
                           })
                         }}
                       </p>
@@ -606,7 +603,7 @@ const actionButtonClass = 'w-full justify-center rounded-lg lg:w-auto'
                     class="flex min-w-0 items-center gap-3 py-2.5"
                   >
                     <span :class="tileClass" aria-hidden="true">
-                      <UIcon name="i-lucide-wallet" class="size-4.5" />
+                      <UIcon :name="APP_ICONS.accounts" class="size-4.5" />
                     </span>
                     <div class="min-w-0 flex-1">
                       <p class="truncate text-sm font-medium text-highlighted">
@@ -625,7 +622,7 @@ const actionButtonClass = 'w-full justify-center rounded-lg lg:w-auto'
                       </p>
                     </div>
                     <span class="shrink-0 text-xs whitespace-nowrap text-muted tabular-nums">
-                      {{ formatDate(share.sharedAt) }}
+                      {{ formatTimestampDate(share.sharedAt) }}
                     </span>
                   </li>
                 </ul>
@@ -677,7 +674,7 @@ const actionButtonClass = 'w-full justify-center rounded-lg lg:w-auto'
                       class="flex min-w-0 items-center gap-3 py-2"
                     >
                       <span :class="tileClass" aria-hidden="true">
-                        <UIcon name="i-lucide-wallet" class="size-4.5" />
+                        <UIcon :name="APP_ICONS.accounts" class="size-4.5" />
                       </span>
                       <div class="min-w-0 flex-1">
                         <p class="flex min-w-0 items-center gap-2">
@@ -698,7 +695,7 @@ const actionButtonClass = 'w-full justify-center rounded-lg lg:w-auto'
                           <template v-if="isAccountShared(account.id)">
                             {{
                               t('views.householdSettings.accounts.sharedAt', {
-                                date: formatDate(sharedAtById.get(account.id)),
+                                date: formatTimestampDate(sharedAtById.get(account.id)),
                               })
                             }}
                           </template>

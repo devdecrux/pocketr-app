@@ -189,9 +189,9 @@ describe('SettingsPage', () => {
     vi.unstubAllGlobals()
   })
 
-  it('renders the settings route on the Nuxt UI path behind sign-in', () => {
+  it('keeps the settings route behind sign-in', () => {
     const route = appRouter.getRoutes().find((record) => record.name === 'settings')
-    expect(route?.meta).toMatchObject({ requiresAuth: true, uiV2: true })
+    expect(route?.meta).toMatchObject({ requiresAuth: true })
   })
 
   it('shows the profile read-only, with one h1 per breakpoint', async () => {

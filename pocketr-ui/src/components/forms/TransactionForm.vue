@@ -12,6 +12,7 @@ import { watchEffect } from 'vue'
 import { useI18n } from 'vue-i18n'
 import AccountSelect from '@/components/forms/AccountSelect.vue'
 import AppDateField from '@/components/forms/AppDateField.vue'
+import AppTypeTabs from '@/components/forms/AppTypeTabs.vue'
 import CategorySelect from '@/components/forms/CategorySelect.vue'
 import FormMessage from '@/components/forms/FormMessage.vue'
 import MoneyInput from '@/components/forms/MoneyInput.vue'
@@ -19,6 +20,7 @@ import { FIELD_BASE_CLASS } from '@/components/forms/fieldStyles'
 import { TXN_TABS, type TxnTab, useTransactionDraft } from '@/composables/useTransactionDraft'
 import { useModeStore } from '@/stores/mode'
 import type { CreateTxnRequest } from '@/types/ledger'
+import { APP_ICONS } from '@/utils/appIcons'
 
 const props = defineProps<{ id: string; serverError?: string | null }>()
 
@@ -56,8 +58,6 @@ function onSubmit(): void {
 const fieldId = (name: string) => `${props.id}-${name}`
 
 const labelUi = { label: 'text-sm font-medium text-highlighted', container: 'mt-1.5' }
-// Fields are 36px tall in the narrow (mobile) drawer and 40px in the modal.
-const compactField = '@max-[28rem]:h-9'
 const wideFieldClass = '@min-[28rem]:col-span-2'
 </script>
 
@@ -65,23 +65,10 @@ const wideFieldClass = '@min-[28rem]:col-span-2'
   <form :id="id" novalidate class="@container flex flex-col gap-4" @submit.prevent="onSubmit">
     <FormMessage v-if="serverError" tone="error" :message="serverError" />
 
-    <UTabs
+    <AppTypeTabs
       v-model="activeTab"
       :items="tabItems"
-      role="group"
-      :aria-label="t('views.transactions.create.typeLabel')"
-      color="primary"
-      variant="pill"
-      size="md"
-      :unmount-on-hide="true"
-      :ui="{
-        root: 'gap-3.5 @min-[28rem]:gap-[23px]',
-        list: 'gap-0 rounded-lg border border-default bg-(--pocketr-field-bg) p-0.5',
-        indicator: 'inset-y-0.5 rounded-md bg-primary shadow-none',
-        trigger:
-          'h-8 px-1 text-xs @min-[28rem]:h-9 font-normal text-highlighted not-first:border-s not-first:border-default data-[state=active]:border-transparent data-[state=active]:font-medium data-[state=active]:text-inverted data-[state=inactive]:text-highlighted @min-[28rem]:text-sm',
-        content: 'outline-none',
-      }"
+      :group-label="t('views.transactions.create.typeLabel')"
     >
       <template #content="{ item }">
         <div class="grid grid-cols-1 gap-x-5 gap-y-3 @min-[28rem]:grid-cols-2 @min-[28rem]:gap-y-5">
@@ -98,11 +85,7 @@ const wideFieldClass = '@min-[28rem]:col-span-2'
               :for="fieldId('expense-date')"
               :ui="labelUi"
             >
-              <AppDateField
-                :id="fieldId('expense-date')"
-                :trigger-class="compactField"
-                v-model="expense.date"
-              />
+              <AppDateField :id="fieldId('expense-date')" v-model="expense.date" />
             </UFormField>
             <UFormField
               :label="t('common.fields.amount')"
@@ -111,7 +94,6 @@ const wideFieldClass = '@min-[28rem]:col-span-2'
             >
               <MoneyInput
                 :id="fieldId('expense-amount')"
-                :trigger-class="compactField"
                 v-model="expense.amount"
                 :minor-unit="draft.minorUnit.value"
                 :currency-code="draft.currency.value"
@@ -124,7 +106,6 @@ const wideFieldClass = '@min-[28rem]:col-span-2'
             >
               <AccountSelect
                 :id="fieldId('expense-pay-from')"
-                :trigger-class="compactField"
                 v-model="expense.payFrom"
                 :allowed-types="['ASSET', 'LIABILITY']"
                 :placeholder="t('views.transactions.formHints.selectPayFromAccount')"
@@ -137,10 +118,8 @@ const wideFieldClass = '@min-[28rem]:col-span-2'
             >
               <AccountSelect
                 :id="fieldId('expense-account')"
-                :trigger-class="compactField"
                 v-model="expense.account"
                 :allowed-types="['EXPENSE']"
-                icon="i-lucide-credit-card"
                 :placeholder="t('views.transactions.formHints.selectExpenseAccount')"
               />
             </UFormField>
@@ -151,7 +130,6 @@ const wideFieldClass = '@min-[28rem]:col-span-2'
             >
               <CategorySelect
                 :id="fieldId('expense-category')"
-                :trigger-class="compactField"
                 v-model="expense.category"
                 :none-label="t('views.transactions.formHints.noCategory')"
               />
@@ -164,12 +142,12 @@ const wideFieldClass = '@min-[28rem]:col-span-2'
               <UInput
                 :id="fieldId('expense-description')"
                 v-model="expense.description"
-                icon="i-lucide-file-text"
+                :icon="APP_ICONS.description"
                 autocomplete="off"
                 size="lg"
                 class="w-full"
                 :placeholder="t('views.transactions.formHints.whatWasThisFor')"
-                :ui="{ base: [FIELD_BASE_CLASS, compactField], leadingIcon: 'size-5 text-default' }"
+                :ui="{ base: FIELD_BASE_CLASS, leadingIcon: 'size-5 text-default' }"
               />
             </UFormField>
           </template>
@@ -180,11 +158,7 @@ const wideFieldClass = '@min-[28rem]:col-span-2'
               :for="fieldId('income-date')"
               :ui="labelUi"
             >
-              <AppDateField
-                :id="fieldId('income-date')"
-                :trigger-class="compactField"
-                v-model="income.date"
-              />
+              <AppDateField :id="fieldId('income-date')" v-model="income.date" />
             </UFormField>
             <UFormField
               :label="t('common.fields.amount')"
@@ -193,7 +167,6 @@ const wideFieldClass = '@min-[28rem]:col-span-2'
             >
               <MoneyInput
                 :id="fieldId('income-amount')"
-                :trigger-class="compactField"
                 v-model="income.amount"
                 :minor-unit="draft.minorUnit.value"
                 :currency-code="draft.currency.value"
@@ -206,7 +179,6 @@ const wideFieldClass = '@min-[28rem]:col-span-2'
             >
               <AccountSelect
                 :id="fieldId('income-deposit')"
-                :trigger-class="compactField"
                 v-model="income.deposit"
                 :allowed-types="['ASSET']"
                 :placeholder="t('views.transactions.formHints.selectDepositAccount')"
@@ -219,10 +191,8 @@ const wideFieldClass = '@min-[28rem]:col-span-2'
             >
               <AccountSelect
                 :id="fieldId('income-account')"
-                :trigger-class="compactField"
                 v-model="income.account"
                 :allowed-types="['INCOME']"
-                icon="i-lucide-credit-card"
                 :placeholder="t('views.transactions.formHints.selectIncomeAccount')"
               />
             </UFormField>
@@ -235,12 +205,12 @@ const wideFieldClass = '@min-[28rem]:col-span-2'
               <UInput
                 :id="fieldId('income-description')"
                 v-model="income.description"
-                icon="i-lucide-file-text"
+                :icon="APP_ICONS.description"
                 autocomplete="off"
                 size="lg"
                 class="w-full"
                 :placeholder="t('views.transactions.formHints.incomeSource')"
-                :ui="{ base: [FIELD_BASE_CLASS, compactField], leadingIcon: 'size-5 text-default' }"
+                :ui="{ base: FIELD_BASE_CLASS, leadingIcon: 'size-5 text-default' }"
               />
             </UFormField>
           </template>
@@ -251,11 +221,7 @@ const wideFieldClass = '@min-[28rem]:col-span-2'
               :for="fieldId('transfer-date')"
               :ui="labelUi"
             >
-              <AppDateField
-                :id="fieldId('transfer-date')"
-                :trigger-class="compactField"
-                v-model="transfer.date"
-              />
+              <AppDateField :id="fieldId('transfer-date')" v-model="transfer.date" />
             </UFormField>
             <UFormField
               :label="t('common.fields.amount')"
@@ -264,7 +230,6 @@ const wideFieldClass = '@min-[28rem]:col-span-2'
             >
               <MoneyInput
                 :id="fieldId('transfer-amount')"
-                :trigger-class="compactField"
                 v-model="transfer.amount"
                 :minor-unit="draft.minorUnit.value"
                 :currency-code="draft.currency.value"
@@ -277,7 +242,6 @@ const wideFieldClass = '@min-[28rem]:col-span-2'
             >
               <AccountSelect
                 :id="fieldId('transfer-from')"
-                :trigger-class="compactField"
                 v-model="transfer.from"
                 :allowed-types="['ASSET']"
                 :placeholder="t('views.transactions.formHints.selectSourceAccount')"
@@ -290,7 +254,6 @@ const wideFieldClass = '@min-[28rem]:col-span-2'
             >
               <AccountSelect
                 :id="fieldId('transfer-to')"
-                :trigger-class="compactField"
                 v-model="transfer.to"
                 :allowed-types="['ASSET']"
                 :placeholder="t('views.transactions.formHints.selectDestinationAccount')"
@@ -305,12 +268,12 @@ const wideFieldClass = '@min-[28rem]:col-span-2'
               <UInput
                 :id="fieldId('transfer-description')"
                 v-model="transfer.description"
-                icon="i-lucide-file-text"
+                :icon="APP_ICONS.description"
                 autocomplete="off"
                 size="lg"
                 class="w-full"
                 :placeholder="t('views.transactions.formHints.transferReason')"
-                :ui="{ base: [FIELD_BASE_CLASS, compactField], leadingIcon: 'size-5 text-default' }"
+                :ui="{ base: FIELD_BASE_CLASS, leadingIcon: 'size-5 text-default' }"
               />
             </UFormField>
             <FormMessage
@@ -327,11 +290,7 @@ const wideFieldClass = '@min-[28rem]:col-span-2'
               :for="fieldId('debt-payment-date')"
               :ui="labelUi"
             >
-              <AppDateField
-                :id="fieldId('debt-payment-date')"
-                :trigger-class="compactField"
-                v-model="debtPayment.date"
-              />
+              <AppDateField :id="fieldId('debt-payment-date')" v-model="debtPayment.date" />
             </UFormField>
             <UFormField
               :label="t('common.fields.amount')"
@@ -340,7 +299,6 @@ const wideFieldClass = '@min-[28rem]:col-span-2'
             >
               <MoneyInput
                 :id="fieldId('debt-payment-amount')"
-                :trigger-class="compactField"
                 v-model="debtPayment.amount"
                 :minor-unit="draft.minorUnit.value"
                 :currency-code="draft.currency.value"
@@ -353,7 +311,6 @@ const wideFieldClass = '@min-[28rem]:col-span-2'
             >
               <AccountSelect
                 :id="fieldId('debt-payment-pay-from')"
-                :trigger-class="compactField"
                 v-model="debtPayment.payFrom"
                 :allowed-types="['ASSET']"
                 :placeholder="t('views.transactions.formHints.selectAssetAccount')"
@@ -366,10 +323,8 @@ const wideFieldClass = '@min-[28rem]:col-span-2'
             >
               <AccountSelect
                 :id="fieldId('debt-payment-liability')"
-                :trigger-class="compactField"
                 v-model="debtPayment.liabilityAccount"
                 :allowed-types="['LIABILITY']"
-                icon="i-lucide-credit-card"
                 :placeholder="t('views.transactions.formHints.selectLiabilityAccount')"
               />
             </UFormField>
@@ -382,17 +337,17 @@ const wideFieldClass = '@min-[28rem]:col-span-2'
               <UInput
                 :id="fieldId('debt-payment-description')"
                 v-model="debtPayment.description"
-                icon="i-lucide-file-text"
+                :icon="APP_ICONS.description"
                 autocomplete="off"
                 size="lg"
                 class="w-full"
                 :placeholder="t('views.transactions.formHints.debtPaymentNote')"
-                :ui="{ base: [FIELD_BASE_CLASS, compactField], leadingIcon: 'size-5 text-default' }"
+                :ui="{ base: FIELD_BASE_CLASS, leadingIcon: 'size-5 text-default' }"
               />
             </UFormField>
           </template>
         </div>
       </template>
-    </UTabs>
+    </AppTypeTabs>
   </form>
 </template>

@@ -3,10 +3,10 @@ import {
   buildReportPeriods,
   currentRolloverPeriod,
   daysAgo,
-  formatDayMonthYear,
   niceAxisStep,
   rolloverPeriodRange,
 } from '@/utils/dashboardPeriods'
+import { formatDate, formatDateRange } from '@/utils/dates'
 
 describe('dashboard periods (backend RolloverPeriod contract)', () => {
   it('uses the calendar month for rollover day 1', () => {
@@ -23,8 +23,8 @@ describe('dashboard periods (backend RolloverPeriod contract)', () => {
   it('clamps the rollover day to the month length', () => {
     expect(currentRolloverPeriod(new Date(2026, 1, 28), 31)).toBe('2026-02')
     const { start, end } = rolloverPeriodRange('2026-02', 31)
-    expect(formatDayMonthYear(start)).toBe('28-02-2026')
-    expect(formatDayMonthYear(end)).toBe('30-03-2026')
+    expect(formatDate(start)).toBe('28/02/2026')
+    expect(formatDate(end)).toBe('30/03/2026')
   })
 
   it('builds consecutive periods ending with the selected one, oldest first', () => {
@@ -41,9 +41,7 @@ describe('dashboard periods (backend RolloverPeriod contract)', () => {
 
   it('describes calendar-month periods for rollover day 1', () => {
     const { start, end } = rolloverPeriodRange('2026-09', 1)
-    expect(`${formatDayMonthYear(start)} - ${formatDayMonthYear(end)}`).toBe(
-      '01-09-2026 - 30-09-2026',
-    )
+    expect(formatDateRange(start, end)).toBe('01/09/2026 – 30/09/2026')
   })
 
   it('counts days back for relative expense dates', () => {

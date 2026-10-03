@@ -44,7 +44,6 @@ export const useCurrencyStore = defineStore('currency', () => {
     currencies,
     isLoading,
     error,
-    currencyMap,
     getMinorUnit,
     load,
     $reset,

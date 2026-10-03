@@ -34,33 +34,14 @@ Use `$t('key.path')` in templates and `const { t } = useI18n()` in `<script setu
 
 ## Frontend Shared Components
 
-- `src/components/Sidebar.vue`
-  - Lines 49-54, 94-96, 133, 170, 174, 181: route labels, brand subtitle, household settings nav label, user menu labels.
-- `src/components/ThemeMenu.vue` and `src/composables/useAppTheme.ts`
-  - Lines `ThemeMenu.vue:16`, `useAppTheme.ts:4-6`, `useAppTheme.ts:11`: `Theme`, `Light`, `Dark`, `System`, theme preset label `Pocketr`.
-- `src/components/ModeSwitcher.vue`
-  - Lines 49, 55: `Select mode`, `Individual`.
-- `src/components/AccountSelector.vue`
-  - Lines 27, 72, 92: `Select account`, owner group label `Owner: {ownerId}`, account type group labels.
-- `src/components/CategoryTagSelector.vue`
-  - Lines 49, 55, 57: `Select category...`, `Search categories...`, `No categories found.`
-- `src/components/DataTable.vue`
-  - Lines 44, 139, 162-163: `No data.`, `Rows per page`, `Page {page} of {totalPages}`, `{totalElements} total`.
-- `src/components/DateRangePicker.vue`
-  - Lines 87, 159: `Date range`, `Clear date range`.
-- `src/components/CategoryColorPicker.vue`
-  - Line 27: `No color`.
-- `src/components/app/AuthPageShell.vue`
-  - Theme button aria label: `Theme`.
-- `src/components/ui/**`
-  - Accessibility strings to replace where present: `Close`, `Toggle Sidebar`, `Sidebar`, `Displays the mobile sidebar.`, `Command Palette`, `Search for a command to run...`.
+The previous shared components (`Sidebar`, `ThemeMenu`, `ModeSwitcher`, `AccountSelector`, `CategoryTagSelector`, `DataTable`, `DateRangePicker`, `app/*`, `ui/*`) were removed with the new design. Their replacements in `src/components/{layout,forms,shared}` read all visible text through `t(...)`.
 
 ## Frontend Utilities And Stores
 
 - `src/utils/txnStrategies.ts`
   - Line 45: `Please fill in all required fields and enter a positive amount.`
-- `src/utils/txnPresentation.ts`
-  - Lines 11, 25, 31, 38, 44, 50: `Transfer`, `Expense`, `Income`, `Debt Payment`, `Opening Balance`, `Opening Debt`.
+- `src/utils/txnAppearance.ts`
+  - Transaction kind labels (`Transfer`, `Expense`, `Income`, `Debt Payment`, `Opening Balance`, `Opening Debt`) come from `display.transactionKinds.*`.
 - `src/stores/account.ts`
   - Line 45: `Failed to load accounts.`
 - `src/stores/category.ts`

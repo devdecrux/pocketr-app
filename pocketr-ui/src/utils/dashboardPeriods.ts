@@ -74,18 +74,6 @@ export function formatPeriodAxisLabel(period: string): string {
   )
 }
 
-/** `DD-MM-YYYY`, the format the dashboard already used for rollover ranges. */
-export function formatDayMonthYear(date: Date): string {
-  const day = String(date.getDate()).padStart(2, '0')
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  return `${day}-${month}-${date.getFullYear()}`
-}
-
-export function formatIsoDate(value: string): string {
-  const [year, month, day] = value.split('-')
-  return `${day}-${month}-${year}`
-}
-
 /** Whole days between an ISO `YYYY-MM-DD` date and `today` (local), positive for past dates. */
 export function daysAgo(isoDate: string, today: Date): number {
   const [year = 0, month = 1, day = 1] = isoDate.split('-').map(Number)

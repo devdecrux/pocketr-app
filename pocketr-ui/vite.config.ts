@@ -50,7 +50,7 @@ export default defineConfig({
       },
       // `useAppTheme` (VueUse `useColorMode`, `.dark` class on <html>) stays the only color-mode controller.
       colorMode: false,
-      // Auto-register Nuxt UI components only; legacy `src/components/**` keep their explicit imports.
+      // Auto-register Nuxt UI components only; Pocketr components in `src/components/**` are imported explicitly.
       components: {
         dirs: [],
       },

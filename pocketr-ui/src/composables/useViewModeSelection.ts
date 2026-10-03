@@ -6,7 +6,7 @@ import { useModeStore } from '@/stores/mode'
 export const INDIVIDUAL_MODE_VALUE = 'individual'
 const HOUSEHOLD_MODE_PREFIX = 'household:'
 
-/** Individual / household view-mode selection shared by the legacy and Nuxt UI mode selectors. */
+/** Individual / household view-mode selection behind the mode selector. */
 export function useViewModeSelection() {
   const modeStore = useModeStore()
   const accountStore = useAccountStore()

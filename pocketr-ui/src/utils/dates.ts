@@ -42,3 +42,27 @@ export function formatIsoDate(value: string): string {
   const date = isoToCalendarDate(value)
   return date ? formatPickerDate(date) : value
 }
+
+function dateToCalendarDate(date: Date): CalendarDate {
+  return new CalendarDate(date.getFullYear(), date.getMonth() + 1, date.getDate())
+}
+
+/** "20/09/2026" for a `Date`, read in the local calendar. */
+export function formatDate(date: Date): string {
+  return formatPickerDate(dateToCalendarDate(date))
+}
+
+/** "01/09/2026 – 30/09/2026" for two `Date`s, like the date-range filter shows its range. */
+export function formatDateRange(start: Date, end: Date): string {
+  return formatPickerRange(dateToCalendarDate(start), dateToCalendarDate(end))
+}
+
+/**
+ * "12/09/2026" for an ISO timestamp such as `createdAt`, as the user's local calendar date; an empty
+ * string for a missing or unparsable value.
+ */
+export function formatTimestampDate(value: string | null | undefined): string {
+  if (!value) return ''
+  const date = new Date(value)
+  return Number.isNaN(date.getTime()) ? '' : formatDate(date)
+}

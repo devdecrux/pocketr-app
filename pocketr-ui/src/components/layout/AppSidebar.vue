@@ -1,7 +1,7 @@
 <script setup lang="ts">
 /**
  * Authenticated sidebar: brand, page navigation and profile menu. Collapsible on desktop
- * (Cmd/Ctrl+B, like the legacy sidebar) and a left slide-over below `lg`.
+ * (Cmd/Ctrl+B) and a left slide-over below `lg`.
  */
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
@@ -15,8 +15,9 @@ import { useAuthStore } from '@/stores/auth'
 import { useHouseholdStore } from '@/stores/household'
 import { useModeStore } from '@/stores/mode'
 import { initialsFromName } from '@/utils/initials'
+import { APP_ICONS } from '@/utils/appIcons'
 
-/** Same toggle shortcut as the legacy sidebar (`SIDEBAR_KEYBOARD_SHORTCUT`). */
+/** Keyboard shortcut (with Cmd/Ctrl) that collapses and expands the desktop sidebar. */
 const SIDEBAR_KEYBOARD_SHORTCUT = 'b'
 
 const { t } = useI18n()
@@ -40,25 +41,25 @@ const userInitials = computed(() =>
 const navigationItems = computed<NavigationMenuItem[]>(() => [
   {
     label: t('components.sidebar.routes.dashboard'),
-    icon: 'i-lucide-layout-grid',
+    icon: APP_ICONS.dashboard,
     to: '/dashboard',
     exact: true,
   },
   {
     label: t('components.sidebar.routes.transactions'),
-    icon: 'i-lucide-arrow-up-down',
+    icon: APP_ICONS.transactions,
     to: '/transactions',
     exact: true,
   },
   {
     label: t('components.sidebar.routes.accounts'),
-    icon: 'i-lucide-wallet-minimal',
+    icon: APP_ICONS.accounts,
     to: '/accounts',
     exact: true,
   },
   {
     label: t('components.sidebar.routes.categories'),
-    icon: 'i-lucide-shapes',
+    icon: APP_ICONS.categories,
     to: '/categories',
     exact: true,
   },
@@ -67,7 +68,7 @@ const navigationItems = computed<NavigationMenuItem[]>(() => [
     ? [
         {
           label: t('components.sidebar.household'),
-          icon: 'i-lucide-users',
+          icon: APP_ICONS.household,
           // OWNER/ADMIN in household mode manage the active household; everyone else reaches the
           // membership entry point on the settings page.
           to: householdSettingsPath.value ?? '/settings',

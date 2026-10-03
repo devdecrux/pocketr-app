@@ -56,7 +56,7 @@ export function useTransactionDraft() {
     description: '',
   })
 
-  // The currency follows the first account of the active type, as the legacy form derived it.
+  // The currency follows the first account of the active type.
   const currencyAccountId = computed(() => {
     switch (activeTab.value) {
       case 'expense':

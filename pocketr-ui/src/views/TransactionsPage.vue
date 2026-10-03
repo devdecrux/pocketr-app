@@ -13,6 +13,10 @@ import { FIELD_BASE_CLASS } from '@/components/forms/fieldStyles'
 import AppPagePanel from '@/components/layout/AppPagePanel.vue'
 import AppConfirmDialog from '@/components/shared/AppConfirmDialog.vue'
 import AppDataTable from '@/components/shared/AppDataTable.vue'
+import AppFilterPanel from '@/components/shared/AppFilterPanel.vue'
+import AppFiltersToggle from '@/components/shared/AppFiltersToggle.vue'
+import AppPageHeading from '@/components/shared/AppPageHeading.vue'
+import AppExpandableRow from '@/components/shared/AppExpandableRow.vue'
 import AppFormOverlay from '@/components/shared/AppFormOverlay.vue'
 import AppPaginationBar from '@/components/shared/AppPaginationBar.vue'
 import TransactionDetails, {
@@ -32,7 +36,7 @@ import { formatTxnDisplayAmount } from '@/utils/txnDisplay'
 import { buildTxnDetails, txnCategoryNames, type TxnDetails } from '@/utils/txnDetails'
 import { getTxnAppearance } from '@/utils/txnAppearance'
 import { groupTransactionsByDay } from '@/utils/txnGroups'
-import { getTxnPresentation } from '@/utils/txnPresentation'
+import { APP_ICONS } from '@/utils/appIcons'
 
 const CREATE_FORM_ID = 'create-transaction-form'
 const FILTERS_PANEL_ID = 'transaction-filters'
@@ -137,13 +141,13 @@ function amountText(txn: LedgerTxn): string {
 }
 
 function isTransfer(txn: LedgerTxn): boolean {
-  return getTxnPresentation(txn.txnKind).indicator === 'transfer'
+  return getTxnAppearance(txn.txnKind).indicator === 'transfer'
 }
 
 // "−€46.80" or "+€3,500.00" with a true minus, as on the dashboard; transfers show two arrows instead.
 function signedAmountText(txn: LedgerTxn): string {
   if (isTransfer(txn)) return amountText(txn)
-  return `${getTxnPresentation(txn.txnKind).indicator === 'minus' ? '−' : '+'}${amountText(txn)}`
+  return `${getTxnAppearance(txn.txnKind).indicator === 'minus' ? '−' : '+'}${amountText(txn)}`
 }
 
 function categoryText(txn: LedgerTxn): string {
@@ -390,77 +394,51 @@ const searchUi = computed(() => ({
 <template>
   <AppPagePanel :title="t('views.transactions.title')">
     <div class="flex min-w-0 flex-col gap-3 lg:gap-5">
-      <!-- Below `lg` the subtitle runs under the title and the Filters button, at full width. -->
-      <div class="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4">
-        <h1 class="min-w-0 truncate text-[22px] leading-8 font-bold text-highlighted lg:hidden">
-          {{ t('views.transactions.title') }}
-        </h1>
-        <h2 class="hidden min-w-0 truncate text-2xl leading-8 font-bold text-highlighted lg:block">
-          {{ t('views.transactions.title') }}
-        </h2>
-        <p class="row-start-2 text-base text-muted max-lg:col-span-2">
-          {{ t('views.transactions.subtitle') }}
-        </p>
-        <div class="flex shrink-0 items-center gap-2.5 lg:row-span-2 lg:self-start">
+      <AppPageHeading
+        :title="t('views.transactions.title')"
+        :subtitle="t('views.transactions.subtitle')"
+      >
+        <template #actions>
+          <AppFiltersToggle
+            v-model:open="isFiltersOpen"
+            :panel-id="FILTERS_PANEL_ID"
+            :count="activeFilterCount"
+          />
           <UButton
-            type="button"
-            color="neutral"
-            variant="outline"
-            size="md"
-            icon="i-lucide-sliders-horizontal"
-            :label="isDesktop ? t('views.transactions.filters.button') : undefined"
-            :aria-label="t('views.transactions.filters.button')"
-            :aria-expanded="isFiltersOpen"
-            :aria-controls="FILTERS_PANEL_ID"
-            class="h-10 rounded-lg bg-(--pocketr-field-bg) px-3 font-normal text-highlighted ring-default lg:px-4"
-            @click="isFiltersOpen = !isFiltersOpen"
-          >
-            <template v-if="activeFilterCount > 0" #trailing>
-              <UBadge
-                :label="String(activeFilterCount)"
-                color="primary"
-                variant="subtle"
-                size="sm"
-              />
-            </template>
-          </UButton>
-          <UButton
-            icon="i-lucide-plus"
+            :icon="APP_ICONS.add"
             size="md"
             :label="t('views.transactions.actions.new')"
             class="hidden h-10 rounded-lg px-5 lg:inline-flex"
             @click="openCreate"
           />
-        </div>
-      </div>
+        </template>
+      </AppPageHeading>
 
-      <!-- Hidden until the Filters button opens them: one row on desktop, stacked below `lg`. -->
-      <div
+      <AppFilterPanel
         v-if="isFiltersOpen"
         :id="FILTERS_PANEL_ID"
-        role="group"
-        :aria-label="t('views.transactions.filters.title')"
-        class="grid gap-2.5 lg:flex lg:flex-wrap lg:items-center"
+        :count="activeFilterCount"
+        @clear="clearFilters"
       >
         <UInput
           v-model="filterSearch"
-          icon="i-lucide-search"
+          :icon="APP_ICONS.search"
           type="search"
           autocomplete="off"
           size="lg"
           :aria-label="t('common.fields.search')"
           :placeholder="t('views.transactions.formHints.searchDescriptions')"
           :ui="searchUi"
-          class="w-full lg:w-48"
+          class="w-full lg:w-48 lg:shrink-0"
         />
-        <div class="min-w-0 lg:w-[232px]">
+        <div class="min-w-0 lg:w-fit lg:min-w-[232px] lg:shrink-0">
           <AppDateRangePicker
             v-model:from="filterDateFrom"
             v-model:to="filterDateTo"
             :trigger-class="controlHeightClass"
           />
         </div>
-        <div class="min-w-0 lg:w-44">
+        <div class="min-w-0 lg:w-fit lg:max-w-72 lg:min-w-44">
           <AccountSelect
             v-model="filterAccountId"
             include-archived
@@ -469,29 +447,16 @@ const searchUi = computed(() => ({
             :aria-label="t('common.fields.account')"
           />
         </div>
-        <div class="min-w-0 lg:w-44">
+        <div class="min-w-0 lg:w-fit lg:max-w-72 lg:min-w-44">
           <CategorySelect
             v-model="filterCategoryId"
-            icon="i-lucide-layout-grid"
+            :icon="APP_ICONS.categories"
             :trigger-class="controlHeightClass"
             :none-label="t('views.transactions.formHints.allCategories')"
             :aria-label="t('common.fields.category')"
           />
         </div>
-        <UTooltip v-if="activeFilterCount > 0" :text="t('views.transactions.filters.clear')">
-          <UButton
-            type="button"
-            color="neutral"
-            variant="ghost"
-            size="md"
-            icon="i-lucide-x"
-            :label="isDesktop ? undefined : t('views.transactions.filters.clear')"
-            :aria-label="t('views.transactions.filters.clear')"
-            class="rounded-lg text-default max-lg:justify-self-start"
-            @click="clearFilters"
-          />
-        </UTooltip>
-      </div>
+      </AppFilterPanel>
 
       <FormMessage v-if="deleteError" tone="error" :message="deleteError" />
       <FormMessage v-if="ledgerStore.error" tone="error" :message="ledgerStore.error" />
@@ -589,7 +554,7 @@ const searchUi = computed(() => ({
               class="rounded-md px-3 font-normal"
               :class="getTxnAppearance(row.original.txnKind).badgeClass"
             >
-              {{ getTxnPresentation(row.original.txnKind).label }}
+              {{ getTxnAppearance(row.original.txnKind).label }}
             </UBadge>
           </template>
           <template #categories-cell="{ row }">
@@ -631,7 +596,7 @@ const searchUi = computed(() => ({
             >
               <UIcon
                 v-if="isTransfer(row.original)"
-                name="i-lucide-arrow-left-right"
+                :name="APP_ICONS.transfer"
                 class="size-4 shrink-0"
                 aria-hidden="true"
               />
@@ -644,7 +609,7 @@ const searchUi = computed(() => ({
                 color="neutral"
                 variant="ghost"
                 size="md"
-                icon="i-lucide-trash-2"
+                :icon="APP_ICONS.remove"
                 :loading="deletingTxnId === row.original.id"
                 :disabled="deletingTxnId !== null"
                 :aria-label="
@@ -662,7 +627,7 @@ const searchUi = computed(() => ({
               color="neutral"
               variant="ghost"
               size="md"
-              :icon="row.getIsExpanded() ? 'i-lucide-chevron-down' : 'i-lucide-chevron-left'"
+              :icon="row.getIsExpanded() ? APP_ICONS.expanded : APP_ICONS.collapsed"
               :aria-expanded="row.getIsExpanded()"
               :aria-label="
                 t(
@@ -705,12 +670,10 @@ const searchUi = computed(() => ({
                 class="divide-y divide-default overflow-hidden rounded-xl border border-default bg-default"
               >
                 <li v-for="txn in group.items" :key="txn.id">
-                  <button
-                    type="button"
-                    class="flex w-full items-center gap-3 px-3 py-2.5 text-start outline-primary/25 focus-visible:outline-3 focus-visible:-outline-offset-3"
-                    :aria-expanded="Boolean(expanded[txn.id])"
-                    :aria-controls="`txn-details-${txn.id}`"
-                    @click="toggleRow(txn)"
+                  <AppExpandableRow
+                    :panel-id="`txn-details-${txn.id}`"
+                    :expanded="Boolean(expanded[txn.id])"
+                    @toggle="toggleRow(txn)"
                   >
                     <span
                       class="flex size-11 shrink-0 items-center justify-center rounded-full bg-(--pocketr-tile-bg)"
@@ -725,7 +688,7 @@ const searchUi = computed(() => ({
                         {{ txn.description }}
                       </span>
                       <span class="block truncate text-[13px] text-muted">
-                        {{ categoryText(txn) || getTxnPresentation(txn.txnKind).label }}
+                        {{ categoryText(txn) || getTxnAppearance(txn.txnKind).label }}
                       </span>
                     </span>
                     <span
@@ -734,48 +697,41 @@ const searchUi = computed(() => ({
                     >
                       <UIcon
                         v-if="isTransfer(txn)"
-                        name="i-lucide-arrow-left-right"
+                        :name="APP_ICONS.transfer"
                         class="size-4 shrink-0"
                         aria-hidden="true"
                       />
                       {{ signedAmountText(txn) }}
                     </span>
-                    <UIcon
-                      :name="expanded[txn.id] ? 'i-lucide-chevron-down' : 'i-lucide-chevron-right'"
-                      class="size-5 shrink-0 text-default"
-                      aria-hidden="true"
-                    />
-                  </button>
-                  <div
-                    v-if="expanded[txn.id]"
-                    :id="`txn-details-${txn.id}`"
-                    class="flex flex-col gap-2.5 px-3 pt-2 pb-3"
-                  >
-                    <TransactionDetails
-                      :details="detailsFor(txn)"
-                      :creator="detailsCreator(txn)"
-                      :date="
-                        group.id === 'today' || group.id === 'yesterday'
-                          ? undefined
-                          : formatIsoDate(txn.txnDate)
-                      "
-                    />
-                    <UButton
-                      block
-                      color="error"
-                      variant="soft"
-                      size="md"
-                      icon="i-lucide-trash-2"
-                      :label="t('common.actions.delete')"
-                      :loading="deletingTxnId === txn.id"
-                      :disabled="deletingTxnId !== null"
-                      :aria-label="
-                        t('views.transactions.rowActions.delete', { description: txn.description })
-                      "
-                      class="h-10 justify-center rounded-lg"
-                      @click="requestDelete(txn)"
-                    />
-                  </div>
+                    <template #details>
+                      <TransactionDetails
+                        :details="detailsFor(txn)"
+                        :creator="detailsCreator(txn)"
+                        :date="
+                          group.id === 'today' || group.id === 'yesterday'
+                            ? undefined
+                            : formatIsoDate(txn.txnDate)
+                        "
+                      />
+                      <UButton
+                        block
+                        color="error"
+                        variant="soft"
+                        size="md"
+                        :icon="APP_ICONS.remove"
+                        :label="t('common.actions.delete')"
+                        :loading="deletingTxnId === txn.id"
+                        :disabled="deletingTxnId !== null"
+                        :aria-label="
+                          t('views.transactions.rowActions.delete', {
+                            description: txn.description,
+                          })
+                        "
+                        class="h-10 justify-center rounded-lg"
+                        @click="requestDelete(txn)"
+                      />
+                    </template>
+                  </AppExpandableRow>
                 </li>
               </ul>
             </section>
@@ -793,7 +749,6 @@ const searchUi = computed(() => ({
     <AppFormOverlay
       :open="isCreateOpen"
       size="lg"
-      cancel-variant="ghost"
       :title="t('views.transactions.create.title')"
       :description="t('views.transactions.create.description')"
       :form-id="CREATE_FORM_ID"
@@ -823,7 +778,7 @@ const searchUi = computed(() => ({
     <template #footer>
       <UButton
         block
-        icon="i-lucide-plus"
+        :icon="APP_ICONS.add"
         size="md"
         :label="t('views.transactions.actions.new')"
         class="h-11 justify-center rounded-lg"

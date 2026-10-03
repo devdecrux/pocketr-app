@@ -1,36 +1,33 @@
 <script setup lang="ts">
 import { computed, defineAsyncComponent } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRoute } from 'vue-router'
-import Sidebar from '@/components/Sidebar.vue'
-import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar'
+import { bg, de, en } from '@nuxt/ui/locale'
 import { useAppTheme } from '@/composables/useAppTheme'
 import { useSessionManager } from '@/composables/useSessionManager'
-import { useUiMigration } from '@/composables/useUiMigration'
+import type { SupportedLocale } from '@/i18n'
 
-// TEMPORARY (UI migration): Nuxt UI render path for `meta.uiV2` routes, loaded only when needed.
-const UiV2Root = defineAsyncComponent(() => import('@/components/layout/UiV2Root.vue'))
+// Lazy so public (auth-layout) pages do not download the sidebar and profile-menu code.
+const AppSidebar = defineAsyncComponent(() => import('@/components/layout/AppSidebar.vue'))
+
+const uiLocales = { bg, de, en } satisfies Record<SupportedLocale, typeof en>
+
+const { locale } = useI18n()
+const uiLocale = computed(() => uiLocales[locale.value as SupportedLocale] ?? en)
 
 const route = useRoute()
-
 const isAuthLayout = computed(() => route.meta.layout === 'auth')
-const { isUiV2 } = useUiMigration()
 
 useAppTheme()
 useSessionManager()
 </script>
 
 <template>
-  <UiV2Root v-if="isUiV2" />
-  <div v-else class="h-dvh overflow-hidden">
+  <UApp :locale="uiLocale">
     <RouterView v-if="isAuthLayout" />
-    <SidebarProvider v-else class="app-shell h-full">
-      <Sidebar />
-      <div class="app-shell-content flex min-h-0 flex-1 flex-col">
-        <SidebarTrigger class="app-shell-trigger lg:hidden" />
-        <main class="app-shell-main min-h-0 flex-1 overflow-y-auto p-2">
-          <RouterView />
-        </main>
-      </div>
-    </SidebarProvider>
-  </div>
+    <UDashboardGroup v-else unit="px" :persistent="false" class="bg-(--pocketr-bg-main)">
+      <AppSidebar />
+      <RouterView />
+    </UDashboardGroup>
+  </UApp>
 </template>

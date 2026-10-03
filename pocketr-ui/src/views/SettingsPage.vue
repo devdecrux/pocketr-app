@@ -17,6 +17,8 @@ import { useModeStore } from '@/stores/mode'
 import type { SupportedUserLanguage } from '@/types/auth'
 import type { HouseholdSummary } from '@/types/household'
 import { initialsFromName } from '@/utils/initials'
+import { APP_ICONS } from '@/utils/appIcons'
+import { FIELD_BASE_CLASS, SELECT_CONTENT_CLASS } from '@/components/forms/fieldStyles'
 
 const PREFERENCES_FORM_ID = 'settings-preferences'
 const PREFERENCES_TITLE_ID = 'settings-preferences-title'
@@ -286,8 +288,9 @@ const buttonUi = { label: 'lg:whitespace-normal lg:text-center' }
 const compactButtonUi = { label: 'lg:max-2xl:sr-only' }
 const cardTitleClass = 'text-base font-semibold text-highlighted'
 const selectUi = {
-  base: 'h-10 rounded-lg bg-(--pocketr-field-bg) text-sm ring-default',
+  base: FIELD_BASE_CLASS,
   trailingIcon: 'size-4 text-default',
+  content: SELECT_CONTENT_CLASS,
 }
 const fieldUi = { label: 'text-sm text-highlighted' }
 </script>
@@ -484,7 +487,7 @@ const fieldUi = { label: 'text-sm text-highlighted' }
                 color="neutral"
                 class="w-full"
                 aria-describedby="settings-rollover-help"
-                :ui="{ base: 'h-10 rounded-lg bg-(--pocketr-field-bg) text-sm' }"
+                :ui="{ base: FIELD_BASE_CLASS }"
               />
             </UFormField>
 
@@ -564,7 +567,7 @@ const fieldUi = { label: 'text-sm text-highlighted' }
                 class="flex size-14 shrink-0 items-center justify-center rounded-full bg-(--pocketr-icon-bg) lg:size-10 dark:bg-(--pocketr-avatar-bg)"
                 aria-hidden="true"
               >
-                <UIcon name="i-lucide-users" class="size-6 text-default lg:size-5" />
+                <UIcon :name="APP_ICONS.household" class="size-6 text-default lg:size-5" />
               </span>
               <p
                 class="max-w-full truncate text-base font-semibold text-highlighted lg:text-sm"
@@ -658,10 +661,14 @@ const fieldUi = { label: 'text-sm text-highlighted' }
               <UInput
                 id="household-name"
                 v-model="householdName"
+                :icon="APP_ICONS.name"
                 type="text"
                 :placeholder="t('common.formHints.householdName')"
                 class="w-full"
-                :ui="{ base: 'h-10 rounded-lg bg-(--pocketr-field-bg) text-sm' }"
+                :ui="{
+                  base: FIELD_BASE_CLASS,
+                  leadingIcon: 'size-5 text-default',
+                }"
               />
             </UFormField>
             <UButton

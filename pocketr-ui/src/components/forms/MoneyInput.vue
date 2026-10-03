@@ -8,6 +8,7 @@ import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { FIELD_BASE_CLASS } from '@/components/forms/fieldStyles'
 import { formatMinorPlain, parseToMinor } from '@/utils/money'
+import { APP_ICONS } from '@/utils/appIcons'
 
 const props = withDefaults(
   defineProps<{
@@ -87,7 +88,7 @@ function onBlur(): void {
       >
         {{ symbol }}
       </span>
-      <UIcon v-else name="i-lucide-coins" class="size-5 text-default" />
+      <UIcon v-else :name="APP_ICONS.amount" class="size-5 text-default" />
     </template>
   </UInput>
 </template>
