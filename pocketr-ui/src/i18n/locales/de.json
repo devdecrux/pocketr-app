@@ -5,17 +5,19 @@
   "common": {
     "actions": {
       "accept": "Annehmen",
+      "archive": "Archivieren",
       "backToDashboard": "Zurück zum Dashboard",
       "cancel": "Abbrechen",
+      "clear": "Zurücksetzen",
       "close": "Schließen",
+      "create": "Erstellen",
       "delete": "Löschen",
       "edit": "Bearbeiten",
       "save": "Speichern",
-      "signIn": "Anmelden",
       "share": "Teilen",
+      "signIn": "Anmelden",
       "unshare": "Nicht mehr teilen",
-      "clear": "Zurücksetzen",
-      "archive": "Archivieren"
+      "settings": "Einstellungen"
     },
     "amounts": {
       "mixedCurrencies": "Gemischte Währungen"
@@ -31,7 +33,8 @@
       "saving": "Wird gespeichert...",
       "uploading": "Wird hochgeladen...",
       "sending": "Wird gesendet...",
-      "loading": "Wird geladen..."
+      "loading": "Wird geladen...",
+      "loggingIn": "Anmeldung läuft..."
     },
     "filters": {
       "button": "Filter",
@@ -63,7 +66,8 @@
       "selectCategory": "Kategorie auswählen...",
       "accountName": "Kontoname",
       "filterCurrency": "Nach Währung filtern",
-      "filterType": "Nach Typ filtern"
+      "filterType": "Nach Typ filtern",
+      "emailPlaceholder": "alex{'@'}example.com"
     },
     "states": {
       "archived": "Archiviert",
@@ -72,11 +76,7 @@
     },
     "table": {
       "actions": "Aktionen",
-      "amount": "Betrag",
-      "category": "Kategorie",
       "created": "Erstellt",
-      "date": "Datum",
-      "description": "Beschreibung",
       "member": "Mitglied",
       "nextPage": "Nächste Seite",
       "previousPage": "Vorherige Seite",
@@ -84,8 +84,8 @@
       "rowsPerPage": "Zeilen pro Seite",
       "type": "Typ",
       "balance": "Saldo",
-      "currency": "Währung",
-      "shared": "Geteilt"
+      "shared": "Geteilt",
+      "editRow": "{name} bearbeiten"
     }
   },
   "display": {
@@ -129,12 +129,8 @@
         "currencyAccounts": "Konten in {currency}",
         "debt": "Offene Schulden"
       },
-      "rowActions": {
-        "edit": "{name} bearbeiten"
-      },
       "create": {
         "typeLabel": "Kontotyp",
-        "submit": "Konto erstellen",
         "descriptions": {
           "assetOpeningBalance": "Wird als Anfangssaldo-Buchung gegen das Anfangskapital erfasst.",
           "liabilityOpeningBalance": "Wird als Anfangsschuld gegen das Anfangskapital erfasst. Der Betrag einer Verbindlichkeit muss positiv sein.",
@@ -150,10 +146,10 @@
           "incomeName": "z. B. Gehalt, Freiberuflich",
           "liabilityName": "z. B. Hypothek, Autokredit"
         },
-        "title": "Konto erstellen"
+        "title": "Neues Konto"
       },
       "actions": {
-        "new": "Neues Konto"
+        "new": "Konto"
       },
       "empty": "Keine Konten gefunden.",
       "filters": {
@@ -169,7 +165,6 @@
     },
     "auth": {
       "login": {
-        "emailPlaceholder": "alex{'@'}example.com",
         "errors": {
           "invalidCredentials": "Ungültige E-Mail-Adresse oder ungültiges Passwort. Bitte versuche es erneut.",
           "sessionExpired": "Deine Sitzung ist abgelaufen. Bitte melde dich erneut an."
@@ -178,11 +173,9 @@
           "register": "Konto erstellen",
           "registerPrompt": "Neu bei Pocketr?"
         },
-        "submit": "Anmelden",
         "title": "Willkommen zurück!"
       },
       "registration": {
-        "emailPlaceholder": "alex{'@'}example.com",
         "errors": {
           "passwordsMismatch": "Die Passwörter stimmen nicht überein",
           "unableToRegister": "Registrierung fehlgeschlagen"
@@ -199,11 +192,13 @@
     "dashboard": {
       "empty": {
         "spendingData": "Keine Daten verfügbar.",
-        "spendings": "Noch keine Ausgaben."
+        "spendings": "Noch keine Ausgaben.",
+        "accounts": "Noch keine Konten.",
+        "monthlySpending": "Keine Ausgabendaten für diesen Monat.",
+        "transactions": "Noch keine Transaktionen."
       },
       "overview": {
         "acrossAccounts": "Über {count} Konto | Über {count} Konten",
-        "addTransaction": "Transaktion hinzufügen",
         "availableBalance": "Verfügbarer Saldo",
         "chartPeriod": "Zeitraum des Ausgabendiagramms",
         "heading": "Ihr Geld auf einen Blick",
@@ -214,11 +209,17 @@
         "spentInPeriod": "Ausgegeben im {period}",
         "spentThisMonth": "Diesen Monat ausgegeben",
         "subtitle": "Ein wenig Klarheit für Ihre täglichen Finanzen.",
-        "today": "Heute",
         "topCategories": "Top-Kategorien",
-        "viewAll": "Alle anzeigen",
-        "yesterday": "Gestern"
-      }
+        "viewAll": "Alle anzeigen"
+      },
+      "periodViews": {
+        "lifetime": "Gesamtzeit"
+      },
+      "subtitle": {
+        "household": "Haushaltsübersicht"
+      },
+      "title": "Dashboard",
+      "uncategorized": "Ohne Kategorie"
     },
     "notFound": {
       "description": "Die gesuchte Seite existiert nicht oder wurde verschoben.",
@@ -231,7 +232,6 @@
         "acceptInviteBlocked": "Verlasse deinen aktuellen Haushalt, bevor du eine andere Einladung annimmst.",
         "createAction": "Haushalt erstellen",
         "createDescription": "Du bist noch in keinem Haushalt. Erstelle einen, um Konten mit Familie oder Mitbewohnern zu teilen.",
-        "invitedBadge": "Eingeladen",
         "leave": "Haushalt verlassen",
         "leaveDescription": "Du siehst die geteilten Konten dieses Haushalts dann nicht mehr. Für einen erneuten Beitritt brauchst du eine neue Einladung.",
         "leaveTitle": "{name} verlassen?",
@@ -260,13 +260,12 @@
     },
     "categories": {
       "actions": {
-        "new": "Neue Kategorie"
+        "new": "Kategorie"
       },
       "confirmDelete": "Kategorie „{name}“ löschen?",
       "create": {
         "description": "Füge eine Kategorie zum Markieren von Transaktionen hinzu.",
-        "submit": "Kategorie erstellen",
-        "title": "Kategorie erstellen"
+        "title": "Neue Kategorie"
       },
       "delete": {
         "confirm": "Kategorie löschen",
@@ -274,7 +273,6 @@
       },
       "edit": {
         "description": "Ändere den Namen oder die Farbe.",
-        "submit": "Änderungen speichern",
         "title": "Kategorie bearbeiten"
       },
       "empty": "Noch keine Kategorien. Erstelle deine erste Kategorie.",
@@ -284,8 +282,7 @@
       },
       "loading": "Kategorien werden geladen...",
       "rowActions": {
-        "delete": "{name} löschen",
-        "edit": "{name} bearbeiten"
+        "delete": "{name} löschen"
       },
       "title": "Kategorien"
     },
@@ -295,7 +292,6 @@
         "privateBadge": "Privat",
         "shareAction": "{name} teilen",
         "sharedAt": "Geteilt am {date}",
-        "sharedBadge": "Geteilt",
         "sharedBy": "Geteilt von {name}",
         "sharedDescription": "Für alle in diesem Haushalt sichtbar.",
         "sharedEmpty": "Noch keine Konten geteilt.",
@@ -317,36 +313,26 @@
       "members": {
         "empty": "Keine Mitglieder gefunden.",
         "joined": "Beigetreten am {date}",
-        "loading": "Mitglieder werden geladen...",
-        "title": "Mitglieder"
+        "loading": "Mitglieder werden geladen..."
       },
       "rollover": {
-        "day": "Abrechnungszeitraum",
         "help": "Ausgabensalden und Berichte des Haushalts verwenden diesen Tag für alle Mitglieder.",
         "helpLabel": "Über den Abrechnungszeitraum des Haushalts",
         "updated": "Abrechnungstag des Haushalts aktualisiert."
       },
       "tabs": {
-        "accounts": "Konten",
         "members": "Mitglieder"
       },
       "title": "Haushalt"
     },
     "transactions": {
       "actions": {
-        "new": "Transaktion hinzufügen"
+        "new": "Transaktion"
       },
       "confirmDelete": "Transaktion „{description}“ löschen?",
       "create": {
         "description": "Erfasse eine Ausgabe, Einnahme, Überweisung oder Schuldenzahlung.",
-        "submit": "Transaktion erstellen",
-        "tabs": {
-          "debtPayment": "Schuldenzahlung",
-          "expense": "Ausgabe",
-          "income": "Einnahme",
-          "transfer": "Überweisung"
-        },
-        "title": "Transaktion erstellen",
+        "title": "Neue Transaktion",
         "typeLabel": "Transaktionstyp"
       },
       "delete": {
@@ -365,9 +351,8 @@
         "expenseAccount": "Ausgabenkonto",
         "fromAccount": "Vom Konto",
         "incomeAccount": "Einnahmenkonto",
-        "payFromAsset": "Zahlen von",
-        "payFromAssetOrLiability": "Zahlen von",
-        "toAccount": "Zum Konto"
+        "toAccount": "Zum Konto",
+        "payFrom": "Zahlen von"
       },
       "formHints": {
         "allAccounts": "Alle Konten",
@@ -449,7 +434,8 @@
       "sendInvitation": "Die Einladung konnte nicht gesendet werden.",
       "shareAccount": "Das Konto konnte nicht geteilt werden.",
       "unshareAccount": "Das Teilen des Kontos konnte nicht beendet werden.",
-      "updateRollover": "Der Abrechnungstag des Haushalts konnte nicht aktualisiert werden."
+      "updateRollover": "Der Abrechnungstag des Haushalts konnte nicht aktualisiert werden.",
+      "load": "Haushalte konnten nicht geladen werden."
     },
     "language": {
       "update": "Die Sprache konnte nicht aktualisiert werden."
@@ -467,6 +453,9 @@
       "create": "Die Transaktion konnte nicht erstellt werden.",
       "delete": "Die Transaktion konnte nicht gelöscht werden.",
       "load": "Die Transaktionen konnten nicht geladen werden."
+    },
+    "currencies": {
+      "load": "Währungen konnten nicht geladen werden."
     }
   },
   "success": {
@@ -484,11 +473,6 @@
     },
     "sidebar": {
       "mainNavigation": "Hauptnavigation"
-    },
-    "themeToggle": {
-      "auto": "Design: System. Zu Hell wechseln",
-      "dark": "Design: Dunkel. Zu System wechseln",
-      "light": "Design: Hell. Zu Dunkel wechseln"
     },
     "userMenu": {
       "appearance": "Darstellung",
@@ -514,12 +498,19 @@
       "noColor": "Keine Farbe",
       "picker": "Farbauswahl für eigene Farbe"
     },
-    "accountSelector": {
+    "accountSelect": {
       "ownerGroup": "Besitzer: {ownerId}"
     },
     "categoryTagSelector": {
       "empty": "Keine Kategorien gefunden.",
       "searchPlaceholder": "Kategorien durchsuchen..."
+    },
+    "theme": {
+      "modes": {
+        "auto": "System",
+        "dark": "Dunkel",
+        "light": "Hell"
+      }
     }
   }
 }

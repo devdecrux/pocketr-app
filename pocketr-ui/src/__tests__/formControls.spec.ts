@@ -1,30 +1,41 @@
 import { createPinia, setActivePinia } from 'pinia'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { flushPromises, mount } from '@vue/test-utils'
-import { h, ref } from 'vue'
-import ui from '@nuxt/ui/vue-plugin'
-import UApp from '@nuxt/ui/components/App.vue'
+import { flushPromises } from '@vue/test-utils'
+import { defineComponent, h, ref } from 'vue'
 import USelect from '@nuxt/ui/components/Select.vue'
 import USelectMenu from '@nuxt/ui/components/SelectMenu.vue'
 import UCalendar from '@nuxt/ui/components/Calendar.vue'
-import AccountSelect from '@/components/forms/AccountSelect.vue'
-import AppDateField from '@/components/forms/AppDateField.vue'
-import AppDateRangePicker from '@/components/forms/AppDateRangePicker.vue'
-import CategorySelect from '@/components/forms/CategorySelect.vue'
-import FormMessage from '@/components/forms/FormMessage.vue'
-import MoneyInput from '@/components/forms/MoneyInput.vue'
-import { i18n } from '@/i18n'
+import AppDateField from '@/components/fields/AppDateField.vue'
+import AppDateRangePicker from '@/components/fields/AppDateRangePicker.vue'
+import AppSelect from '@/components/fields/AppSelect.vue'
+import FormMessage from '@/components/fields/FormMessage.vue'
+import MoneyInput from '@/components/fields/MoneyInput.vue'
+import { type AccountOptionsFilter, useAccountOptions } from '@/components/fields/useAccountOptions'
+import { useCategoryOptions } from '@/components/fields/useCategoryOptions'
 import { useAccountStore } from '@/stores/account'
 import { useCategoryStore } from '@/stores/category'
 import { useModeStore } from '@/stores/mode'
 import type { Account } from '@/types/ledger'
+import { stubLocalStorage } from '@/__tests__/helpers/stubs'
+import { mountInApp } from '@/__tests__/helpers/mount'
 
-function mountInApp(render: () => ReturnType<typeof h>) {
-  return mount(
-    { render: () => h(UApp, null, { default: render }) },
-    { attachTo: document.body, global: { plugins: [i18n, ui] } },
-  )
-}
+/** An `AppSelect` configured the way the pages do, through the account item builder. */
+const AccountSelect = defineComponent({
+  inheritAttrs: false,
+  setup(_, { attrs }) {
+    const { accountSelect } = useAccountOptions()
+    return () => h(AppSelect, { ...accountSelect(attrs as AccountOptionsFilter), ...attrs })
+  },
+})
+
+/** An `AppSelect` configured the way the pages do, through the category item builder. */
+const CategorySelect = defineComponent({
+  inheritAttrs: false,
+  setup(_, { attrs }) {
+    const { categorySelect } = useCategoryOptions()
+    return () => h(AppSelect, { ...categorySelect('All categories'), ...attrs })
+  },
+})
 
 function account(id: string, type: Account['type'], extra: Partial<Account> = {}): Account {
   return {
@@ -42,11 +53,7 @@ function account(id: string, type: Account['type'], extra: Partial<Account> = {}
 
 beforeEach(() => {
   setActivePinia(createPinia())
-  vi.stubGlobal('localStorage', {
-    getItem: vi.fn(() => null),
-    setItem: vi.fn(),
-    removeItem: vi.fn(),
-  })
+  stubLocalStorage()
 })
 
 afterEach(() => {
@@ -325,7 +332,7 @@ describe('AccountSelect', () => {
     const wrapper = mountInApp(() =>
       h(AccountSelect, {
         modelValue: model.value,
-        'onUpdate:modelValue': (value: string) => (model.value = value),
+        'onUpdate:modelValue': (value: unknown) => (model.value = value as string),
         allLabel: 'All accounts',
       }),
     )
@@ -345,7 +352,7 @@ describe('AccountSelect', () => {
   })
 })
 
-describe('CategorySelect', () => {
+describe('AppSelect with the category items', () => {
   it('lists the categories after the "none" entry and maps it to null', async () => {
     useCategoryStore().categories = [
       { id: 'c1', name: 'Groceries', color: '#62a864', createdAt: '' },
@@ -356,7 +363,6 @@ describe('CategorySelect', () => {
       h(CategorySelect, {
         modelValue: model.value,
         'onUpdate:modelValue': (value: string | null) => (model.value = value),
-        noneLabel: 'All categories',
       }),
     )
 
@@ -365,15 +371,65 @@ describe('CategorySelect', () => {
       (menu.props() as { items: { label: string }[] }).items.map((item) => item.label),
     ).toEqual(['All categories', 'Groceries', 'Transport'])
 
-    menu.vm.$emit('update:modelValue', '__none__')
+    menu.vm.$emit('update:modelValue', '__all__')
     await flushPromises()
     expect(model.value).toBeNull()
-    expect((menu.props() as { modelValue: string }).modelValue).toBe('__none__')
+    expect((menu.props() as { modelValue: string }).modelValue).toBe('__all__')
 
     menu.vm.$emit('update:modelValue', 'c2')
     await flushPromises()
     expect(model.value).toBe('c2')
 
+    wrapper.unmount()
+  })
+})
+
+describe('AppSelect', () => {
+  it('renders a plain select unless it is searchable', () => {
+    const items = [{ value: 'a', label: 'A' }]
+    const plain = mountInApp(() => h(AppSelect, { items }))
+    expect(plain.findComponent(USelect).exists()).toBe(true)
+    expect(plain.findComponent(USelectMenu).exists()).toBe(false)
+    plain.unmount()
+
+    const searchable = mountInApp(() => h(AppSelect, { items, searchable: true }))
+    expect(searchable.findComponent(USelectMenu).exists()).toBe(true)
+    searchable.unmount()
+  })
+
+  it('keeps a flat list flat and puts the "all" entry first, with its own value', async () => {
+    const model = ref<string | number | null | undefined>(5)
+    const wrapper = mountInApp(() =>
+      h(AppSelect, {
+        items: [{ value: 5, label: 'Five' }],
+        allLabel: 'Any',
+        allValue: 'ANY',
+        modelValue: model.value,
+        'onUpdate:modelValue': (value: string | number | null | undefined) => (model.value = value),
+      }),
+    )
+    const select = wrapper.findComponent(USelect)
+    expect((select.props() as { items: { label: string }[] }).items.map((i) => i.label)).toEqual([
+      'Any',
+      'Five',
+    ])
+
+    select.vm.$emit('update:modelValue', '__all__')
+    await flushPromises()
+    expect(model.value).toBe('ANY')
+    expect((select.props() as { modelValue: string }).modelValue).toBe('__all__')
+
+    wrapper.unmount()
+  })
+
+  it('shows the placeholder for an empty value when there is no "all" entry', () => {
+    const wrapper = mountInApp(() =>
+      h(AppSelect, { items: [{ value: 'a', label: 'A' }], modelValue: '', placeholder: 'Pick' }),
+    )
+    expect((wrapper.findComponent(USelect).props() as { modelValue?: string }).modelValue).toBe(
+      undefined,
+    )
+    expect(wrapper.text()).toContain('Pick')
     wrapper.unmount()
   })
 })

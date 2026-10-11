@@ -1,11 +1,12 @@
-import { mount } from '@vue/test-utils'
+import { flushPromises, mount } from '@vue/test-utils'
 import { h } from 'vue'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import ui from '@nuxt/ui/vue-plugin'
 import UApp from '@nuxt/ui/components/App.vue'
 import UIcon from '@nuxt/ui/components/Icon.vue'
-import AppThemeToggle from '@/components/layout/AppThemeToggle.vue'
+import AppThemeToggle from '@/layout/AppThemeToggle.vue'
 import { i18n } from '@/i18n'
+import { stubResizeObserver } from '@/__tests__/helpers/stubs'
 
 const { colorMode } = vi.hoisted(() => ({
   colorMode: { value: 'light' as string },
@@ -39,28 +40,38 @@ function mountToggle() {
 }
 
 describe('AppThemeToggle', () => {
+  beforeEach(stubResizeObserver)
+
   afterEach(() => {
     document.body.innerHTML = ''
   })
 
-  it('cycles light → dark → system → light and names the current mode and next action', async () => {
+  it('opens the shared theme picker and shows the chosen mode on the button', async () => {
     i18n.global.locale.value = 'en'
     const wrapper = mountToggle()
     const button = wrapper.get('button')
 
-    const steps = [
-      ['light', 'Theme: Light. Switch to Dark', 'i-lucide-sun'],
-      ['dark', 'Theme: Dark. Switch to System', 'i-lucide-moon'],
-      ['auto', 'Theme: System. Switch to Light', 'i-lucide-monitor'],
-      ['light', 'Theme: Light. Switch to Dark', 'i-lucide-sun'],
-    ] as const
+    expect(button.attributes('aria-label')).toBe('Appearance')
+    expect(wrapper.getComponent(UIcon).props('name')).toBe('i-lucide-sun')
 
-    for (const [index, [mode, label, icon]] of steps.entries()) {
-      expect(colorMode.value).toBe(mode)
-      expect(button.attributes('aria-label')).toBe(label)
-      expect(wrapper.getComponent(UIcon).props('name')).toBe(icon)
-      if (index < steps.length - 1) await button.trigger('click')
-    }
+    await button.trigger('click')
+    await flushPromises()
+    const radio = (label: string) =>
+      [...document.querySelectorAll<HTMLElement>('[role="radio"]')].find((item) =>
+        item.closest('label')?.textContent?.includes(label),
+      )
+    expect(radio('Light')?.getAttribute('aria-checked')).toBe('true')
+
+    radio('Dark')?.click()
+    await flushPromises()
+    expect(colorMode.value).toBe('dark')
+    expect(radio('Dark')?.getAttribute('aria-checked')).toBe('true')
+    expect(wrapper.getComponent(UIcon).props('name')).toBe('i-lucide-moon')
+
+    radio('System')?.click()
+    await flushPromises()
+    expect(colorMode.value).toBe('auto')
+    expect(wrapper.getComponent(UIcon).props('name')).toBe('i-lucide-monitor')
 
     wrapper.unmount()
   })

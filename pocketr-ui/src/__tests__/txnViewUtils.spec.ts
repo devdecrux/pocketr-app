@@ -9,9 +9,9 @@ import {
   isoToCalendarDate,
   todayIso,
 } from '@/utils/dates'
-import { getTxnAppearance } from '@/utils/txnAppearance'
-import { buildTxnDetails, txnCategoryNames } from '@/utils/txnDetails'
-import { groupTransactionsByDay } from '@/utils/txnGroups'
+import { getTxnAppearance } from '@/utils/appearance/txnAppearance'
+import { buildTxnDetails, txnCategoryNames } from '@/views/transactions/txnDetails'
+import { groupTransactionsByDay } from '@/views/transactions/txnGroups'
 
 function split(
   accountId: string,
@@ -127,11 +127,11 @@ describe('getTxnAppearance', () => {
 
   it('names the kind and gives the direction of its amount', () => {
     expect(getTxnAppearance('OPENING_BALANCE')).toMatchObject({
-      label: 'Opening Balance',
+      label: 'Opening balance',
       indicator: 'plus',
     })
     expect(getTxnAppearance('OPENING_DEBT')).toMatchObject({
-      label: 'Opening Debt',
+      label: 'Opening debt',
       indicator: 'plus',
     })
     expect(getTxnAppearance('EXPENSE')).toMatchObject({ label: 'Expense', indicator: 'minus' })

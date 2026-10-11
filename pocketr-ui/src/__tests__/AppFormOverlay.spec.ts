@@ -4,15 +4,10 @@ import { defineComponent, h, nextTick, ref } from 'vue'
 import ui from '@nuxt/ui/vue-plugin'
 import UApp from '@nuxt/ui/components/App.vue'
 import { i18n } from '@/i18n'
-import AppFormOverlay from '@/components/shared/AppFormOverlay.vue'
+import AppFormOverlay from '@/components/overlays/AppFormOverlay.vue'
+import { viewport } from '@/__tests__/helpers/vueuse'
 
-const mocks = vi.hoisted(() => ({ desktop: { value: true } }))
-
-vi.mock('@vueuse/core', async () => {
-  const actual = await vi.importActual<typeof import('@vueuse/core')>('@vueuse/core')
-  const { ref } = await vi.importActual<typeof import('vue')>('vue')
-  return { ...actual, useMediaQuery: () => ref(mocks.desktop.value) }
-})
+vi.mock('@vueuse/core', async () => (await import('@/__tests__/helpers/vueuse')).mockVueuse())
 
 interface HarnessOptions {
   formId?: string
@@ -101,7 +96,7 @@ function pressEscape(target: EventTarget = document.activeElement ?? document.bo
 
 describe('AppFormOverlay', () => {
   beforeEach(() => {
-    mocks.desktop.value = true
+    viewport.desktop = true
   })
 
   afterEach(() => {
@@ -147,7 +142,7 @@ describe('AppFormOverlay', () => {
   })
 
   it('gives the wide drawer roomier margins than the default one', async () => {
-    mocks.desktop.value = false
+    viewport.desktop = false
     const regular = mountOverlay({ formId: 'thing-form' })
     await openOverlay(regular.open)
     expect(document.body.querySelector('.px-6')).toBeNull()
@@ -162,7 +157,7 @@ describe('AppFormOverlay', () => {
   })
 
   it('renders a drawer below the desktop breakpoint', async () => {
-    mocks.desktop.value = false
+    viewport.desktop = false
     const { wrapper, open } = mountOverlay({ formId: 'thing-form' })
     await openOverlay(open)
 
@@ -213,7 +208,7 @@ describe('AppFormOverlay', () => {
   })
 
   it('keeps focus on the dialog, not a field, when the mobile drawer opens', async () => {
-    mocks.desktop.value = false
+    viewport.desktop = false
     const { wrapper, open } = mountOverlay({ formId: 'thing-form' })
     await openOverlay(open)
 
@@ -228,7 +223,7 @@ describe('AppFormOverlay', () => {
     ['desktop', true],
     ['mobile', false],
   ])('closes through Cancel, X and Escape on %s', async (_label, desktop) => {
-    mocks.desktop.value = desktop
+    viewport.desktop = desktop
     const { wrapper, open } = mountOverlay({ formId: 'thing-form' })
 
     await openOverlay(open)
@@ -253,7 +248,7 @@ describe('AppFormOverlay', () => {
     ['desktop', true],
     ['mobile', false],
   ])('never closes on an outside press on %s', async (_label, desktop) => {
-    mocks.desktop.value = desktop
+    viewport.desktop = desktop
     const { wrapper, open } = mountOverlay({ formId: 'thing-form' })
     await openOverlay(open)
 

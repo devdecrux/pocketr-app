@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
-const css = readFileSync(resolve(process.cwd(), 'src/main.css'), 'utf8').replace(
+const css = readFileSync(resolve(process.cwd(), 'src/styles/main.css'), 'utf8').replace(
   /\/\*[\s\S]*?\*\//g,
   '',
 )
@@ -44,7 +44,6 @@ describe('Pocketr Nuxt UI tokens (IMPLEMENTATION.md "Visual rules")', () => {
       '--ui-bg-elevated': '#f0f2f5',
       '--ui-bg-accented': '#e5e7eb',
       '--ui-border-accented': '#e5e7eb',
-      '--pocketr-bg-canvas': '#fafafa',
       '--pocketr-bg-main': '#fafafa',
       '--pocketr-bg-shell': '#ffffff',
       '--pocketr-header-height': '73px',
@@ -83,7 +82,6 @@ describe('Pocketr Nuxt UI tokens (IMPLEMENTATION.md "Visual rules")', () => {
       '--ui-bg-muted': '#15191d',
       '--ui-bg-accented': '#30383f',
       '--ui-border-accented': '#30383f',
-      '--pocketr-bg-canvas': '#101214',
       '--pocketr-bg-main': '#15191d',
       '--pocketr-bg-shell': '#111518',
       '--pocketr-nav-active': '#11333e',

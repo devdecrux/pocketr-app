@@ -4,23 +4,24 @@ import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import { primeCsrfToken } from '@/api/csrf'
 import { api } from '@/api/http'
-import FormMessage from '@/components/forms/FormMessage.vue'
-import PasswordInput from '@/components/forms/PasswordInput.vue'
-import AppAuthLayout from '@/components/layout/AppAuthLayout.vue'
+import FormMessage from '@/components/fields/FormMessage.vue'
+import PasswordInput from '@/views/auth/PasswordInput.vue'
+import AppAuthLayout from '@/layout/AppAuthLayout.vue'
 import {
   authFieldsClass,
   authFieldUi,
-  authIconInputUi,
+  authLinkClass,
   authLinkRowClass,
   authMarkClass,
   authMarkIconClass,
   authSubmitClass,
   authSubtitleClass,
   authTitleClass,
-} from '@/components/layout/authForm'
+} from '@/styles/auth'
 import { useAuthStore } from '@/stores/auth'
-import { sanitizeInternalRedirect } from '@/utils/sanitizeRedirect'
+import { sanitizeInternalRedirect } from '@/views/auth/sanitizeRedirect'
 import type { AuthUser } from '@/types/auth'
+import { APP_ICONS } from '@/utils/appearance/appIcons'
 
 const { t } = useI18n()
 const authStore = useAuthStore()
@@ -67,7 +68,7 @@ async function login(event: SubmitEvent): Promise<void> {
     })
 
     const user = await api.get('/api/v1/user').json<AuthUser>()
-    authStore.setUser(user)
+    await authStore.setUser(user)
     passwordInput.value?.hide()
 
     const redirectTarget = sanitizeInternalRedirect(route.query.redirect) ?? '/dashboard'
@@ -121,12 +122,11 @@ async function login(event: SubmitEvent): Promise<void> {
           name="email"
           type="email"
           autocomplete="username"
-          :placeholder="t('views.auth.login.emailPlaceholder')"
+          :placeholder="t('common.formHints.emailPlaceholder')"
           required
-          size="xl"
-          icon="i-lucide-mail"
+          size="lg"
+          :icon="APP_ICONS.email"
           class="w-full"
-          :ui="authIconInputUi"
         />
       </UFormField>
 
@@ -151,17 +151,14 @@ async function login(event: SubmitEvent): Promise<void> {
         size="xl"
         block
         :loading="isSubmitting"
-        :label="isSubmitting ? t('common.feedback.loggingIn') : t('views.auth.login.submit')"
+        :label="isSubmitting ? t('common.feedback.loggingIn') : t('common.actions.signIn')"
         :class="authSubmitClass"
       />
     </form>
 
     <p :class="authLinkRowClass">
       {{ t('views.auth.login.links.registerPrompt') }}
-      <ULink
-        to="/registration"
-        class="font-medium text-primary hover:text-primary hover:underline underline-offset-2"
-      >
+      <ULink to="/registration" :class="authLinkClass">
         {{ t('views.auth.login.links.register') }}
       </ULink>
     </p>

@@ -66,3 +66,11 @@ export function formatTimestampDate(value: string | null | undefined): string {
   const date = new Date(value)
   return Number.isNaN(date.getTime()) ? '' : formatDate(date)
 }
+
+/** Whole days between an ISO `YYYY-MM-DD` date and `today` (local), positive for past dates. */
+export function daysAgo(isoDate: string, today: Date): number {
+  const [year = 0, month = 1, day = 1] = isoDate.split('-').map(Number)
+  const date = new Date(year, month - 1, day)
+  const base = new Date(today.getFullYear(), today.getMonth(), today.getDate())
+  return Math.round((base.getTime() - date.getTime()) / 86_400_000)
+}

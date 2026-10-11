@@ -9,7 +9,7 @@ import {
   type TransferFields,
   transferStrategy,
   type TxnModeContext,
-} from '@/utils/txnStrategies'
+} from '@/views/transactions/txnStrategies'
 
 const ctx: TxnModeContext = { mode: 'INDIVIDUAL', householdId: null }
 const MSG = 'Please fill in all required fields and enter a positive amount.'

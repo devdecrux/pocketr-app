@@ -1,11 +1,12 @@
+import { PRIMARY_CURRENCY } from '@/utils/money'
+
+/** An amount in minor units of one currency. */
 export interface CurrencyAmount {
   currency: string
   amountMinor: number
 }
 
-/** The currency the summary shows large: EUR as on the dashboard, else the first one in use. */
-export const PRIMARY_CURRENCY = 'EUR'
-
+/** The primary currency when it is in use, else the first one in use. */
 export function pickPrimaryCurrency(currencies: readonly string[]): string {
   if (currencies.includes(PRIMARY_CURRENCY)) return PRIMARY_CURRENCY
   return [...currencies].sort()[0] ?? PRIMARY_CURRENCY

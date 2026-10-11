@@ -5,8 +5,8 @@ import ui from '@nuxt/ui/vue-plugin'
 import UApp from '@nuxt/ui/components/App.vue'
 import USelect from '@nuxt/ui/components/Select.vue'
 import { i18n } from '@/i18n'
-import AppPaginationBar from '@/components/shared/AppPaginationBar.vue'
-import type { AppTablePagination } from '@/types/dataTable'
+import AppPaginationBar from '@/components/lists/AppPaginationBar.vue'
+import type { AppTablePagination } from '@/components/lists/dataTable'
 
 function mountBar(pagination: AppTablePagination) {
   const events: { name: string; args: unknown[] }[] = []

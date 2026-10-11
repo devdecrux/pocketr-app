@@ -123,8 +123,8 @@ vi.mock('vue-echarts', () => ({
   },
 }))
 
-const { default: AccountsPage } = await import('@/views/AccountsPage.vue')
-const { default: DashboardPage } = await import('@/views/DashboardPage.vue')
+const { default: AccountsPage } = await import('@/views/accounts/AccountsPage.vue')
+const { default: DashboardPage } = await import('@/views/dashboard/DashboardPage.vue')
 
 describe('batch balances page wiring', () => {
   beforeEach(() => {

@@ -4,12 +4,13 @@ import { flushPromises, mount } from '@vue/test-utils'
 import { h } from 'vue'
 import ui from '@nuxt/ui/vue-plugin'
 import UApp from '@nuxt/ui/components/App.vue'
-import AccountForm from '@/components/forms/AccountForm.vue'
-import AppDateField from '@/components/forms/AppDateField.vue'
-import MoneyInput from '@/components/forms/MoneyInput.vue'
+import AccountForm from '@/views/accounts/AccountForm.vue'
+import AppDateField from '@/components/fields/AppDateField.vue'
+import MoneyInput from '@/components/fields/MoneyInput.vue'
 import { i18n } from '@/i18n'
 import { useCurrencyStore } from '@/stores/currency'
 import type { CreateAccountRequest } from '@/types/ledger'
+import { stubLocalStorage } from '@/__tests__/helpers/stubs'
 
 function mountForm() {
   const submitted: CreateAccountRequest[] = []
@@ -67,11 +68,7 @@ describe('AccountForm', () => {
     vi.useFakeTimers({ toFake: ['Date'] })
     vi.setSystemTime(new Date('2026-09-20T10:00:00'))
     setActivePinia(createPinia())
-    vi.stubGlobal('localStorage', {
-      getItem: vi.fn(() => null),
-      setItem: vi.fn(),
-      removeItem: vi.fn(),
-    })
+    stubLocalStorage()
     useCurrencyStore().currencies = [
       { code: 'EUR', minorUnit: 2, name: 'Euro' },
       { code: 'JPY', minorUnit: 0, name: 'Yen' },

@@ -1,10 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { LedgerSplit, LedgerTxn } from '@/types/ledger'
-import {
-  formatSplitAmount,
-  formatTxnDisplayAmount,
-  resolveSpendingAccountName,
-} from '@/utils/txnDisplay'
+import { formatSplitAmount, formatTxnDisplayAmount } from '@/views/transactions/txnDisplay'
+import { resolveSpendingAccountName } from '@/utils/txnAccounts'
 
 function split(override: Partial<LedgerSplit>): LedgerSplit {
   return {

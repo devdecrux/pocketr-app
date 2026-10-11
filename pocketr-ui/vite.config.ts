@@ -4,6 +4,7 @@ import vueDevTools from 'vite-plugin-vue-devtools'
 import ui from '@nuxt/ui/vite'
 import os from 'node:os'
 import path from 'node:path'
+import { uiTheme } from './src/styles/theme'
 
 const traefikUrl = process.env.VITE_TRAEFIK_URL ?? 'http://localhost'
 
@@ -20,31 +21,14 @@ export default defineConfig({
     vueDevTools(),
     // Nuxt UI registers `@tailwindcss/vite` itself, so the standalone Tailwind plugin is not added.
     ui({
-      ui: {
-        colors: {
-          primary: 'cyan',
-          secondary: 'amber',
-          warning: 'amber',
-        },
-      },
+      ui: uiTheme,
       // Bundle only the icons Pocketr uses (plus Nuxt UI's own) from `@iconify-json/*`: no runtime Iconify API calls.
       // `globInclude` replaces the default list; `.ts` is included because some icon names live in TS modules.
       icon: {
         clientBundle: {
           scan: {
             globInclude: ['src/**/*.{vue,ts}'],
-            globExclude: [
-              'node_modules',
-              'dist',
-              'build',
-              'coverage',
-              'test',
-              'tests',
-              '.*',
-              '**/__tests__/**',
-              '**/*.spec.ts',
-              '**/*.d.ts',
-            ],
+            globExclude: ['**/__tests__/**', '**/*.spec.ts', '**/*.d.ts'],
           },
         },
       },

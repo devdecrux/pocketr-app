@@ -6,9 +6,9 @@ import { createMemoryHistory, createRouter } from 'vue-router'
 import ui from '@nuxt/ui/vue-plugin'
 import UApp from '@nuxt/ui/components/App.vue'
 import UDashboardGroup from '@nuxt/ui/components/DashboardGroup.vue'
-import AppModeSelect from '@/components/layout/AppModeSelect.vue'
-import AppSidebar from '@/components/layout/AppSidebar.vue'
-import { useViewModeSelection } from '@/composables/useViewModeSelection'
+import AppModeSelect from '@/layout/AppModeSelect.vue'
+import AppSidebar from '@/layout/AppSidebar.vue'
+import { useViewModeSelection } from '@/layout/useViewModeSelection'
 import { i18n } from '@/i18n'
 import { useAuthStore } from '@/stores/auth'
 import { useHouseholdStore } from '@/stores/household'
@@ -16,6 +16,7 @@ import { useModeStore } from '@/stores/mode'
 import { useAccountStore } from '@/stores/account'
 import { useLedgerStore } from '@/stores/ledger'
 import type { HouseholdSummary } from '@/types/household'
+import { stubLocalStorage, stubResizeObserver } from '@/__tests__/helpers/stubs'
 
 const { colorMode, listHouseholds, listAccounts, listTxns, apiPost } = vi.hoisted(() => ({
   colorMode: { value: 'light' as 'light' | 'dark' | 'auto' },
@@ -117,20 +118,8 @@ describe('AppSidebar', () => {
     listAccounts.mockClear()
     listTxns.mockClear()
     apiPost.mockClear()
-    vi.stubGlobal(
-      'ResizeObserver',
-      class {
-        observe() {}
-        unobserve() {}
-        disconnect() {}
-      },
-    )
-    const storage = new Map<string, string>()
-    vi.stubGlobal('localStorage', {
-      getItem: (key: string) => storage.get(key) ?? null,
-      setItem: (key: string, value: string) => storage.set(key, value),
-      removeItem: (key: string) => storage.delete(key),
-    })
+    stubResizeObserver()
+    stubLocalStorage()
     useAuthStore().setUser({
       id: 1,
       email: 'alex@example.com',
@@ -317,20 +306,8 @@ describe('AppSidebar', () => {
 describe('AppModeSelect', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
-    vi.stubGlobal(
-      'ResizeObserver',
-      class {
-        observe() {}
-        unobserve() {}
-        disconnect() {}
-      },
-    )
-    const storage = new Map<string, string>()
-    vi.stubGlobal('localStorage', {
-      getItem: (key: string) => storage.get(key) ?? null,
-      setItem: (key: string, value: string) => storage.set(key, value),
-      removeItem: (key: string) => storage.delete(key),
-    })
+    stubResizeObserver()
+    stubLocalStorage()
     listHouseholds.mockReset()
     listHouseholds.mockResolvedValue([household('MEMBER')])
   })

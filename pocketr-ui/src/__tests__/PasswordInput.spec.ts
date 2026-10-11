@@ -3,7 +3,7 @@ import { mount } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import ui from '@nuxt/ui/vue-plugin'
 import UApp from '@nuxt/ui/components/App.vue'
-import PasswordInput from '@/components/forms/PasswordInput.vue'
+import PasswordInput from '@/views/auth/PasswordInput.vue'
 import { i18n } from '@/i18n'
 
 function mountInForm() {

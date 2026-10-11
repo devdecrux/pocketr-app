@@ -1,31 +1,16 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { mount } from '@vue/test-utils'
 import { h, ref } from 'vue'
-import ui from '@nuxt/ui/vue-plugin'
-import UApp from '@nuxt/ui/components/App.vue'
-import { i18n } from '@/i18n'
-import AppFilterPanel from '@/components/shared/AppFilterPanel.vue'
-import AppFiltersToggle from '@/components/shared/AppFiltersToggle.vue'
-import AppPageHeading from '@/components/shared/AppPageHeading.vue'
+import AppFilterPanel from '@/components/page/AppFilterPanel.vue'
+import AppFiltersToggle from '@/components/page/AppFiltersToggle.vue'
+import AppPageHeading from '@/components/page/AppPageHeading.vue'
+import { mountInApp } from '@/__tests__/helpers/mount'
+import { viewport } from '@/__tests__/helpers/vueuse'
 
-const mocks = vi.hoisted(() => ({ desktop: { value: true } }))
-
-vi.mock('@vueuse/core', async () => {
-  const actual = await vi.importActual<typeof import('@vueuse/core')>('@vueuse/core')
-  const { ref } = await vi.importActual<typeof import('vue')>('vue')
-  return { ...actual, useMediaQuery: () => ref(mocks.desktop.value) }
-})
-
-function mountInApp(content: () => ReturnType<typeof h>) {
-  return mount(
-    { render: () => h(UApp, null, { default: content }) },
-    { attachTo: document.body, global: { plugins: [i18n, ui] } },
-  )
-}
+vi.mock('@vueuse/core', async () => (await import('@/__tests__/helpers/vueuse')).mockVueuse())
 
 describe('list page filter components', () => {
   beforeEach(() => {
-    mocks.desktop.value = true
+    viewport.desktop = true
   })
 
   afterEach(() => {
@@ -61,7 +46,7 @@ describe('list page filter components', () => {
     })
 
     it('is icon-only with an accessible name below lg', () => {
-      mocks.desktop.value = false
+      viewport.desktop = false
       const { wrapper } = mountToggle(0)
       const button = wrapper.get('button')
 
@@ -123,7 +108,7 @@ describe('list page filter components', () => {
     })
 
     it('labels Clear below lg', () => {
-      mocks.desktop.value = false
+      viewport.desktop = false
       const { wrapper } = mountPanel(1)
 
       expect(wrapper.get('button').text()).toBe('Clear filters')
@@ -144,20 +129,69 @@ describe('list page filter components', () => {
       wrapper.unmount()
     })
 
-    it('renders the title as h1 and h2, the subtitle and the actions', () => {
-      const wrapper = mountInApp(() =>
-        h(
-          AppPageHeading,
-          { title: 'Things', subtitle: 'All the things.' },
-          { actions: () => h('button', 'Act') },
-        ),
-      )
+    it("renders only the active breakpoint's title: h1 below lg, h2 from lg", () => {
+      const mountHeading = () =>
+        mountInApp(() =>
+          h(
+            AppPageHeading,
+            { title: 'Things', subtitle: 'All the things.' },
+            { actions: () => h('button', 'Act') },
+          ),
+        )
 
-      expect(wrapper.get('h1').text()).toBe('Things')
-      expect(wrapper.get('h2').text()).toBe('Things')
-      expect(wrapper.text()).toContain('All the things.')
-      expect(wrapper.get('button').text()).toBe('Act')
+      const desktop = mountHeading()
+      expect(desktop.find('h1').exists()).toBe(false)
+      expect(desktop.get('h2').text()).toBe('Things')
+      expect(desktop.text()).toContain('All the things.')
+      expect(desktop.get('button').text()).toBe('Act')
+      desktop.unmount()
 
+      viewport.desktop = false
+      const mobile = mountHeading()
+      expect(mobile.get('h1').text()).toBe('Things')
+      expect(mobile.find('h2').exists()).toBe(false)
+      expect(mobile.findAll('p').map((p) => p.text())).toEqual(['All the things.'])
+      mobile.unmount()
+    })
+
+    it('takes a separate desktop title and subtitle, a badge next to the title and no subtitle', () => {
+      const mountHeading = () =>
+        mountInApp(() =>
+          h(
+            AppPageHeading,
+            {
+              title: 'Settings',
+              desktopTitle: 'Make it yours',
+              subtitle: 'Short',
+              desktopSubtitle: 'Long',
+            },
+            { badge: () => h('span', 'Owner') },
+          ),
+        )
+
+      const desktop = mountHeading()
+      expect(desktop.get('h2').text()).toBe('Make it yours')
+      expect(desktop.findAll('p').map((p) => p.text())).toEqual(['Long'])
+      expect(desktop.text()).toContain('Owner')
+      desktop.unmount()
+
+      viewport.desktop = false
+      const mobile = mountHeading()
+      expect(mobile.get('h1').text()).toBe('Settings')
+      expect(mobile.findAll('p').map((p) => p.text())).toEqual(['Short'])
+      expect(mobile.text()).toContain('Owner')
+      mobile.unmount()
+
+      const bare = mountInApp(() => h(AppPageHeading, { title: 'Things' }))
+      expect(bare.find('p').exists()).toBe(false)
+      bare.unmount()
+    })
+
+    it('shows a skeleton instead of the title while loading', () => {
+      const wrapper = mountInApp(() => h(AppPageHeading, { title: 'Things', loading: true }))
+
+      expect(wrapper.find('h1').exists()).toBe(false)
+      expect(wrapper.find('h2').exists()).toBe(false)
       wrapper.unmount()
     })
   })

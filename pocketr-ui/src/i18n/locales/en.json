@@ -10,6 +10,7 @@
       "cancel": "Cancel",
       "clear": "Clear",
       "close": "Close",
+      "create": "Create",
       "delete": "Delete",
       "edit": "Edit",
       "save": "Save",
@@ -62,10 +63,11 @@
       "accountName": "Account name",
       "filterCurrency": "Filter currency",
       "filterType": "Filter type",
-      "householdName": "My Household name (min. 3 characters)",
+      "householdName": "My household name (min. 3 characters)",
       "money": "0.00",
       "selectAccount": "Select account",
-      "selectCategory": "Select category..."
+      "selectCategory": "Select category...",
+      "emailPlaceholder": "alex{'@'}example.com"
     },
     "states": {
       "archived": "Archived",
@@ -74,24 +76,20 @@
     },
     "table": {
       "actions": "Actions",
-      "amount": "Amount",
       "balance": "Balance",
-      "category": "Category",
       "created": "Created",
-      "currency": "Currency",
-      "date": "Date",
-      "description": "Description",
       "member": "Member",
       "nextPage": "Next page",
       "previousPage": "Previous page",
       "range": "{from}–{to} of {total}",
       "rowsPerPage": "Rows per page",
       "shared": "Shared",
-      "type": "Type"
+      "type": "Type",
+      "editRow": "Edit {name}"
     }
   },
   "components": {
-    "accountSelector": {
+    "accountSelect": {
       "ownerGroup": "Owner: {ownerId}"
     },
     "authLayout": {
@@ -120,14 +118,7 @@
       "show": "Show password"
     },
     "sidebar": {
-      "household": "Household",
-      "mainNavigation": "Main navigation",
-      "routes": {
-        "accounts": "Accounts",
-        "categories": "Categories",
-        "dashboard": "Dashboard",
-        "transactions": "Transactions"
-      }
+      "mainNavigation": "Main navigation"
     },
     "theme": {
       "modes": {
@@ -135,11 +126,6 @@
         "dark": "Dark",
         "light": "Light"
       }
-    },
-    "themeToggle": {
-      "auto": "Theme: System. Switch to Light",
-      "dark": "Theme: Dark. Switch to System",
-      "light": "Theme: Light. Switch to Dark"
     },
     "userMenu": {
       "appearance": "Appearance",
@@ -155,13 +141,13 @@
   "views": {
     "accounts": {
       "actions": {
-        "new": "New account"
+        "new": "Account"
       },
       "archive": {
         "actionLabel": "Archive account {name}",
         "confirm": "Archive account",
         "description": "Archive \"{name}\"? It will no longer be available for new transactions, but its existing transaction history will be preserved. This action cannot currently be undone.",
-        "title": "Archive Account"
+        "title": "Archive account"
       },
       "create": {
         "descriptions": {
@@ -179,8 +165,7 @@
           "incomeName": "e.g. Salary, Freelance",
           "liabilityName": "e.g. Mortgage, Car Loan"
         },
-        "submit": "Create Account",
-        "title": "Create Account",
+        "title": "New account",
         "typeLabel": "Account type"
       },
       "empty": "No accounts found.",
@@ -191,10 +176,7 @@
       "loading": "Loading accounts...",
       "rename": {
         "description": "Enter a new name for \"{name}\".",
-        "title": "Rename Account"
-      },
-      "rowActions": {
-        "edit": "Edit {name}"
+        "title": "Rename account"
       },
       "sharedFromOtherMember": "Not your account · Shared by another household member",
       "subtitle": "A clear home for every balance.",
@@ -207,7 +189,6 @@
     },
     "auth": {
       "login": {
-        "emailPlaceholder": "alex{'@'}example.com",
         "errors": {
           "invalidCredentials": "Invalid email or password. Please try again.",
           "sessionExpired": "Your session has expired. Please log in again."
@@ -216,11 +197,9 @@
           "register": "Create an account",
           "registerPrompt": "New to Pocketr?"
         },
-        "submit": "Sign in",
         "title": "Welcome back!"
       },
       "registration": {
-        "emailPlaceholder": "alex{'@'}example.com",
         "errors": {
           "passwordsMismatch": "Passwords do not match",
           "unableToRegister": "Unable to register user"
@@ -236,13 +215,12 @@
     },
     "categories": {
       "actions": {
-        "new": "New category"
+        "new": "Category"
       },
       "confirmDelete": "Delete category \"{name}\"?",
       "create": {
         "description": "Add a category for transaction tagging.",
-        "submit": "Create Category",
-        "title": "Create Category"
+        "title": "New category"
       },
       "delete": {
         "confirm": "Delete category",
@@ -250,7 +228,6 @@
       },
       "edit": {
         "description": "Change the name or color.",
-        "submit": "Save changes",
         "title": "Edit category"
       },
       "empty": "No categories yet. Create your first category to get started.",
@@ -260,13 +237,11 @@
       },
       "loading": "Loading categories...",
       "rowActions": {
-        "delete": "Delete {name}",
-        "edit": "Edit {name}"
+        "delete": "Delete {name}"
       },
       "title": "Categories"
     },
     "dashboard": {
-      "debtPayment": "Debt Payment",
       "empty": {
         "accounts": "No accounts yet.",
         "monthlySpending": "No spending data for this month.",
@@ -276,7 +251,6 @@
       },
       "overview": {
         "acrossAccounts": "Across {count} account | Across {count} accounts",
-        "addTransaction": "Add transaction",
         "availableBalance": "Available balance",
         "chartPeriod": "Spending chart period",
         "heading": "Your money, at a glance",
@@ -287,10 +261,8 @@
         "spentInPeriod": "Spent in {period}",
         "spentThisMonth": "Spent this month",
         "subtitle": "A little clarity for your everyday finances.",
-        "today": "Today",
         "topCategories": "Top categories",
-        "viewAll": "View all",
-        "yesterday": "Yesterday"
+        "viewAll": "View all"
       },
       "periodViews": {
         "lifetime": "Lifetime"
@@ -307,7 +279,6 @@
         "privateBadge": "Private",
         "shareAction": "Share {name}",
         "sharedAt": "Shared {date}",
-        "sharedBadge": "Shared",
         "sharedBy": "Shared by {name}",
         "sharedDescription": "Visible to everyone in this household.",
         "sharedEmpty": "No accounts are shared yet.",
@@ -329,17 +300,14 @@
       "members": {
         "empty": "No members found.",
         "joined": "Joined {date}",
-        "loading": "Loading members...",
-        "title": "Members"
+        "loading": "Loading members..."
       },
       "rollover": {
-        "day": "Rollover period",
         "help": "Household expense balances and reports use this rollover day for all members.",
         "helpLabel": "About the household rollover period",
         "updated": "Household expense rollover day updated."
       },
       "tabs": {
-        "accounts": "Accounts",
         "members": "Members"
       },
       "title": "Household"
@@ -353,14 +321,13 @@
       "heading": "Make Pocketr yours",
       "household": {
         "acceptInviteBlocked": "Leave your current household before accepting another invitation.",
-        "createAction": "Create Household",
+        "createAction": "Create household",
         "createDescription": "You are not part of any household yet. Create one to start sharing accounts with family or roommates.",
-        "invitedBadge": "Invited",
         "leave": "Leave household",
         "leaveDescription": "You will no longer see this household's shared accounts. Rejoining needs a new invitation.",
         "leaveTitle": "Leave {name}?",
         "manage": "Manage household",
-        "pendingInvitations": "Pending Invitations",
+        "pendingInvitations": "Pending invitations",
         "title": "Household"
       },
       "preferences": {
@@ -384,19 +351,12 @@
     },
     "transactions": {
       "actions": {
-        "new": "Add transaction"
+        "new": "Transaction"
       },
       "confirmDelete": "Delete transaction \"{description}\"?",
       "create": {
         "description": "Record an expense, income, transfer, or debt payment.",
-        "submit": "Create Transaction",
-        "tabs": {
-          "debtPayment": "Debt Payment",
-          "expense": "Expense",
-          "income": "Income",
-          "transfer": "Transfer"
-        },
-        "title": "Create Transaction",
+        "title": "New transaction",
         "typeLabel": "Transaction type"
       },
       "empty": "No transactions found. Create your first transaction to get started.",
@@ -406,9 +366,8 @@
         "expenseAccount": "Expense account",
         "fromAccount": "From account",
         "incomeAccount": "Income account",
-        "payFromAsset": "Pay from",
-        "payFromAssetOrLiability": "Pay from",
-        "toAccount": "To account"
+        "toAccount": "To account",
+        "payFrom": "Pay from"
       },
       "loading": "Loading transactions...",
       "notices": {
@@ -477,11 +436,11 @@
       "INVITED": "Invited"
     },
     "transactionKinds": {
-      "DEBT_PAYMENT": "Debt Payment",
+      "DEBT_PAYMENT": "Debt payment",
       "EXPENSE": "Expense",
       "INCOME": "Income",
-      "OPENING_BALANCE": "Opening Balance",
-      "OPENING_DEBT": "Opening Debt",
+      "OPENING_BALANCE": "Opening balance",
+      "OPENING_DEBT": "Opening debt",
       "TRANSFER": "Transfer"
     }
   },

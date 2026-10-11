@@ -3,7 +3,7 @@ import { mount } from '@vue/test-utils'
 import { h } from 'vue'
 import ui from '@nuxt/ui/vue-plugin'
 import UIcon from '@nuxt/ui/components/Icon.vue'
-import AppExpandableRow from '@/components/shared/AppExpandableRow.vue'
+import AppExpandableRow from '@/components/lists/AppExpandableRow.vue'
 
 function mountRow(expanded: boolean) {
   return mount(AppExpandableRow, {

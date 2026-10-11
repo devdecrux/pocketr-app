@@ -3,21 +3,21 @@ import { computed, ref, useTemplateRef } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { api } from '@/api/http'
-import FormMessage from '@/components/forms/FormMessage.vue'
-import PasswordInput from '@/components/forms/PasswordInput.vue'
-import AppAuthLayout from '@/components/layout/AppAuthLayout.vue'
+import FormMessage from '@/components/fields/FormMessage.vue'
+import PasswordInput from '@/views/auth/PasswordInput.vue'
+import AppAuthLayout from '@/layout/AppAuthLayout.vue'
 import {
   authFieldsClass,
   authFieldUi,
-  authIconInputUi,
-  authInputUi,
+  authLinkClass,
   authLinkRowClass,
   authMarkClass,
   authMarkIconClass,
   authSubmitClass,
   authSubtitleClass,
   authTitleClass,
-} from '@/components/layout/authForm'
+} from '@/styles/auth'
+import { APP_ICONS } from '@/utils/appearance/appIcons'
 
 type InputHandle = { inputRef: HTMLInputElement | null }
 type PasswordHandle = InputHandle & { hide: () => void }
@@ -105,7 +105,7 @@ async function register(): Promise<void> {
         tone="error"
         :message="t('views.auth.registration.errors.unableToRegister')"
       />
-      <div class="grid gap-(--pocketr-auth-field-gap) sm:grid-cols-2 sm:gap-x-4">
+      <div class="grid gap-(--pocketr-auth-field-gap) lg:grid-cols-2 lg:gap-x-4">
         <UFormField :label="t('common.fields.firstName')" name="firstName" :ui="authFieldUi">
           <UInput
             id="first-name"
@@ -114,9 +114,8 @@ async function register(): Promise<void> {
             autocomplete="given-name"
             :placeholder="t('views.auth.registration.firstNamePlaceholder')"
             required
-            size="xl"
+            size="lg"
             class="w-full"
-            :ui="authInputUi"
           />
         </UFormField>
         <UFormField :label="t('common.fields.lastName')" name="lastName" :ui="authFieldUi">
@@ -127,9 +126,8 @@ async function register(): Promise<void> {
             autocomplete="family-name"
             :placeholder="t('views.auth.registration.lastNamePlaceholder')"
             required
-            size="xl"
+            size="lg"
             class="w-full"
-            :ui="authInputUi"
           />
         </UFormField>
       </div>
@@ -142,12 +140,11 @@ async function register(): Promise<void> {
           name="email"
           type="email"
           autocomplete="username"
-          :placeholder="t('views.auth.registration.emailPlaceholder')"
+          :placeholder="t('common.formHints.emailPlaceholder')"
           required
-          size="xl"
-          icon="i-lucide-mail"
+          size="lg"
+          :icon="APP_ICONS.email"
           class="w-full"
-          :ui="authIconInputUi"
         />
       </UFormField>
 
@@ -195,10 +192,7 @@ async function register(): Promise<void> {
 
     <p :class="authLinkRowClass">
       {{ t('views.auth.registration.links.loginPrompt') }}
-      <ULink
-        to="/login"
-        class="font-medium text-primary hover:text-primary hover:underline underline-offset-2"
-      >
+      <ULink to="/login" :class="authLinkClass">
         {{ t('common.actions.signIn') }}
       </ULink>
     </p>

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { APP_ICONS } from '@/utils/appIcons'
-import { getAccountAppearance } from '@/utils/accountAppearance'
-import { getTxnAppearance } from '@/utils/txnAppearance'
+import { APP_ICONS } from '@/utils/appearance/appIcons'
+import { getAccountAppearance } from '@/utils/appearance/accountAppearance'
+import { getTxnAppearance } from '@/utils/appearance/txnAppearance'
 
 describe('APP_ICONS', () => {
   it('gives every concept one icon, except the ones that deliberately share it', () => {

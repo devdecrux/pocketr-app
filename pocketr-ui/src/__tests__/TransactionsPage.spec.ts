@@ -1,25 +1,26 @@
 import { createPinia, setActivePinia } from 'pinia'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount, type VueWrapper } from '@vue/test-utils'
-import { HTTPError } from 'ky'
 import { h } from 'vue'
 import { createMemoryHistory, createRouter, RouterView } from 'vue-router'
 import ui from '@nuxt/ui/vue-plugin'
 import UApp from '@nuxt/ui/components/App.vue'
 import UDashboardGroup from '@nuxt/ui/components/DashboardGroup.vue'
-import AccountSelect from '@/components/forms/AccountSelect.vue'
-import AppDateRangePicker from '@/components/forms/AppDateRangePicker.vue'
-import CategorySelect from '@/components/forms/CategorySelect.vue'
-import MoneyInput from '@/components/forms/MoneyInput.vue'
+import AppSelect from '@/components/fields/AppSelect.vue'
+import AppDateRangePicker from '@/components/fields/AppDateRangePicker.vue'
+import MoneyInput from '@/components/fields/MoneyInput.vue'
 import { i18n } from '@/i18n'
 import { useAuthStore } from '@/stores/auth'
 import { useLedgerStore } from '@/stores/ledger'
 import { useModeStore } from '@/stores/mode'
-import type { Account, LedgerSplit, LedgerTxn } from '@/types/ledger'
-import TransactionsPage from '@/views/TransactionsPage.vue'
+import type { LedgerSplit, LedgerTxn } from '@/types/ledger'
+import TransactionsPage from '@/views/transactions/TransactionsPage.vue'
+import { stubLocalStorage } from '@/__tests__/helpers/stubs'
+import { buildAccount, httpError } from '@/__tests__/helpers/factories'
+import { buttonIn, click, dialogByTitle, dialogs } from '@/__tests__/helpers/dom'
+import { viewport } from '@/__tests__/helpers/vueuse'
 
 const mocks = vi.hoisted(() => ({
-  desktop: { value: true },
   listTxns: vi.fn(),
   createTxn: vi.fn(),
   deleteTxn: vi.fn(),
@@ -29,15 +30,7 @@ const mocks = vi.hoisted(() => ({
   listHouseholds: vi.fn(),
 }))
 
-vi.mock('@vueuse/core', async () => {
-  const actual = await vi.importActual<typeof import('@vueuse/core')>('@vueuse/core')
-  const { ref } = await vi.importActual<typeof import('vue')>('vue')
-  return {
-    ...actual,
-    useColorMode: () => ref('light'),
-    useMediaQuery: () => ref(mocks.desktop.value),
-  }
-})
+vi.mock('@vueuse/core', async () => (await import('@/__tests__/helpers/vueuse')).mockVueuse())
 
 vi.mock('@/api/csrf', () => ({ primeCsrfToken: vi.fn() }))
 vi.mock('@/api/http', () => ({ api: { post: vi.fn(), get: vi.fn() } }))
@@ -54,30 +47,16 @@ vi.mock('@/api/categories', () => ({ listCategories: mocks.listCategories }))
 vi.mock('@/api/currencies', () => ({ listCurrencies: mocks.listCurrencies }))
 vi.mock('@/api/households', () => ({ listHouseholds: mocks.listHouseholds }))
 
-function account(override: Partial<Account>): Account {
-  return {
-    id: 'acc-1',
-    ownerUserId: 1,
-    name: 'Checking',
-    type: 'ASSET',
-    currency: 'EUR',
-    createdAt: '2026-01-01T00:00:00Z',
-    status: 'ACTIVE',
-    archivedAt: null,
-    ...override,
-  }
-}
-
 const ACCOUNTS = [
-  account({ id: 'daily', name: 'Daily account', type: 'ASSET' }),
-  account({ id: 'savings', name: 'Savings', type: 'ASSET' }),
-  account({ id: 'card', name: 'Credit card', type: 'LIABILITY' }),
-  account({ id: 'salary', name: 'Salary', type: 'INCOME' }),
-  account({ id: 'living', name: 'Living expenses', type: 'EXPENSE' }),
-  account({ id: 'old', name: 'Old checking', type: 'ASSET', status: 'ARCHIVED' }),
-  account({ id: 'jamie', name: 'Jamie wallet', type: 'ASSET', ownerUserId: 2 }),
-  account({ id: 'usd', name: 'USD cash', type: 'ASSET', currency: 'USD' }),
-  account({ id: 'eur-spend', name: 'EUR spending', type: 'EXPENSE' }),
+  buildAccount({ id: 'daily', name: 'Daily account', type: 'ASSET' }),
+  buildAccount({ id: 'savings', name: 'Savings', type: 'ASSET' }),
+  buildAccount({ id: 'card', name: 'Credit card', type: 'LIABILITY' }),
+  buildAccount({ id: 'salary', name: 'Salary', type: 'INCOME' }),
+  buildAccount({ id: 'living', name: 'Living expenses', type: 'EXPENSE' }),
+  buildAccount({ id: 'old', name: 'Old checking', type: 'ASSET', status: 'ARCHIVED' }),
+  buildAccount({ id: 'jamie', name: 'Jamie wallet', type: 'ASSET', ownerUserId: 2 }),
+  buildAccount({ id: 'usd', name: 'USD cash', type: 'ASSET', currency: 'USD' }),
+  buildAccount({ id: 'eur-spend', name: 'EUR spending', type: 'EXPENSE' }),
 ]
 
 function split(
@@ -151,15 +130,6 @@ function page(content: LedgerTxn[], overrides: Record<string, number> = {}) {
   }
 }
 
-function httpError(message: string, status = 400): HTTPError {
-  const request = new Request('http://localhost/api')
-  const response = new Response(JSON.stringify({ message }), {
-    status,
-    headers: { 'Content-Type': 'application/json' },
-  })
-  return new HTTPError(response, request, {} as never)
-}
-
 async function mountPage() {
   const router = createRouter({
     history: createMemoryHistory(),
@@ -186,30 +156,12 @@ async function mountPage() {
 }
 
 // A closed overlay stays mounted while its exit animation would run, so only open ones count.
-function dialogs(): HTMLElement[] {
-  return [...document.body.querySelectorAll<HTMLElement>('[role="dialog"]')].filter(
-    (dialog) => dialog.getAttribute('data-state') !== 'closed',
+/** A filter-panel select by its accessible name; a missing one answers `exists() === false`. */
+function filterSelect(wrapper: VueWrapper, name: string): VueWrapper {
+  return (
+    wrapper.findAllComponents(AppSelect).find((select) => select.props('ariaLabel') === name) ??
+    (wrapper.findComponent('.no-such-select') as VueWrapper)
   )
-}
-
-function dialogByTitle(title: string): HTMLElement {
-  const match = dialogs().find((dialog) => dialog.textContent?.includes(title))
-  if (!match) throw new Error(`No dialog "${title}"`)
-  return match
-}
-
-function buttonIn(root: ParentNode, text: string): HTMLButtonElement {
-  const button = [...root.querySelectorAll<HTMLButtonElement>('button')].find(
-    (candidate) =>
-      candidate.textContent?.trim() === text || candidate.getAttribute('aria-label') === text,
-  )
-  if (!button) throw new Error(`No button "${text}"`)
-  return button
-}
-
-async function click(button: Element) {
-  ;(button as HTMLElement).click()
-  await flushPromises()
 }
 
 async function openFilters(wrapper: VueWrapper) {
@@ -233,12 +185,8 @@ describe('TransactionsPage', () => {
     vi.useFakeTimers({ toFake: ['Date'] })
     vi.setSystemTime(new Date('2026-09-20T10:00:00'))
     setActivePinia(createPinia())
-    vi.stubGlobal('localStorage', {
-      getItem: vi.fn(() => null),
-      setItem: vi.fn(),
-      removeItem: vi.fn(),
-    })
-    mocks.desktop.value = true
+    stubLocalStorage()
+    viewport.desktop = true
     for (const mock of Object.values(mocks)) {
       if (typeof mock === 'function') mock.mockReset()
     }
@@ -276,7 +224,8 @@ describe('TransactionsPage', () => {
 
       expect(mocks.listTxns).toHaveBeenCalledTimes(1)
       expect(lastListCall()).toEqual({ mode: 'INDIVIDUAL', page: 0, size: 15 })
-      expect(wrapper.findAll('h1')).toHaveLength(2)
+      expect(wrapper.findAll('h1')).toHaveLength(1)
+      expect(wrapper.find('h2').text()).toBe('Transactions')
       expect(wrapper.text()).toContain('Every movement, clearly recorded.')
 
       // The filters stay hidden until the Filters button opens them.
@@ -359,13 +308,15 @@ describe('TransactionsPage', () => {
         page: 0,
       })
 
-      const accountSelect = wrapper.findComponent(AccountSelect)
-      expect(accountSelect.props('includeArchived')).toBe(true)
+      const accountSelect = filterSelect(wrapper, 'Account')
+      expect(JSON.stringify((accountSelect.vm.$props as { items: unknown }).items)).toContain(
+        '(Archived)',
+      )
       accountSelect.vm.$emit('update:modelValue', 'old')
       await flushPromises()
       expect(lastListCall()).toMatchObject({ accountId: 'old', page: 0 })
 
-      wrapper.findComponent(CategorySelect).vm.$emit('update:modelValue', 'c2')
+      filterSelect(wrapper, 'Category').vm.$emit('update:modelValue', 'c2')
       await flushPromises()
       expect(lastListCall()).toMatchObject({ accountId: 'old', categoryId: 'c2', page: 0 })
 
@@ -561,14 +512,18 @@ describe('TransactionsPage', () => {
 
   describe('create', () => {
     async function openCreate(wrapper: VueWrapper) {
-      await click(buttonIn(wrapper.element as HTMLElement, 'Add transaction'))
-      return dialogByTitle('Create Transaction')
+      await click(buttonIn(wrapper.element as HTMLElement, 'New transaction'))
+      return dialogByTitle('New transaction')
     }
 
     async function fillExpense(wrapper: VueWrapper, amountMinor = 4680) {
-      const selects = wrapper.findAllComponents(AccountSelect)
-      const payFrom = selects.find((select) => select.props('allowedTypes')?.includes('LIABILITY'))!
-      const expense = selects.find((select) => select.props('allowedTypes')?.[0] === 'EXPENSE')!
+      const selects = wrapper.findAllComponents(AppSelect)
+      const payFrom = selects.find((select) =>
+        String(select.props('id')).endsWith('-expense-pay-from'),
+      )!
+      const expense = selects.find((select) =>
+        String(select.props('id')).endsWith('-expense-account'),
+      )!
       payFrom.vm.$emit('update:modelValue', 'daily')
       expense.vm.$emit('update:modelValue', 'living')
       wrapper.findComponent(MoneyInput).vm.$emit('update:modelValue', amountMinor)
@@ -582,14 +537,14 @@ describe('TransactionsPage', () => {
       expect(dialog.textContent).toContain('Record an expense, income, transfer, or debt payment.')
       expect(
         [...dialog.querySelectorAll('[role="tab"]')].map((tab) => tab.textContent?.trim()),
-      ).toEqual(['Expense', 'Income', 'Transfer', 'Debt Payment'])
+      ).toEqual(['Expense', 'Income', 'Transfer', 'Debt payment'])
       expect(dialog.querySelector('[role="group"]')?.getAttribute('aria-label')).toBe(
         'Transaction type',
       )
-      expect(buttonIn(dialog, 'Create Transaction').disabled).toBe(true)
+      expect(buttonIn(dialog, 'Create').disabled).toBe(true)
 
       await fillExpense(wrapper)
-      expect(buttonIn(dialog, 'Create Transaction').disabled).toBe(false)
+      expect(buttonIn(dialog, 'Create').disabled).toBe(false)
 
       wrapper.unmount()
     })
@@ -600,7 +555,7 @@ describe('TransactionsPage', () => {
       const dialog = await openCreate(wrapper)
       await fillExpense(wrapper)
 
-      await click(buttonIn(dialog, 'Create Transaction'))
+      await click(buttonIn(dialog, 'Create'))
 
       expect(mocks.createTxn).toHaveBeenCalledWith({
         mode: 'INDIVIDUAL',
@@ -625,7 +580,7 @@ describe('TransactionsPage', () => {
       const dialog = await openCreate(wrapper)
       await fillExpense(wrapper)
 
-      await click(buttonIn(dialog, 'Create Transaction'))
+      await click(buttonIn(dialog, 'Create'))
 
       expect(dialog.querySelector('form > [role="alert"]')?.textContent).toContain(
         'Account is archived',
@@ -634,7 +589,7 @@ describe('TransactionsPage', () => {
       expect(mocks.listTxns).toHaveBeenCalledTimes(1)
 
       mocks.createTxn.mockRejectedValue(new Error('offline'))
-      await click(buttonIn(dialog, 'Create Transaction'))
+      await click(buttonIn(dialog, 'Create'))
       expect(dialog.querySelector('form > [role="alert"]')?.textContent).toContain(
         'Failed to create transaction.',
       )
@@ -646,12 +601,12 @@ describe('TransactionsPage', () => {
       const wrapper = await mountPage()
       let dialog = await openCreate(wrapper)
       await fillExpense(wrapper)
-      expect(buttonIn(dialog, 'Create Transaction').disabled).toBe(false)
+      expect(buttonIn(dialog, 'Create').disabled).toBe(false)
 
       await click(buttonIn(dialog, 'Cancel'))
       dialog = await openCreate(wrapper)
 
-      expect(buttonIn(dialog, 'Create Transaction').disabled).toBe(true)
+      expect(buttonIn(dialog, 'Create').disabled).toBe(true)
 
       wrapper.unmount()
     })
@@ -676,7 +631,7 @@ describe('TransactionsPage', () => {
 
   describe('mobile', () => {
     beforeEach(() => {
-      mocks.desktop.value = false
+      viewport.desktop = false
     })
 
     it('groups transactions by day in a list instead of a table', async () => {
@@ -755,11 +710,11 @@ describe('TransactionsPage', () => {
       const wrapper = await mountPage()
       const toggle = buttonIn(wrapper.element as HTMLElement, 'Filters')
 
-      expect(wrapper.findComponent(AccountSelect).exists()).toBe(false)
+      expect(filterSelect(wrapper, 'Account').exists()).toBe(false)
       await openFilters(wrapper)
       expect(dialogs()).toHaveLength(0)
 
-      wrapper.findComponent(AccountSelect).vm.$emit('update:modelValue', 'old')
+      filterSelect(wrapper, 'Account').vm.$emit('update:modelValue', 'old')
       await flushPromises()
       expect(lastListCall()).toMatchObject({ accountId: 'old', page: 0 })
       await wrapper.get('input[type="search"]').setValue('salary')
@@ -771,10 +726,10 @@ describe('TransactionsPage', () => {
       expect(toggle.textContent).not.toContain('2')
 
       // Closing the panel keeps the filters; the button still counts them.
-      wrapper.findComponent(CategorySelect).vm.$emit('update:modelValue', 'c2')
+      filterSelect(wrapper, 'Category').vm.$emit('update:modelValue', 'c2')
       await flushPromises()
       await click(toggle)
-      expect(wrapper.findComponent(CategorySelect).exists()).toBe(false)
+      expect(filterSelect(wrapper, 'Category').exists()).toBe(false)
       expect(lastListCall()).toMatchObject({ categoryId: 'c2' })
       expect(toggle.textContent).toContain('1')
 

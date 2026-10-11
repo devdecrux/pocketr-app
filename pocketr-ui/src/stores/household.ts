@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
-import { HTTPError } from 'ky'
+import { resolveErrorMessage } from '@/api/errors'
 import {
   acceptInvite as apiAcceptInvite,
   createHousehold as apiCreateHousehold,
@@ -235,16 +235,6 @@ export const useHouseholdStore = defineStore('household', () => {
     error.value = null
     modeValidated.value = false
     ensureModeValidationPromise = null
-  }
-
-  async function resolveErrorMessage(nextError: unknown, fallback: string): Promise<string> {
-    if (nextError instanceof HTTPError) {
-      const payload = await nextError.response.json<{ message?: string }>().catch(() => null)
-      if (payload?.message?.trim()) {
-        return payload.message.trim()
-      }
-    }
-    return fallback
   }
 
   return {

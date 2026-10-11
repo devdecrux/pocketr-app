@@ -10,6 +10,7 @@
       "cancel": "Отказ",
       "clear": "Изчисти",
       "close": "Затвори",
+      "create": "Създай",
       "delete": "Изтрий",
       "edit": "Редактирай",
       "save": "Запази",
@@ -65,7 +66,8 @@
       "householdName": "Име на домакинството (поне 3 знака)",
       "money": "0.00",
       "selectAccount": "Избери сметка",
-      "selectCategory": "Избери категория..."
+      "selectCategory": "Избери категория...",
+      "emailPlaceholder": "alex{'@'}example.com"
     },
     "states": {
       "archived": "Архивирана",
@@ -74,24 +76,20 @@
     },
     "table": {
       "actions": "Действия",
-      "amount": "Сума",
       "balance": "Салдо",
-      "category": "Категория",
       "created": "Създадена",
-      "currency": "Валута",
-      "date": "Дата",
-      "description": "Описание",
       "member": "Член",
       "nextPage": "Следваща страница",
       "previousPage": "Предишна страница",
       "range": "{from}–{to} от {total}",
       "rowsPerPage": "Редове на страница",
       "shared": "Споделена",
-      "type": "Тип"
+      "type": "Тип",
+      "editRow": "Редактирай {name}"
     }
   },
   "components": {
-    "accountSelector": {
+    "accountSelect": {
       "ownerGroup": "Собственик: {ownerId}"
     },
     "authLayout": {
@@ -120,14 +118,7 @@
       "show": "Покажи паролата"
     },
     "sidebar": {
-      "household": "Домакинство",
-      "mainNavigation": "Основна навигация",
-      "routes": {
-        "accounts": "Сметки",
-        "categories": "Категории",
-        "dashboard": "Табло",
-        "transactions": "Транзакции"
-      }
+      "mainNavigation": "Основна навигация"
     },
     "theme": {
       "modes": {
@@ -135,11 +126,6 @@
         "dark": "Тъмна",
         "light": "Светла"
       }
-    },
-    "themeToggle": {
-      "auto": "Тема: Системна. Превключи на Светла",
-      "dark": "Тема: Тъмна. Превключи на Системна",
-      "light": "Тема: Светла. Превключи на Тъмна"
     },
     "userMenu": {
       "appearance": "Външен вид",
@@ -155,7 +141,7 @@
   "views": {
     "accounts": {
       "actions": {
-        "new": "Нова сметка"
+        "new": "Сметка"
       },
       "archive": {
         "actionLabel": "Архивиране на сметка {name}",
@@ -179,8 +165,7 @@
           "incomeName": "напр. Заплата, Свободна практика",
           "liabilityName": "напр. Ипотека, Автомобилен кредит"
         },
-        "submit": "Създай сметката",
-        "title": "Създаване на сметка",
+        "title": "Нова сметка",
         "typeLabel": "Тип сметка"
       },
       "empty": "Няма намерени сметки.",
@@ -193,9 +178,6 @@
         "description": "Въведи ново име за „{name}“.",
         "title": "Преименуване на сметка"
       },
-      "rowActions": {
-        "edit": "Редактирай {name}"
-      },
       "sharedFromOtherMember": "Не е твоя сметка · Споделена от друг член на домакинството",
       "subtitle": "Ясен дом за всяко салдо.",
       "summary": {
@@ -207,7 +189,6 @@
     },
     "auth": {
       "login": {
-        "emailPlaceholder": "alex{'@'}example.com",
         "errors": {
           "invalidCredentials": "Невалиден имейл или парола. Опитай отново.",
           "sessionExpired": "Сесията ти е изтекла. Влез отново."
@@ -216,11 +197,9 @@
           "register": "Създай профил",
           "registerPrompt": "Нов си в Pocketr?"
         },
-        "submit": "Вход",
         "title": "Добре дошъл отново!"
       },
       "registration": {
-        "emailPlaceholder": "alex{'@'}example.com",
         "errors": {
           "passwordsMismatch": "Паролите не съвпадат",
           "unableToRegister": "Неуспешна регистрация"
@@ -236,13 +215,12 @@
     },
     "categories": {
       "actions": {
-        "new": "Нова категория"
+        "new": "Категория"
       },
       "confirmDelete": "Да се изтрие ли категория „{name}“?",
       "create": {
         "description": "Добави категория за обозначаване на транзакции.",
-        "submit": "Създай категория",
-        "title": "Създаване на категория"
+        "title": "Нова категория"
       },
       "delete": {
         "confirm": "Изтрий категорията",
@@ -250,7 +228,6 @@
       },
       "edit": {
         "description": "Промени името или цвета.",
-        "submit": "Запази промените",
         "title": "Редактиране на категория"
       },
       "empty": "Все още няма категории. Създай първата си категория.",
@@ -260,13 +237,11 @@
       },
       "loading": "Зареждане на категориите...",
       "rowActions": {
-        "delete": "Изтрий {name}",
-        "edit": "Редактирай {name}"
+        "delete": "Изтрий {name}"
       },
       "title": "Категории"
     },
     "dashboard": {
-      "debtPayment": "Погасяване на дълг",
       "empty": {
         "accounts": "Все още няма сметки.",
         "monthlySpending": "Няма данни за разходи през този месец.",
@@ -276,7 +251,6 @@
       },
       "overview": {
         "acrossAccounts": "В {count} сметка | В {count} сметки",
-        "addTransaction": "Добави транзакция",
         "availableBalance": "Наличен баланс",
         "chartPeriod": "Период на графиката на разходите",
         "heading": "Парите ви с един поглед",
@@ -287,10 +261,8 @@
         "spentInPeriod": "Похарчено за {period}",
         "spentThisMonth": "Похарчено този месец",
         "subtitle": "Малко яснота за ежедневните ви финанси.",
-        "today": "Днес",
         "topCategories": "Топ категории",
-        "viewAll": "Виж всички",
-        "yesterday": "Вчера"
+        "viewAll": "Виж всички"
       },
       "periodViews": {
         "lifetime": "От началото"
@@ -307,7 +279,6 @@
         "privateBadge": "Лична",
         "shareAction": "Сподели {name}",
         "sharedAt": "Споделена на {date}",
-        "sharedBadge": "Споделена",
         "sharedBy": "Споделена от {name}",
         "sharedDescription": "Видими за всички в това домакинство.",
         "sharedEmpty": "Все още няма споделени сметки.",
@@ -329,17 +300,14 @@
       "members": {
         "empty": "Няма намерени членове.",
         "joined": "Присъединил се на {date}",
-        "loading": "Зареждане на членовете...",
-        "title": "Членове"
+        "loading": "Зареждане на членовете..."
       },
       "rollover": {
-        "day": "Период на прехвърляне",
         "help": "Салдата на разходните сметки и отчетите на домакинството използват този ден за всички членове.",
         "helpLabel": "За периода на прехвърляне на домакинството",
         "updated": "Денят за начало на отчетния период на домакинството е обновен."
       },
       "tabs": {
-        "accounts": "Сметки",
         "members": "Членове"
       },
       "title": "Домакинство"
@@ -355,7 +323,6 @@
         "acceptInviteBlocked": "Напусни текущото домакинство, преди да приемеш друга покана.",
         "createAction": "Създай домакинство",
         "createDescription": "Все още не участваш в домакинство. Създай такова, за да споделяш сметки със семейството или съквартирантите си.",
-        "invitedBadge": "Поканен",
         "leave": "Напусни домакинството",
         "leaveDescription": "Вече няма да виждаш споделените сметки на това домакинство. За да се върнеш, ще ти трябва нова покана.",
         "leaveTitle": "Да напуснеш ли {name}?",
@@ -384,19 +351,12 @@
     },
     "transactions": {
       "actions": {
-        "new": "Добави транзакция"
+        "new": "Транзакция"
       },
       "confirmDelete": "Да се изтрие ли транзакция „{description}“?",
       "create": {
         "description": "Запиши разход, приход, превод или погасяване на дълг.",
-        "submit": "Създай транзакция",
-        "tabs": {
-          "debtPayment": "Погасяване на дълг",
-          "expense": "Разход",
-          "income": "Приход",
-          "transfer": "Превод"
-        },
-        "title": "Създаване на транзакция",
+        "title": "Нова транзакция",
         "typeLabel": "Тип транзакция"
       },
       "empty": "Няма намерени транзакции. Създай първата си транзакция.",
@@ -406,9 +366,8 @@
         "expenseAccount": "Разходна сметка",
         "fromAccount": "От сметка",
         "incomeAccount": "Приходна сметка",
-        "payFromAsset": "Плащане от",
-        "payFromAssetOrLiability": "Плащане от",
-        "toAccount": "Към сметка"
+        "toAccount": "Към сметка",
+        "payFrom": "Плащане от"
       },
       "loading": "Зареждане на транзакциите...",
       "notices": {

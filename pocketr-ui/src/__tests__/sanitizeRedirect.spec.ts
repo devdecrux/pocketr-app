@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { sanitizeInternalRedirect } from '../utils/sanitizeRedirect'
+import { sanitizeInternalRedirect } from '../views/auth/sanitizeRedirect'
 
 describe('sanitizeInternalRedirect', () => {
   it('accepts a valid internal route', () => {

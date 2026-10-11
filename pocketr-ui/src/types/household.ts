@@ -1,5 +1,5 @@
 export type HouseholdRole = 'OWNER' | 'ADMIN' | 'MEMBER'
-export type MembershipStatus = 'INVITED' | 'ACTIVE'
+type MembershipStatus = 'INVITED' | 'ACTIVE'
 
 export interface Household {
   id: string

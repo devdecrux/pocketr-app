@@ -1,7 +1,6 @@
 import { createPinia, setActivePinia } from 'pinia'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount, type VueWrapper } from '@vue/test-utils'
-import { HTTPError } from 'ky'
 import { h } from 'vue'
 import { createMemoryHistory, createRouter, RouterView } from 'vue-router'
 import ui from '@nuxt/ui/vue-plugin'
@@ -12,25 +11,19 @@ import UDashboardGroup from '@nuxt/ui/components/DashboardGroup.vue'
 import { i18n } from '@/i18n'
 import { useAuthStore } from '@/stores/auth'
 import type { CategoryTag } from '@/types/ledger'
-import CategoriesPage from '@/views/CategoriesPage.vue'
+import CategoriesPage from '@/views/categories/CategoriesPage.vue'
+import { httpError } from '@/__tests__/helpers/factories'
+import { buttonIn, click, dialogByTitle, dialogs } from '@/__tests__/helpers/dom'
+import { viewport } from '@/__tests__/helpers/vueuse'
 
 const mocks = vi.hoisted(() => ({
-  desktop: { value: true },
   listCategories: vi.fn(),
   createCategory: vi.fn(),
   updateCategory: vi.fn(),
   deleteCategory: vi.fn(),
 }))
 
-vi.mock('@vueuse/core', async () => {
-  const actual = await vi.importActual<typeof import('@vueuse/core')>('@vueuse/core')
-  const { ref } = await vi.importActual<typeof import('vue')>('vue')
-  return {
-    ...actual,
-    useColorMode: () => ref('light'),
-    useMediaQuery: () => ref(mocks.desktop.value),
-  }
-})
+vi.mock('@vueuse/core', async () => (await import('@/__tests__/helpers/vueuse')).mockVueuse())
 
 vi.mock('@/api/csrf', () => ({ primeCsrfToken: vi.fn() }))
 vi.mock('@/api/http', () => ({ api: { post: vi.fn(), get: vi.fn() } }))
@@ -51,15 +44,6 @@ const CATEGORIES = [
   category('c1', 'Groceries', '#62a864'),
   category('c3', 'Health', '#e45a77'),
 ]
-
-function httpError(message: string, status = 409): HTTPError {
-  const request = new Request('http://localhost/api')
-  const response = new Response(JSON.stringify({ message }), {
-    status,
-    headers: { 'Content-Type': 'application/json' },
-  })
-  return new HTTPError(response, request, {} as never)
-}
 
 async function mountCategories() {
   const router = createRouter({
@@ -87,32 +71,6 @@ async function mountCategories() {
 }
 
 // A closed drawer stays mounted while its exit animation would run, so only open ones count.
-function dialogs(): HTMLElement[] {
-  return [...document.body.querySelectorAll<HTMLElement>('[role="dialog"]')].filter(
-    (dialog) => dialog.getAttribute('data-state') !== 'closed',
-  )
-}
-
-function dialogByTitle(title: string): HTMLElement {
-  const match = dialogs().find((dialog) => dialog.textContent?.includes(title))
-  if (!match) throw new Error(`No dialog "${title}"`)
-  return match
-}
-
-function buttonIn(root: ParentNode, text: string): HTMLButtonElement {
-  const button = [...root.querySelectorAll<HTMLButtonElement>('button')].find(
-    (candidate) =>
-      candidate.textContent?.trim() === text || candidate.getAttribute('aria-label') === text,
-  )
-  if (!button) throw new Error(`No button "${text}"`)
-  return button
-}
-
-async function click(button: HTMLButtonElement) {
-  button.click()
-  await flushPromises()
-}
-
 async function typeName(root: ParentNode, value: string) {
   const input = root.querySelector<HTMLInputElement>('input:not([type="radio"])')
   if (!input) throw new Error('No name input')
@@ -146,7 +104,7 @@ function rowNames(wrapper: VueWrapper): string[] {
 describe('CategoriesPage', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
-    mocks.desktop.value = true
+    viewport.desktop = true
     for (const mock of [
       mocks.listCategories,
       mocks.createCategory,
@@ -171,14 +129,14 @@ describe('CategoriesPage', () => {
     document.body.innerHTML = ''
   })
 
-  it('lists categories alphabetically with one h1 per breakpoint', async () => {
+  it('lists categories alphabetically under one h1, with the page title as an h2 on desktop', async () => {
     const wrapper = await mountCategories()
 
     expect(wrapper.get('main tbody tr').text()).toContain('12/09/2026')
 
     expect(rowNames(wrapper)).toEqual(['Groceries', 'Health', 'Transport'])
-    expect(wrapper.findAll('h1')).toHaveLength(2)
-    expect(wrapper.find('h1.lg\\:hidden').exists()).toBe(true)
+    expect(wrapper.findAll('h1')).toHaveLength(1)
+    expect(wrapper.find('main h2').text()).toBe('Categories')
     expect(wrapper.text()).not.toContain('Your personal spending categories')
     expect(wrapper.text()).not.toContain('Small labels.')
     expect(wrapper.find('[aria-label="Edit Groceries"]').exists()).toBe(true)
@@ -188,7 +146,7 @@ describe('CategoriesPage', () => {
   })
 
   it('shows a readable list on mobile and expands a row in place to Edit and Delete', async () => {
-    mocks.desktop.value = false
+    viewport.desktop = false
     const wrapper = await mountCategories()
 
     expect(wrapper.find('main table').exists()).toBe(false)
@@ -240,8 +198,8 @@ describe('CategoriesPage', () => {
     const wrapper = await mountCategories()
 
     await click(buttonIn(document.body, 'New category'))
-    const dialog = dialogByTitle('Create Category')
-    const submit = buttonIn(dialog, 'Create Category')
+    const dialog = dialogByTitle('New category')
+    const submit = buttonIn(dialog, 'Create')
     expect(submit.disabled).toBe(true)
 
     await typeName(dialog, '  Dining out ')
@@ -261,9 +219,9 @@ describe('CategoriesPage', () => {
     const wrapper = await mountCategories()
 
     await click(buttonIn(document.body, 'New category'))
-    const dialog = dialogByTitle('Create Category')
+    const dialog = dialogByTitle('New category')
     await typeName(dialog, 'groceries')
-    await click(buttonIn(dialog, 'Create Category'))
+    await click(buttonIn(dialog, 'Create'))
 
     expect(mocks.createCategory).not.toHaveBeenCalled()
     const input = dialog.querySelector('input:not([type="radio"])')
@@ -279,9 +237,9 @@ describe('CategoriesPage', () => {
     const wrapper = await mountCategories()
 
     await click(buttonIn(document.body, 'New category'))
-    const dialog = dialogByTitle('Create Category')
+    const dialog = dialogByTitle('New category')
     await typeName(dialog, 'Dining out')
-    await click(buttonIn(dialog, 'Create Category'))
+    await click(buttonIn(dialog, 'Create'))
 
     const alert = dialog.querySelector('form > [role="alert"]')
     expect(alert?.textContent).toContain("Category 'Dining out' already exists")
@@ -296,7 +254,7 @@ describe('CategoriesPage', () => {
     ['modal', true],
     ['drawer', false],
   ])('edits a category in a prefilled %s', async (_label, desktop) => {
-    mocks.desktop.value = desktop
+    viewport.desktop = desktop
     mocks.updateCategory.mockImplementation(
       async (id: string, req: { name: string; color: string | null }) =>
         category(id, req.name, req.color),
@@ -318,7 +276,7 @@ describe('CategoriesPage', () => {
     await typeName(dialog, 'Wellbeing')
     dialog.querySelector<HTMLInputElement>('input[aria-label="No color"]')?.click()
     await flushPromises()
-    await click(buttonIn(dialog, 'Save changes'))
+    await click(buttonIn(dialog, 'Save'))
 
     expect(mocks.updateCategory).toHaveBeenCalledWith('c3', { name: 'Wellbeing', color: null })
     expect(dialogs()).toHaveLength(0)
@@ -362,7 +320,7 @@ describe('CategoriesPage', () => {
     )
     expect(dialog.querySelectorAll('input[type="radio"]:checked')).toHaveLength(1)
 
-    await click(buttonIn(dialog, 'Save changes'))
+    await click(buttonIn(dialog, 'Save'))
     expect(mocks.updateCategory).toHaveBeenCalledWith('c7', { name: 'Legacy', color: '#ef4444' })
 
     wrapper.unmount()
@@ -375,7 +333,7 @@ describe('CategoriesPage', () => {
     const wrapper = await mountCategories()
 
     await click(buttonIn(document.body, 'New category'))
-    const dialog = dialogByTitle('Create Category')
+    const dialog = dialogByTitle('New category')
     const custom = dialog.querySelector<HTMLInputElement>(`input[aria-label="${CUSTOM_LABEL}"]`)
     expect(custom?.checked).toBe(false)
     expect(dialog.querySelector(CUSTOM_SWATCH)?.getAttribute('style')).toBeNull()
@@ -395,7 +353,7 @@ describe('CategoriesPage', () => {
       'rgb(26, 43, 60)',
     )
     expect(custom?.checked).toBe(true)
-    await click(buttonIn(dialog, 'Create Category'))
+    await click(buttonIn(dialog, 'Create'))
 
     expect(mocks.createCategory).toHaveBeenCalledWith({ name: 'Hobbies', color: '#1a2b3c' })
     const row = wrapper.findAll('main tbody tr').find((tr) => tr.text().includes('Hobbies'))
@@ -410,7 +368,7 @@ describe('CategoriesPage', () => {
     const wrapper = await mountCategories()
 
     await click(buttonIn(document.body, 'New category'))
-    const dialog = dialogByTitle('Create Category')
+    const dialog = dialogByTitle('New category')
     const custom = dialog.querySelector<HTMLInputElement>(`input[aria-label="${CUSTOM_LABEL}"]`)
 
     custom?.click()
@@ -437,7 +395,7 @@ describe('CategoriesPage', () => {
     await click(buttonIn(document.body, 'Edit Health'))
     const dialog = dialogByTitle('Edit category')
     await typeName(dialog, 'HEALTH')
-    await click(buttonIn(dialog, 'Save changes'))
+    await click(buttonIn(dialog, 'Save'))
 
     expect(mocks.updateCategory).toHaveBeenCalledWith('c3', { name: 'HEALTH', color: '#e45a77' })
 
@@ -453,14 +411,14 @@ describe('CategoriesPage', () => {
 
     await click(buttonIn(document.body, 'New category'))
     expect(dialogs().map((dialog) => dialog.querySelector('h2')?.textContent?.trim())).toEqual([
-      'Create Category',
+      'New category',
     ])
 
     wrapper.unmount()
   })
 
   it('never shows the edit and create drawers together on mobile', async () => {
-    mocks.desktop.value = false
+    viewport.desktop = false
     const wrapper = await mountCategories()
 
     await expandRow(wrapper, 'Health')
@@ -471,7 +429,7 @@ describe('CategoriesPage', () => {
     await click(buttonIn(dialogs()[0]!, 'Cancel'))
     await click(buttonIn(document.body, 'New category'))
     expect(dialogs()).toHaveLength(1)
-    expect(dialogs()[0]?.textContent).toContain('Create Category')
+    expect(dialogs()[0]?.textContent).toContain('New category')
 
     wrapper.unmount()
   })
@@ -497,7 +455,7 @@ describe('CategoriesPage', () => {
   })
 
   it('deletes from the expanded mobile row after confirmation', async () => {
-    mocks.desktop.value = false
+    viewport.desktop = false
     mocks.deleteCategory.mockResolvedValue(undefined)
     const wrapper = await mountCategories()
 

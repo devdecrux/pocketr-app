@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="pocketr-ui/src/assets/logo.svg" alt="Pocketr logo" width="120" /><br />
+  <img src="pocketr-ui/public/pocketr-logo-256x256.png" alt="Pocketr logo" width="120" height="120" /><br />
   <strong><font size="6">Pocketr</font></strong><br />
   <strong>Simple on the surface. Solid underneath.</strong>
 </div>

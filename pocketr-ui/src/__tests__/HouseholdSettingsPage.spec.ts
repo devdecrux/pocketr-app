@@ -1,7 +1,6 @@
 import { createPinia, setActivePinia } from 'pinia'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount, type VueWrapper } from '@vue/test-utils'
-import { HTTPError } from 'ky'
 import { h } from 'vue'
 import { createMemoryHistory, createRouter, RouterView } from 'vue-router'
 import ui from '@nuxt/ui/vue-plugin'
@@ -17,10 +16,11 @@ import type {
   HouseholdSummary,
 } from '@/types/household'
 import type { Account } from '@/types/ledger'
-import HouseholdSettingsPage from '@/views/HouseholdSettingsPage.vue'
+import HouseholdSettingsPage from '@/views/household/HouseholdSettingsPage.vue'
+import { httpError } from '@/__tests__/helpers/factories'
+import { viewport } from '@/__tests__/helpers/vueuse'
 
 const mocks = vi.hoisted(() => ({
-  desktop: { value: true },
   listHouseholds: vi.fn(),
   getHousehold: vi.fn(),
   listSharedAccounts: vi.fn(),
@@ -31,15 +31,7 @@ const mocks = vi.hoisted(() => ({
   listAccounts: vi.fn(),
 }))
 
-vi.mock('@vueuse/core', async () => {
-  const actual = await vi.importActual<typeof import('@vueuse/core')>('@vueuse/core')
-  const { ref } = await vi.importActual<typeof import('vue')>('vue')
-  return {
-    ...actual,
-    useColorMode: () => ref('light'),
-    useMediaQuery: () => ref(mocks.desktop.value),
-  }
-})
+vi.mock('@vueuse/core', async () => (await import('@/__tests__/helpers/vueuse')).mockVueuse())
 
 vi.mock('@/api/csrf', () => ({ primeCsrfToken: vi.fn() }))
 vi.mock('@/api/http', () => ({ api: { post: vi.fn(), get: vi.fn() } }))
@@ -122,15 +114,6 @@ function share(accountId: string, accountName: string): HouseholdAccountShare {
   }
 }
 
-function httpError(message: string, status = 400): HTTPError {
-  const request = new Request('http://localhost/api')
-  const response = new Response(JSON.stringify({ message }), {
-    status,
-    headers: { 'Content-Type': 'application/json' },
-  })
-  return new HTTPError(response, request, {} as never)
-}
-
 async function mountPage() {
   const router = createRouter({
     history: createMemoryHistory(),
@@ -174,7 +157,7 @@ describe('HouseholdSettingsPage', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
     Element.prototype.scrollIntoView = vi.fn()
-    mocks.desktop.value = true
+    viewport.desktop = true
     for (const mock of Object.values(mocks)) {
       if (typeof mock === 'function') mock.mockReset()
     }
@@ -218,7 +201,8 @@ describe('HouseholdSettingsPage', () => {
 
     expect(mocks.getHousehold).toHaveBeenCalledWith(HOUSEHOLD_ID)
     expect(mocks.listSharedAccounts).toHaveBeenCalledWith(HOUSEHOLD_ID)
-    expect(wrapper.findAll('h1')).toHaveLength(1)
+    // Only the active breakpoint's heading is rendered: an h2 from lg, an h1 below.
+    expect(wrapper.findAll('main h1')).toHaveLength(0)
     expect(wrapper.get('main h2').text()).toBe('Morgan household')
     expect(wrapper.text()).toContain('Created')
 
@@ -458,7 +442,7 @@ describe('HouseholdSettingsPage', () => {
   })
 
   it('splits members and accounts into tabs on mobile', async () => {
-    mocks.desktop.value = false
+    viewport.desktop = false
     const wrapper = await mountPage()
 
     expect(wrapper.get('main h1').text()).toBe('Morgan household')

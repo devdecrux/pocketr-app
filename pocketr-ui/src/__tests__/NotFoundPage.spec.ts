@@ -6,23 +6,15 @@ import { createMemoryHistory, createRouter, RouterView } from 'vue-router'
 import ui from '@nuxt/ui/vue-plugin'
 import UApp from '@nuxt/ui/components/App.vue'
 import UDashboardGroup from '@nuxt/ui/components/DashboardGroup.vue'
-import LostExplorer from '@/components/shared/LostExplorer.vue'
+import LostFigureAnimation from '@/views/not-found/LostFigureAnimation.vue'
 import { i18n, setLocale } from '@/i18n'
 import appRouter from '@/router'
 import { useAuthStore } from '@/stores/auth'
-import NotFoundPage from '@/views/NotFoundPage.vue'
+import NotFoundPage from '@/views/not-found/NotFoundPage.vue'
+import { stubResizeObserver } from '@/__tests__/helpers/stubs'
+import { viewport } from '@/__tests__/helpers/vueuse'
 
-const { desktop } = vi.hoisted(() => ({ desktop: { value: false } }))
-
-vi.mock('@vueuse/core', async () => {
-  const actual = await vi.importActual<typeof import('@vueuse/core')>('@vueuse/core')
-  const { ref } = await vi.importActual<typeof import('vue')>('vue')
-  return {
-    ...actual,
-    useColorMode: () => ref('light'),
-    useMediaQuery: () => ref(desktop.value),
-  }
-})
+vi.mock('@vueuse/core', async () => (await import('@/__tests__/helpers/vueuse')).mockVueuse())
 
 vi.mock('@/api/csrf', () => ({ primeCsrfToken: vi.fn() }))
 vi.mock('@/api/http', () => ({ api: { post: vi.fn(), get: vi.fn() } }))
@@ -58,15 +50,8 @@ async function mountAt(path = '/somewhere/unknown') {
 describe('NotFoundPage', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
-    desktop.value = false
-    vi.stubGlobal(
-      'ResizeObserver',
-      class {
-        observe() {}
-        unobserve() {}
-        disconnect() {}
-      },
-    )
+    viewport.desktop = false
+    stubResizeObserver()
     useAuthStore().setUser({
       id: 1,
       email: 'alex@example.com',
@@ -99,7 +84,7 @@ describe('NotFoundPage', () => {
     expect(mobile.wrapper.find('main h2').exists()).toBe(false)
     mobile.wrapper.unmount()
 
-    desktop.value = true
+    viewport.desktop = true
     const wide = await mountAt()
     expect(wide.wrapper.find('main h1').exists()).toBe(false)
     expect(wide.wrapper.find('main h2').text()).toBe('This page wandered off.')
@@ -139,9 +124,9 @@ describe('NotFoundPage', () => {
   })
 })
 
-describe('LostExplorer', () => {
+describe('LostFigureAnimation', () => {
   it('is decorative: hidden from assistive tech, not focusable and without text', () => {
-    const wrapper = mount(LostExplorer)
+    const wrapper = mount(LostFigureAnimation)
     const svg = wrapper.get('svg')
 
     expect(svg.attributes('aria-hidden')).toBe('true')

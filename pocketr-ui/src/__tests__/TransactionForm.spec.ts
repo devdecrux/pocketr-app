@@ -4,15 +4,16 @@ import { flushPromises, mount } from '@vue/test-utils'
 import { h } from 'vue'
 import ui from '@nuxt/ui/vue-plugin'
 import UApp from '@nuxt/ui/components/App.vue'
-import AccountSelect from '@/components/forms/AccountSelect.vue'
-import AppDateField from '@/components/forms/AppDateField.vue'
-import MoneyInput from '@/components/forms/MoneyInput.vue'
-import TransactionForm from '@/components/forms/TransactionForm.vue'
+import AppSelect from '@/components/fields/AppSelect.vue'
+import AppDateField from '@/components/fields/AppDateField.vue'
+import MoneyInput from '@/components/fields/MoneyInput.vue'
+import TransactionForm from '@/views/transactions/TransactionForm.vue'
 import { i18n } from '@/i18n'
 import { useAccountStore } from '@/stores/account'
 import { useCurrencyStore } from '@/stores/currency'
 import { useModeStore } from '@/stores/mode'
 import type { Account, CreateTxnRequest } from '@/types/ledger'
+import { stubLocalStorage } from '@/__tests__/helpers/stubs'
 
 function account(id: string, type: Account['type'], currency = 'EUR', ownerUserId = 1): Account {
   return {
@@ -54,10 +55,11 @@ function last<T>(items: readonly T[]): T | undefined {
 
 type Wrapper = ReturnType<typeof mountForm>['wrapper']
 
-function selectFor(wrapper: Wrapper, allowedType: Account['type'], index = 0) {
+/** The account select of a form field, by the name its id ends with. */
+function selectFor(wrapper: Wrapper, field: string) {
   return wrapper
-    .findAllComponents(AccountSelect)
-    .filter((select) => select.props('allowedTypes')?.includes(allowedType))[index]!
+    .findAllComponents(AppSelect)
+    .find((select) => String(select.props('id')).endsWith(`-${field}`))!
 }
 
 async function chooseTab(wrapper: Wrapper, label: string) {
@@ -77,11 +79,7 @@ describe('TransactionForm', () => {
     vi.useFakeTimers({ toFake: ['Date'] })
     vi.setSystemTime(new Date('2026-09-20T10:00:00'))
     setActivePinia(createPinia())
-    vi.stubGlobal('localStorage', {
-      getItem: vi.fn(() => null),
-      setItem: vi.fn(),
-      removeItem: vi.fn(),
-    })
+    stubLocalStorage()
     useAccountStore().accounts = [
       account('daily', 'ASSET'),
       account('savings', 'ASSET'),
@@ -110,7 +108,7 @@ describe('TransactionForm', () => {
       'Expense',
       'Income',
       'Transfer',
-      'Debt Payment',
+      'Debt payment',
     ])
     expect(wrapper.findAll('label').map((label) => label.text())).toEqual([
       'Date',
@@ -132,8 +130,8 @@ describe('TransactionForm', () => {
     await submit(wrapper)
     expect(submitted).toHaveLength(0)
 
-    selectFor(wrapper, 'LIABILITY').vm.$emit('update:modelValue', 'daily')
-    selectFor(wrapper, 'EXPENSE').vm.$emit('update:modelValue', 'living')
+    selectFor(wrapper, 'expense-pay-from').vm.$emit('update:modelValue', 'daily')
+    selectFor(wrapper, 'expense-account').vm.$emit('update:modelValue', 'living')
     await flushPromises()
     await submit(wrapper)
     expect(validity).toEqual([])
@@ -152,8 +150,8 @@ describe('TransactionForm', () => {
 
   it('builds an expense request from the pay-from currency', async () => {
     const { wrapper, submitted } = mountForm()
-    selectFor(wrapper, 'LIABILITY').vm.$emit('update:modelValue', 'daily')
-    selectFor(wrapper, 'EXPENSE').vm.$emit('update:modelValue', 'living')
+    selectFor(wrapper, 'expense-pay-from').vm.$emit('update:modelValue', 'daily')
+    selectFor(wrapper, 'expense-account').vm.$emit('update:modelValue', 'living')
     wrapper.findComponent(MoneyInput).vm.$emit('update:modelValue', 1250)
     await wrapper.get('input[placeholder="What was this for?"]').setValue('  Lunch ')
     await submit(wrapper)
@@ -179,8 +177,8 @@ describe('TransactionForm', () => {
     const { wrapper, submitted } = mountForm()
 
     await chooseTab(wrapper, 'Income')
-    selectFor(wrapper, 'INCOME').vm.$emit('update:modelValue', 'salary')
-    selectFor(wrapper, 'ASSET').vm.$emit('update:modelValue', 'daily')
+    selectFor(wrapper, 'income-account').vm.$emit('update:modelValue', 'salary')
+    selectFor(wrapper, 'income-deposit').vm.$emit('update:modelValue', 'daily')
     wrapper.findComponent(MoneyInput).vm.$emit('update:modelValue', 350000)
     await submit(wrapper)
     expect(last(submitted)?.splits).toEqual([
@@ -189,8 +187,8 @@ describe('TransactionForm', () => {
     ])
 
     await chooseTab(wrapper, 'Transfer')
-    selectFor(wrapper, 'ASSET', 0).vm.$emit('update:modelValue', 'daily')
-    selectFor(wrapper, 'ASSET', 1).vm.$emit('update:modelValue', 'savings')
+    selectFor(wrapper, 'transfer-from').vm.$emit('update:modelValue', 'daily')
+    selectFor(wrapper, 'transfer-to').vm.$emit('update:modelValue', 'savings')
     wrapper.findComponent(MoneyInput).vm.$emit('update:modelValue', 25000)
     await submit(wrapper)
     expect(last(submitted)?.splits).toEqual([
@@ -198,9 +196,9 @@ describe('TransactionForm', () => {
       { accountId: 'savings', side: 'DEBIT', amountMinor: 25000 },
     ])
 
-    await chooseTab(wrapper, 'Debt Payment')
-    selectFor(wrapper, 'ASSET').vm.$emit('update:modelValue', 'daily')
-    selectFor(wrapper, 'LIABILITY').vm.$emit('update:modelValue', 'card')
+    await chooseTab(wrapper, 'Debt payment')
+    selectFor(wrapper, 'debt-payment-pay-from').vm.$emit('update:modelValue', 'daily')
+    selectFor(wrapper, 'debt-payment-liability').vm.$emit('update:modelValue', 'card')
     wrapper.findComponent(MoneyInput).vm.$emit('update:modelValue', 12000)
     await submit(wrapper)
     expect(last(submitted)?.splits).toEqual([
@@ -214,20 +212,20 @@ describe('TransactionForm', () => {
 
   it("keeps each type's own fields while switching tabs", async () => {
     const { wrapper } = mountForm()
-    selectFor(wrapper, 'EXPENSE').vm.$emit('update:modelValue', 'living')
+    selectFor(wrapper, 'expense-account').vm.$emit('update:modelValue', 'living')
     await flushPromises()
 
     await chooseTab(wrapper, 'Income')
     await chooseTab(wrapper, 'Expense')
 
-    expect(selectFor(wrapper, 'EXPENSE').props('modelValue')).toBe('living')
+    expect(selectFor(wrapper, 'expense-account').props('modelValue')).toBe('living')
 
     wrapper.unmount()
   })
 
   it('derives the currency symbol and minor unit from the source account', async () => {
     const { wrapper } = mountForm()
-    selectFor(wrapper, 'LIABILITY').vm.$emit('update:modelValue', 'yen')
+    selectFor(wrapper, 'expense-pay-from').vm.$emit('update:modelValue', 'yen')
     await flushPromises()
 
     const money = wrapper.findComponent(MoneyInput)
@@ -245,12 +243,12 @@ describe('TransactionForm', () => {
     expect(wrapper.text()).toContain('Transfers between household accounts are allowed.')
     expect(wrapper.text()).not.toContain('cross-user transfer')
 
-    selectFor(wrapper, 'ASSET', 0).vm.$emit('update:modelValue', 'daily')
-    selectFor(wrapper, 'ASSET', 1).vm.$emit('update:modelValue', 'jamie')
+    selectFor(wrapper, 'transfer-from').vm.$emit('update:modelValue', 'daily')
+    selectFor(wrapper, 'transfer-to').vm.$emit('update:modelValue', 'jamie')
     await flushPromises()
     expect(wrapper.text()).toContain('This is a cross-user transfer between household members.')
 
-    selectFor(wrapper, 'ASSET', 1).vm.$emit('update:modelValue', 'savings')
+    selectFor(wrapper, 'transfer-to').vm.$emit('update:modelValue', 'savings')
     await flushPromises()
     expect(wrapper.text()).not.toContain('cross-user transfer')
 

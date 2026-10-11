@@ -1,7 +1,6 @@
 import { createPinia, setActivePinia } from 'pinia'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount, type VueWrapper } from '@vue/test-utils'
-import { HTTPError } from 'ky'
 import { h } from 'vue'
 import { createMemoryHistory, createRouter, RouterView } from 'vue-router'
 import ui from '@nuxt/ui/vue-plugin'
@@ -15,10 +14,12 @@ import { useAuthStore } from '@/stores/auth'
 import { useModeStore } from '@/stores/mode'
 import type { AuthUser } from '@/types/auth'
 import type { HouseholdSummary } from '@/types/household'
-import SettingsPage from '@/views/SettingsPage.vue'
+import SettingsPage from '@/views/settings/SettingsPage.vue'
+import { stubLocalStorage, stubResizeObserver } from '@/__tests__/helpers/stubs'
+import { httpError } from '@/__tests__/helpers/factories'
+import { viewport } from '@/__tests__/helpers/vueuse'
 
 const mocks = vi.hoisted(() => ({
-  desktop: { value: true },
   apiPost: vi.fn(),
   updateUserLanguage: vi.fn(),
   updateUserRolloverDay: vi.fn(),
@@ -28,15 +29,7 @@ const mocks = vi.hoisted(() => ({
   acceptInvite: vi.fn(),
 }))
 
-vi.mock('@vueuse/core', async () => {
-  const actual = await vi.importActual<typeof import('@vueuse/core')>('@vueuse/core')
-  const { ref } = await vi.importActual<typeof import('vue')>('vue')
-  return {
-    ...actual,
-    useColorMode: () => ref('light'),
-    useMediaQuery: () => ref(mocks.desktop.value),
-  }
-})
+vi.mock('@vueuse/core', async () => (await import('@/__tests__/helpers/vueuse')).mockVueuse())
 
 vi.mock('@/api/csrf', () => ({ primeCsrfToken: vi.fn() }))
 vi.mock('@/api/http', () => ({ api: { post: mocks.apiPost, get: vi.fn() } }))
@@ -71,15 +64,6 @@ function household(overrides: Partial<HouseholdSummary> = {}): HouseholdSummary 
     createdAt: '2026-01-01T00:00:00Z',
     ...overrides,
   }
-}
-
-function httpError(message: string): HTTPError {
-  const request = new Request('http://localhost/api')
-  const response = new Response(JSON.stringify({ message }), {
-    status: 400,
-    headers: { 'Content-Type': 'application/json' },
-  })
-  return new HTTPError(response, request, {} as never)
 }
 
 function imageFile(name = 'me.png', type = 'image/png', size = 10): File {
@@ -144,9 +128,16 @@ describe('SettingsPage', () => {
   let objectUrlCount = 0
   const revokeObjectURL = vi.fn()
 
-  beforeEach(() => {
+  // Load the lazy locales once so switching language in a test settles within a flush.
+  beforeAll(async () => {
+    await setLocale('bg')
+    await setLocale('de')
+    await setLocale('en')
+  })
+
+  beforeEach(async () => {
     setActivePinia(createPinia())
-    mocks.desktop.value = true
+    viewport.desktop = true
     objectUrlCount = 0
     revokeObjectURL.mockReset()
     for (const mock of [
@@ -161,30 +152,18 @@ describe('SettingsPage', () => {
       mock.mockReset()
     }
     mocks.listHouseholds.mockResolvedValue([household()])
-    vi.stubGlobal(
-      'ResizeObserver',
-      class {
-        observe() {}
-        unobserve() {}
-        disconnect() {}
-      },
-    )
-    const storage = new Map<string, string>()
-    vi.stubGlobal('localStorage', {
-      getItem: (key: string) => storage.get(key) ?? null,
-      setItem: (key: string, value: string) => storage.set(key, value),
-      removeItem: (key: string) => storage.delete(key),
-    })
+    stubResizeObserver()
+    stubLocalStorage()
     Element.prototype.scrollIntoView = vi.fn()
     Object.assign(URL, {
       createObjectURL: vi.fn(() => `blob:preview-${++objectUrlCount}`),
       revokeObjectURL,
     })
-    useAuthStore().setUser({ ...USER })
+    await useAuthStore().setUser({ ...USER })
   })
 
-  afterEach(() => {
-    setLocale('en')
+  afterEach(async () => {
+    await setLocale('en')
     document.body.innerHTML = ''
     vi.unstubAllGlobals()
   })
@@ -194,11 +173,11 @@ describe('SettingsPage', () => {
     expect(route?.meta).toMatchObject({ requiresAuth: true })
   })
 
-  it('shows the profile read-only, with one h1 per breakpoint', async () => {
+  it('shows the profile read-only, with the page title rendered for the active breakpoint only', async () => {
     const { wrapper } = await mountSettings()
 
     expect(wrapper.find('header h1').text()).toBe('Settings')
-    expect(wrapper.find('main h1').classes()).toContain('lg:hidden')
+    expect(wrapper.find('main h1').exists()).toBe(false)
     expect(wrapper.find('main h2').text()).toBe('Make Pocketr yours')
     expect(wrapper.text()).toContain('Alex Morgan')
     expect(wrapper.text()).toContain('alex@example.com')
@@ -207,6 +186,16 @@ describe('SettingsPage', () => {
       .map((input) => input.element.value)
     expect(values).not.toContain('Alex')
     expect(values).not.toContain('alex@example.com')
+
+    wrapper.unmount()
+  })
+
+  it('renders the mobile page title as the only h1 below lg', async () => {
+    viewport.desktop = false
+    const { wrapper } = await mountSettings()
+
+    expect(wrapper.find('main h1').text()).toBe('Settings')
+    expect(wrapper.find('main h2').exists()).toBe(false)
 
     wrapper.unmount()
   })
@@ -417,7 +406,7 @@ describe('SettingsPage', () => {
     })
 
     it('keeps a single Save inside the Preferences card on mobile', async () => {
-      mocks.desktop.value = false
+      viewport.desktop = false
       const { wrapper } = await mountSettings()
 
       const saves = wrapper.findAll('button').filter((button) => button.text() === 'Save')
@@ -504,7 +493,7 @@ describe('SettingsPage', () => {
       })
       const { router, wrapper } = await mountSettings()
 
-      const create = buttonByText(wrapper, 'Create Household')
+      const create = buttonByText(wrapper, 'Create household')
       await wrapper.get('#household-name').setValue('ab')
       expect(create.attributes('disabled')).toBeDefined()
 

@@ -2,11 +2,10 @@ import { describe, expect, it } from 'vitest'
 import {
   buildReportPeriods,
   currentRolloverPeriod,
-  daysAgo,
   niceAxisStep,
   rolloverPeriodRange,
-} from '@/utils/dashboardPeriods'
-import { formatDate, formatDateRange } from '@/utils/dates'
+} from '@/views/dashboard/dashboardPeriods'
+import { daysAgo, formatDate, formatDateRange } from '@/utils/dates'
 
 describe('dashboard periods (backend RolloverPeriod contract)', () => {
   it('uses the calendar month for rollover day 1', () => {

@@ -1,26 +1,19 @@
-import { createPinia } from 'pinia'
 import { afterEach, describe, expect, it } from 'vitest'
-import { flushPromises, mount } from '@vue/test-utils'
+import { flushPromises } from '@vue/test-utils'
 import { h, ref } from 'vue'
-import ui from '@nuxt/ui/vue-plugin'
-import UApp from '@nuxt/ui/components/App.vue'
-import AccountForm from '@/components/forms/AccountForm.vue'
-import AppTypeTabs from '@/components/forms/AppTypeTabs.vue'
-import TransactionForm from '@/components/forms/TransactionForm.vue'
-import { i18n } from '@/i18n'
+import AccountForm from '@/views/accounts/AccountForm.vue'
+import AppTypeTabs from '@/components/fields/AppTypeTabs.vue'
+import TransactionForm from '@/views/transactions/TransactionForm.vue'
+import { mountInApp as mountWithApp } from '@/__tests__/helpers/mount'
+
+/** These specs mount whole forms, which need their own Pinia. */
+const mountInApp = (render: () => ReturnType<typeof h>) => mountWithApp(render, { pinia: true })
 
 const ITEMS = [
   { value: 'one', label: 'One' },
   { value: 'two', label: 'Two' },
   { value: 'three', label: 'Three' },
 ]
-
-function mountInApp(content: () => ReturnType<typeof h>) {
-  return mount(
-    { render: () => h(UApp, null, { default: content }) },
-    { attachTo: document.body, global: { plugins: [i18n, ui, createPinia()] } },
-  )
-}
 
 function mountTabs() {
   const selected = ref('one')
@@ -88,8 +81,8 @@ describe('AppTypeTabs', () => {
 
     expect(trackClasses(account)).toEqual(trackClasses(transaction))
     expect(account.get('[role="tablist"]').classes()).toContain('rounded-lg')
-    expect(account.get('[role="tab"]').classes()).toContain('h-8')
-    expect(account.get('[role="tab"]').classes()).toContain('lg:h-9')
+    expect(account.get('[role="tab"]').classes()).toContain('h-[38px]')
+    expect(account.get('[role="tab"]').classes()).toContain('lg:h-[34px]')
 
     account.unmount()
     transaction.unmount()

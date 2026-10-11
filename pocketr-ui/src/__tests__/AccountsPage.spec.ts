@@ -1,7 +1,6 @@
 import { createPinia, setActivePinia } from 'pinia'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount, type VueWrapper } from '@vue/test-utils'
-import { HTTPError } from 'ky'
 import { h, nextTick } from 'vue'
 import { createMemoryHistory, createRouter, RouterView } from 'vue-router'
 import ui from '@nuxt/ui/vue-plugin'
@@ -12,11 +11,14 @@ import UDashboardGroup from '@nuxt/ui/components/DashboardGroup.vue'
 import { i18n } from '@/i18n'
 import { useAuthStore } from '@/stores/auth'
 import { useModeStore } from '@/stores/mode'
-import type { Account, AccountBalance } from '@/types/ledger'
-import AccountsPage from '@/views/AccountsPage.vue'
+import type { AccountBalance } from '@/types/ledger'
+import AccountsPage from '@/views/accounts/AccountsPage.vue'
+import { stubLocalStorage } from '@/__tests__/helpers/stubs'
+import { buildAccount, httpError } from '@/__tests__/helpers/factories'
+import { buttonIn, click, dialogByTitle, dialogs } from '@/__tests__/helpers/dom'
+import { viewport } from '@/__tests__/helpers/vueuse'
 
 const mocks = vi.hoisted(() => ({
-  desktop: { value: true },
   listAccounts: vi.fn(),
   createAccount: vi.fn(),
   updateAccount: vi.fn(),
@@ -27,15 +29,7 @@ const mocks = vi.hoisted(() => ({
   listHouseholds: vi.fn(),
 }))
 
-vi.mock('@vueuse/core', async () => {
-  const actual = await vi.importActual<typeof import('@vueuse/core')>('@vueuse/core')
-  const { ref } = await vi.importActual<typeof import('vue')>('vue')
-  return {
-    ...actual,
-    useColorMode: () => ref('light'),
-    useMediaQuery: () => ref(mocks.desktop.value),
-  }
-})
+vi.mock('@vueuse/core', async () => (await import('@/__tests__/helpers/vueuse')).mockVueuse())
 
 vi.mock('@/api/csrf', () => ({ primeCsrfToken: vi.fn() }))
 vi.mock('@/api/http', () => ({ api: { post: vi.fn(), get: vi.fn() } }))
@@ -52,29 +46,15 @@ vi.mock('@/api/households', () => ({
   listSharedAccounts: mocks.listSharedAccounts,
 }))
 
-function account(override: Partial<Account>): Account {
-  return {
-    id: 'acc-1',
-    ownerUserId: 1,
-    name: 'Checking',
-    type: 'ASSET',
-    currency: 'EUR',
-    createdAt: '2026-01-01T00:00:00Z',
-    status: 'ACTIVE',
-    archivedAt: null,
-    ...override,
-  }
-}
-
 const ACCOUNTS = [
-  account({ id: 'daily', name: 'Daily account' }),
-  account({ id: 'savings', name: 'Savings' }),
-  account({ id: 'card', name: 'Credit card', type: 'LIABILITY' }),
-  account({ id: 'salary', name: 'Salary', type: 'INCOME' }),
-  account({ id: 'living', name: 'Living expenses', type: 'EXPENSE' }),
-  account({ id: 'old', name: 'Old checking', status: 'ARCHIVED' }),
-  account({ id: 'usd', name: 'USD cash', currency: 'USD' }),
-  account({ id: 'jamie', name: 'Jamie wallet', ownerUserId: 2 }),
+  buildAccount({ id: 'daily', name: 'Daily account' }),
+  buildAccount({ id: 'savings', name: 'Savings' }),
+  buildAccount({ id: 'card', name: 'Credit card', type: 'LIABILITY' }),
+  buildAccount({ id: 'salary', name: 'Salary', type: 'INCOME' }),
+  buildAccount({ id: 'living', name: 'Living expenses', type: 'EXPENSE' }),
+  buildAccount({ id: 'old', name: 'Old checking', status: 'ARCHIVED' }),
+  buildAccount({ id: 'usd', name: 'USD cash', currency: 'USD' }),
+  buildAccount({ id: 'jamie', name: 'Jamie wallet', ownerUserId: 2 }),
 ]
 
 const BALANCES: Record<string, number> = {
@@ -96,15 +76,6 @@ function balanceRows(ids: string[]): AccountBalance[] {
     balanceMinor: BALANCES[id] ?? 0,
     asOf: '2026-09-20',
   }))
-}
-
-function httpError(message: string, status = 409): HTTPError {
-  const request = new Request('http://localhost/api')
-  const response = new Response(JSON.stringify({ message }), {
-    status,
-    headers: { 'Content-Type': 'application/json' },
-  })
-  return new HTTPError(response, request, {} as never)
 }
 
 async function mountPage() {
@@ -133,32 +104,6 @@ async function mountPage() {
 }
 
 // A closed overlay stays mounted while its exit animation would run, so only open ones count.
-function dialogs(): HTMLElement[] {
-  return [...document.body.querySelectorAll<HTMLElement>('[role="dialog"]')].filter(
-    (dialog) => dialog.getAttribute('data-state') !== 'closed',
-  )
-}
-
-function dialogByTitle(title: string): HTMLElement {
-  const match = dialogs().find((dialog) => dialog.textContent?.includes(title))
-  if (!match) throw new Error(`No dialog "${title}"`)
-  return match
-}
-
-function buttonIn(root: ParentNode, text: string): HTMLButtonElement {
-  const button = [...root.querySelectorAll<HTMLButtonElement>('button')].find(
-    (candidate) =>
-      candidate.textContent?.trim() === text || candidate.getAttribute('aria-label') === text,
-  )
-  if (!button) throw new Error(`No button "${text}"`)
-  return button
-}
-
-async function click(button: Element) {
-  ;(button as HTMLElement).click()
-  await flushPromises()
-}
-
 async function setInput(input: HTMLInputElement, value: string) {
   input.value = value
   input.dispatchEvent(new Event('input', { bubbles: true }))
@@ -218,12 +163,8 @@ function optionLabels(wrapper: VueWrapper, label: string): string[] {
 describe('AccountsPage', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
-    vi.stubGlobal('localStorage', {
-      getItem: vi.fn(() => null),
-      setItem: vi.fn(),
-      removeItem: vi.fn(),
-    })
-    mocks.desktop.value = true
+    stubLocalStorage()
+    viewport.desktop = true
     for (const mock of Object.values(mocks)) {
       if (typeof mock === 'function') mock.mockReset()
     }
@@ -235,8 +176,8 @@ describe('AccountsPage', () => {
     ])
     mocks.listHouseholds.mockResolvedValue([])
     mocks.listSharedAccounts.mockResolvedValue([])
-    mocks.createAccount.mockResolvedValue(account({}))
-    mocks.updateAccount.mockResolvedValue(account({}))
+    mocks.createAccount.mockResolvedValue(buildAccount({}))
+    mocks.updateAccount.mockResolvedValue(buildAccount({}))
     mocks.archiveAccount.mockResolvedValue(undefined)
     useAuthStore().user = {
       id: 1,
@@ -255,7 +196,7 @@ describe('AccountsPage', () => {
   })
 
   describe('list', () => {
-    it('lists only active accounts with one h1 per breakpoint and the design columns', async () => {
+    it('lists only active accounts under one h1 and the design columns, with the title as an h2 on desktop', async () => {
       const wrapper = await mountPage()
 
       expect(rowNames(wrapper)).toEqual([
@@ -267,8 +208,8 @@ describe('AccountsPage', () => {
         'USD cash',
         'Jamie wallet',
       ])
-      expect(wrapper.findAll('h1')).toHaveLength(2)
-      expect(wrapper.find('h1.lg\\:hidden').exists()).toBe(true)
+      expect(wrapper.findAll('h1')).toHaveLength(1)
+      expect(wrapper.find('h2').text()).toBe('Accounts')
       expect(wrapper.findAll('main thead th').map((th) => th.text())).toEqual([
         'Account',
         'Type',
@@ -494,7 +435,7 @@ describe('AccountsPage', () => {
       expect(wrapper.find('[aria-label="Rename account Daily account"]').exists()).toBe(false)
 
       await click(edit.element)
-      dialogByTitle('Rename Account')
+      dialogByTitle('Rename account')
       const icons = wrapper.findAllComponents(UIcon).map((icon) => icon.props('name'))
       expect(icons).toContain('i-lucide-text-cursor-input')
 
@@ -505,7 +446,7 @@ describe('AccountsPage', () => {
       const wrapper = await mountPage()
 
       await click(wrapper.get('[aria-label="Edit Daily account"]').element)
-      const dialog = dialogByTitle('Rename Account')
+      const dialog = dialogByTitle('Rename account')
       expect(dialog.textContent).toContain('Enter a new name for "Daily account".')
       const input = dialog.querySelector<HTMLInputElement>('input')!
       expect(input.value).toBe('Daily account')
@@ -524,7 +465,7 @@ describe('AccountsPage', () => {
       const wrapper = await mountPage()
 
       await click(wrapper.get('[aria-label="Edit Daily account"]').element)
-      const dialog = dialogByTitle('Rename Account')
+      const dialog = dialogByTitle('Rename account')
       await setInput(dialog.querySelector<HTMLInputElement>('input')!, '   ')
 
       expect(buttonIn(dialog, 'Save').disabled).toBe(true)
@@ -537,11 +478,11 @@ describe('AccountsPage', () => {
       const wrapper = await mountPage()
 
       await click(wrapper.get('[aria-label="Edit Daily account"]').element)
-      const dialog = dialogByTitle('Rename Account')
+      const dialog = dialogByTitle('Rename account')
       await setInput(dialog.querySelector<HTMLInputElement>('input')!, 'Everyday')
       await click(buttonIn(dialog, 'Save'))
 
-      expect(dialogByTitle('Rename Account').textContent).toContain('Failed to rename account.')
+      expect(dialogByTitle('Rename account').textContent).toContain('Failed to rename account.')
       expect(mocks.listAccounts).toHaveBeenCalledTimes(1)
 
       wrapper.unmount()
@@ -551,7 +492,7 @@ describe('AccountsPage', () => {
       const wrapper = await mountPage()
 
       await click(wrapper.get('[aria-label="Edit Daily account"]').element)
-      await click(buttonIn(dialogByTitle('Rename Account'), 'Cancel'))
+      await click(buttonIn(dialogByTitle('Rename account'), 'Cancel'))
 
       expect(mocks.updateAccount).not.toHaveBeenCalled()
       expect(dialogs()).toHaveLength(0)
@@ -566,7 +507,7 @@ describe('AccountsPage', () => {
 
       await click(wrapper.get('[aria-label="Archive account Daily account"]').element)
       expect(mocks.archiveAccount).not.toHaveBeenCalled()
-      const dialog = dialogByTitle('Archive Account')
+      const dialog = dialogByTitle('Archive account')
       expect(dialog.textContent).toContain('Archive "Daily account"?')
 
       await click(buttonIn(dialog, 'Archive account'))
@@ -584,7 +525,7 @@ describe('AccountsPage', () => {
       const wrapper = await mountPage()
 
       await click(wrapper.get('[aria-label="Archive account Daily account"]').element)
-      await click(buttonIn(dialogByTitle('Archive Account'), 'Cancel'))
+      await click(buttonIn(dialogByTitle('Archive account'), 'Cancel'))
 
       expect(mocks.archiveAccount).not.toHaveBeenCalled()
       expect(dialogs()).toHaveLength(0)
@@ -597,7 +538,7 @@ describe('AccountsPage', () => {
       const wrapper = await mountPage()
 
       await click(wrapper.get('[aria-label="Archive account Daily account"]').element)
-      await click(buttonIn(dialogByTitle('Archive Account'), 'Archive account'))
+      await click(buttonIn(dialogByTitle('Archive account'), 'Archive account'))
 
       expect(wrapper.get('[role="alert"]').text()).toContain('Account still has a balance')
       expect(dialogs()).toHaveLength(0)
@@ -612,7 +553,7 @@ describe('AccountsPage', () => {
       const wrapper = await mountPage()
 
       await click(wrapper.get('[aria-label="Archive account Daily account"]').element)
-      await click(buttonIn(dialogByTitle('Archive Account'), 'Archive account'))
+      await click(buttonIn(dialogByTitle('Archive account'), 'Archive account'))
 
       expect(wrapper.get('[role="alert"]').text()).toContain('Failed to archive account.')
 
@@ -625,7 +566,7 @@ describe('AccountsPage', () => {
       const wrapper = await mountPage()
 
       await click(wrapper.get('[aria-label="Archive account Daily account"]').element)
-      const confirm = buttonIn(dialogByTitle('Archive Account'), 'Archive account')
+      const confirm = buttonIn(dialogByTitle('Archive account'), 'Archive account')
       await click(confirm)
       await click(confirm)
 
@@ -643,14 +584,14 @@ describe('AccountsPage', () => {
   describe('create', () => {
     async function openCreate(wrapper: VueWrapper) {
       await click(buttonIn(wrapper.element as HTMLElement, 'New account'))
-      return dialogByTitle('Create Account')
+      return dialogByTitle('New account')
     }
 
     it('creates an account with the opening balance and reloads the page data', async () => {
       const wrapper = await mountPage()
       const dialog = await openCreate(wrapper)
 
-      expect(buttonIn(dialog, 'Create Account').disabled).toBe(true)
+      expect(buttonIn(dialog, 'Create').disabled).toBe(true)
       await setInput(
         dialog.querySelector<HTMLInputElement>('input[id$="-name"]')!,
         'Holiday savings',
@@ -659,8 +600,8 @@ describe('AccountsPage', () => {
         dialog.querySelector<HTMLInputElement>('input[id$="-initial-balance"]')!,
         '500',
       )
-      expect(buttonIn(dialog, 'Create Account').disabled).toBe(false)
-      await click(buttonIn(dialog, 'Create Account'))
+      expect(buttonIn(dialog, 'Create').disabled).toBe(false)
+      await click(buttonIn(dialog, 'Create'))
 
       expect(mocks.createAccount).toHaveBeenCalledTimes(1)
       expect(mocks.createAccount.mock.calls[0]![0]).toMatchObject({
@@ -694,9 +635,9 @@ describe('AccountsPage', () => {
       const dialog = await openCreate(wrapper)
 
       await setInput(dialog.querySelector<HTMLInputElement>('input[id$="-name"]')!, 'Holiday')
-      await click(buttonIn(dialog, 'Create Account'))
+      await click(buttonIn(dialog, 'Create'))
 
-      expect(dialogByTitle('Create Account').textContent).toContain('Failed to create account.')
+      expect(dialogByTitle('New account').textContent).toContain('Failed to create account.')
       expect(mocks.listAccounts).toHaveBeenCalledTimes(1)
 
       wrapper.unmount()
@@ -778,7 +719,7 @@ describe('AccountsPage', () => {
 
   describe('mobile', () => {
     beforeEach(() => {
-      mocks.desktop.value = false
+      viewport.desktop = false
     })
 
     it('shows a readable list with the summary and a sticky New account action', async () => {
@@ -817,7 +758,7 @@ describe('AccountsPage', () => {
       expect(panel.text()).toContain('Archive')
 
       await click(panel.get('[aria-label="Archive account Daily account"]').element)
-      await click(buttonIn(dialogByTitle('Archive Account'), 'Archive account'))
+      await click(buttonIn(dialogByTitle('Archive account'), 'Archive account'))
       expect(mocks.archiveAccount).toHaveBeenCalledWith('daily')
 
       wrapper.unmount()
@@ -853,7 +794,7 @@ describe('AccountsPage', () => {
 
       await click(buttonIn(document.body, 'New account'))
 
-      expect(dialogByTitle('Create Account')).toBeTruthy()
+      expect(dialogByTitle('New account')).toBeTruthy()
 
       wrapper.unmount()
     })

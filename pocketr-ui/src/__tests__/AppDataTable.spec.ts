@@ -5,8 +5,8 @@ import ui from '@nuxt/ui/vue-plugin'
 import UApp from '@nuxt/ui/components/App.vue'
 import USelect from '@nuxt/ui/components/Select.vue'
 import { i18n } from '@/i18n'
-import AppDataTable from '@/components/shared/AppDataTable.vue'
-import type { AppTableColumn, AppTablePagination } from '@/types/dataTable'
+import AppDataTable from '@/components/lists/AppDataTable.vue'
+import type { AppTableColumn, AppTablePagination } from '@/components/lists/dataTable'
 
 interface Item extends Record<string, unknown> {
   id: string
