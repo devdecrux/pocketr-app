@@ -2,10 +2,10 @@
 
 ## Project Structure & Module Organization
 - `pocketr-api/`: Kotlin + Spring Boot backend.
-  - Main code: `pocketr-api/src/main/kotlin/com/decrux/pocketr/api`
-  - Tests: `pocketr-api/src/test/kotlin`
+  - backend code: `pocketr-api/src/main/kotlin/com/decrux/pocketr/api`
+  - tests: `pocketr-api/src/test/kotlin/com/decrux/pocketr/api`
 - `pocketr-ui/`: Vue 3 + TypeScript frontend.
-  - App code: `pocketr-ui/src` (`api/`, `stores/`, `components/`, `utils/`)
+  - App code: `pocketr-ui/src`
   - Unit tests: `pocketr-ui/src/__tests__`
   - E2E tests: `pocketr-ui/e2e`
 - Root infrastructure/docs:
@@ -14,27 +14,15 @@
   - `docs/`, `bruno/` (API collection), `storage/`.
 
 ## Build, Test, and Development Commands
-- Start local infra (root): `docker compose -f docker-compose.dev.yaml up -d db traefik-reverse-proxy`
-- Stop local infra: `docker compose -f docker-compose.dev.yaml down`
-- Backend dev server: `cd pocketr-api && ./gradlew bootRun`
-- Backend checks:
-  - `./gradlew build` (compile, test, and package backend)
-  - `./gradlew test` (all tests)
-  - `./gradlew ktlintFormat` (fix Kotlin formatting)
-- Frontend dev server: `cd pocketr-ui && npm run dev`
-- Frontend checks:
-  - `npm run type-check`
-  - `npm run lint`
-  - `npm run test:unit`
-  - `npm run test:e2e`
-  - `npm run build`
+- As a final test step check with `./gradlew test` for broken tests
+- `./gradlew ktlintFormat` (fix Kotlin formatting)
 
 ## Coding Style & Naming Conventions
 - Kotlin: 4-space indentation, `PascalCase` classes, `camelCase` methods/properties.
 - Prefer constructor injection and focused services with explicit validation/authorization boundaries.
 - Make the smallest possible, reversible patches to existing functionality; avoid breaking changes.
 - Do not mix unrelated changes in the same patch/commit.
-- Preserving existing behavior is the priority, unless a change explicitly fixes a bug or security issue.
+- Preserving existing behavior is the priority, unless a change explicitly fixes a bug or security issue, or explicitly wanted.
 - Keep backend and frontend contracts synchronized; API/DTO/schema changes must update both sides together.
 - Apply all rules in **Security & Configuration Tips** to every change; those requirements are high priority.
 - Database schema changes are allowed; Flyway/Liquibase migrations are not required in this repo because the database can be rebuilt on next startup.
@@ -50,18 +38,18 @@
 - Run format/lint tools before opening a PR.
 
 ## Agent Startup, Context & Output
-- `AGENTS.md` has higher priority than task-specific plans/docs/files. If there is any conflict, follow `AGENTS.md`.
+- `AGENTS.md` has higher priority than task-specific plans/docs/files. If there is any conflict, follow `AGENTS.md` or ask the user.
 - Treat `AGENTS.md` and task-relevant files as the single source of truth; check them first before spending tokens on broad codebase exploration.
-- At the start of every Codex/Claude run (including multi-agent runs), explicitly confirm that `AGENTS.md` and all task-relevant files are loaded in context. Show the confirmation only once at the start of codex in the repository.
+- At the start of every Codex/Claude run (including multi-agent runs), explicitly confirm that `AGENTS.md` and all task-relevant files are loaded in context. Show the confirmation only once at the start of the agent in the repository.
 - Do not repeatedly reconfirm `AGENTS.md` usage during the same run; the initial confirmation is sufficient.
 - Use only the smallest relevant set of files in context to improve signal quality and reduce token usage.
 - If required files are missing from context, load them before proposing or applying changes.
-- Keep responses concise: avoid large raw outputs and provide a single summarized paragraph explaining what was changed, where, and why.
+- Keep responses concise: avoid large raw outputs and provide a single summarized paragraph explaining what was changed, where, and why. There is already a plugin called caveman being used. It takes precedence.
 
 ## Testing Guidelines
 - Backend: JUnit 5 + Mockito (`spring-boot-starter-*-test`).
 - Frontend: Vitest (unit) + Playwright (e2e).
-- Add/adjust tests for changed behavior, especially service-layer validation and permission logic.
+- Add meaningful unit or integration tests in both backend and frontend. Creating a test for each small change is strongly unwanted. Tests bringing real value and code quality will be respected.
 - Use targeted runs for speed, e.g. `./gradlew test --tests "com.decrux.pocketr.api.services.ledger.*"`.
 
 ## Commit & Pull Request Guidelines
@@ -69,7 +57,7 @@
 - Release automation treats `feat` as a minor release, `BREAKING CHANGE:` footers or `!` markers as major releases, and other allowed Conventional Commit types as patch releases.
 - The `master` branch is tagged automatically after merges; GitHub releases are built manually from a selected tag.
 - Keep commits focused to one concern.
-- `git push *` commands needs to explicitly allowed by the user. You don't have permission to execute such commands.
+- `git commit *` or `git push *` commands needs to explicitly allowed by the user. You don't have permission to execute such commands.
 - PRs should include:
   - What changed and why
   - Validation steps/commands run
@@ -80,5 +68,5 @@
 - Never commit secrets.
 - Create a local `.env` manually only if you want to override the optional pgAdmin bootstrap defaults.
 - Treat security-sensitive paths as high-risk: authentication/authorization, input validation, redirects, and infrastructure exposure.
-- Data integrity, data security, and exposure prevention are top priority for new features and maintenance across frontend, backend, and infrastructure.
-- Apply security best practices by default (e.g., SQL injection prevention, transport security/MITM risk reduction, secure auth/session handling, and least-privilege access).
+- Data integrity, data security, and exposure prevention are top priority for new or existing features, maintenance across frontend, backend, and infrastructure.
+- Apply security best practices by default (e.g., SQL injection prevention, transport security/MITM risk reduction, secure auth/session handling, and least-privilege access) and all related practices not mentioned here.
