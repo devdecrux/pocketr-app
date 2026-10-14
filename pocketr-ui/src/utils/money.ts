@@ -1,3 +1,6 @@
+/** The currency Pocketr shows large and preselects: EUR. Other currencies come after it. */
+export const PRIMARY_CURRENCY = 'EUR'
+
 /**
  * Format a minor-unit integer amount to a display string.
  * e.g. formatMinor(4500, 'EUR', 2) => '45.00'
@@ -21,6 +24,17 @@ export function formatMinor(amountMinor: number, currencyCode: string, minorUnit
     minimumFractionDigits: minorUnit,
     maximumFractionDigits: minorUnit,
   }).format(value)
+}
+
+/**
+ * `formatMinor` with the currency's minor unit looked up, e.g. through `currencyStore.getMinorUnit`.
+ */
+export function formatMoney(
+  amountMinor: number,
+  currencyCode: string,
+  getMinorUnit: (code: string) => number,
+): string {
+  return formatMinor(amountMinor, currencyCode, getMinorUnit(currencyCode))
 }
 
 /**

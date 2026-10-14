@@ -39,14 +39,14 @@ describe('Bulgarian locale', () => {
     }
   })
 
-  it('shows Bulgarian settings text after switching locale', () => {
+  it('shows Bulgarian settings text after switching locale', async () => {
     try {
-      setLocale('bg')
+      await setLocale('bg')
 
-      expect(i18n.global.t('views.settings.profile.title')).toBe('Настройки на профила')
+      expect(i18n.global.t('views.settings.profile.title')).toBe('Профил')
       expect(i18n.global.t('common.actions.save')).toBe('Запази')
     } finally {
-      setLocale('en')
+      await setLocale('en')
     }
   })
 })

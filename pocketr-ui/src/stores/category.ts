@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import { HTTPError } from 'ky'
+import { resolveErrorMessage } from '@/api/errors'
 import {
   createCategory as apiCreateCategory,
   deleteCategory as apiDeleteCategory,
@@ -70,16 +70,6 @@ export const useCategoryStore = defineStore('category', () => {
       error.value = await resolveErrorMessage(nextError, translate('errors.categories.delete'))
       return false
     }
-  }
-
-  async function resolveErrorMessage(nextError: unknown, fallback: string): Promise<string> {
-    if (nextError instanceof HTTPError) {
-      const payload = await nextError.response.json<{ message?: string }>().catch(() => null)
-      if (payload?.message?.trim()) {
-        return payload.message.trim()
-      }
-    }
-    return fallback
   }
 
   function $reset(): void {

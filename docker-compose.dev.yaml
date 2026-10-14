@@ -48,7 +48,8 @@ services:
     image: traefik:v3.6.2
     container_name: pocketr-traefik
     ports:
-      - "127.0.0.1:80:80"
+      # Traefik is LAN-exposed (all interfaces) so a phone on the same Wi-Fi can reach the dev app.
+      - "80:80"
     restart: unless-stopped
     # Keep privilege escalation disabled; routing model remains unchanged.
     security_opt:

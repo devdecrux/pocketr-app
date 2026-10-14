@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 import { archiveAccount as deleteAccount, listAccounts } from '@/api/accounts'
-import type { Account, AccountType } from '@/types/ledger'
+import type { Account } from '@/types/ledger'
 import { useModeStore } from '@/stores/mode'
 import { translate } from '@/i18n/translate'
 
@@ -9,16 +9,6 @@ export const useAccountStore = defineStore('account', () => {
   const accounts = ref<Account[]>([])
   const isLoading = ref(false)
   const error = ref<string | null>(null)
-
-  const accountsByType = computed(() => {
-    const map = new Map<AccountType, Account[]>()
-    for (const a of accounts.value) {
-      const list = map.get(a.type) ?? []
-      list.push(a)
-      map.set(a.type, list)
-    }
-    return map
-  })
 
   const accountMap = computed(() => {
     const map = new Map<string, Account>()
@@ -65,7 +55,6 @@ export const useAccountStore = defineStore('account', () => {
     accounts,
     isLoading,
     error,
-    accountsByType,
     accountMap,
     activeAccounts,
     archiveAccount,

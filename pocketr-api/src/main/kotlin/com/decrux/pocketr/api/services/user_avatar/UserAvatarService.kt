@@ -58,6 +58,7 @@ class UserAvatarService(
 
         persistedUser.avatarPath = storedPath
         val savedUser = userRepository.save(persistedUser)
+        authenticatedUser.avatarPath = savedUser.avatarPath
         return toUserDto(savedUser)
     }
 

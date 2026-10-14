@@ -1,30 +1,41 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, defineAsyncComponent } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRoute } from 'vue-router'
-import Sidebar from '@/components/Sidebar.vue'
-import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar'
-import { useAppTheme } from '@/composables/useAppTheme'
-import { useSessionManager } from '@/composables/useSessionManager'
+import { useAppTheme } from '@/layout/useAppTheme'
+import { useDocumentMeta } from '@/layout/useDocumentMeta'
+import { useSessionManager } from '@/views/auth/useSessionManager'
+import { uiLocaleFor } from '@/i18n'
+import AppStartupLoading from '@/layout/AppStartupLoading.vue'
+
+// Lazy so public (auth-layout) pages do not download the sidebar and profile-menu code.
+const AppSidebar = defineAsyncComponent(() => import('@/layout/AppSidebar.vue'))
+
+const { locale } = useI18n()
+const uiLocale = computed(() => uiLocaleFor(locale.value))
 
 const route = useRoute()
-
+// Until the first navigation (session check, guards) resolves nothing is known about the layout:
+// rendering the signed-in shell then would make guest pages download it. Do not await
+// `router.isReady()` in main.ts instead: the route chunks import the entry module, so a top-level
+// await there deadlocks the first navigation.
+const isRouteResolved = computed(() => route.matched.length > 0)
 const isAuthLayout = computed(() => route.meta.layout === 'auth')
 
 useAppTheme()
+useDocumentMeta()
 useSessionManager()
 </script>
 
 <template>
-  <div class="h-dvh overflow-hidden">
-    <RouterView v-if="isAuthLayout" />
-    <SidebarProvider v-else class="app-shell h-full">
-      <Sidebar />
-      <div class="app-shell-content flex min-h-0 flex-1 flex-col">
-        <SidebarTrigger class="app-shell-trigger lg:hidden" />
-        <main class="app-shell-main min-h-0 flex-1 overflow-y-auto p-2">
-          <RouterView />
-        </main>
-      </div>
-    </SidebarProvider>
-  </div>
+  <UApp :locale="uiLocale">
+    <template v-if="isRouteResolved">
+      <RouterView v-if="isAuthLayout" />
+      <UDashboardGroup v-else unit="px" :persistent="false" class="bg-(--pocketr-bg-main)">
+        <AppSidebar />
+        <RouterView />
+      </UDashboardGroup>
+    </template>
+    <AppStartupLoading v-else />
+  </UApp>
 </template>

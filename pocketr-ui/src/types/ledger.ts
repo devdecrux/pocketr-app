@@ -5,7 +5,7 @@ export interface Currency {
 }
 
 export type AccountType = 'ASSET' | 'LIABILITY' | 'INCOME' | 'EXPENSE' | 'EQUITY'
-export type AccountStatus = 'ACTIVE' | 'ARCHIVED'
+type AccountStatus = 'ACTIVE' | 'ARCHIVED'
 
 export interface Account {
   id: string
@@ -63,7 +63,7 @@ export interface LedgerSplit {
   categoryTagName?: string | null
 }
 
-export interface TxnCreator {
+interface TxnCreator {
   firstName: string | null
   lastName: string | null
   email: string

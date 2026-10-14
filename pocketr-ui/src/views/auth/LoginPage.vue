@@ -1,17 +1,29 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, useTemplateRef } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
-import { TriangleAlert } from 'lucide-vue-next'
 import { primeCsrfToken } from '@/api/csrf'
 import { api } from '@/api/http'
+import FormMessage from '@/components/fields/FormMessage.vue'
+import PasswordInput from '@/views/auth/PasswordInput.vue'
+import AppAuthLayout from '@/layout/AppAuthLayout.vue'
+import {
+  authFieldsClass,
+  authFieldUi,
+  authLinkClass,
+  authLinkRowClass,
+  authMarkClass,
+  authMarkIconClass,
+  authSubmitClass,
+  authSubtitleClass,
+  authTitleClass,
+} from '@/styles/auth'
 import { useAuthStore } from '@/stores/auth'
-import { sanitizeInternalRedirect } from '@/utils/sanitizeRedirect'
+import { sanitizeInternalRedirect } from '@/views/auth/sanitizeRedirect'
 import type { AuthUser } from '@/types/auth'
-import { AppFormField, AuthPageShell } from '@/components/app'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
+import { APP_ICONS } from '@/utils/appearance/appIcons'
 
+const { t } = useI18n()
 const authStore = useAuthStore()
 const route = useRoute()
 const router = useRouter()
@@ -22,11 +34,23 @@ const email = ref('')
 const password = ref('')
 const isAlert = ref(false)
 const isSubmitting = ref(false)
+const passwordInput = useTemplateRef<{ inputRef: HTMLInputElement | null; hide: () => void }>(
+  'passwordInput',
+)
+
+/**
+ * One message for both fields: shown (and announced) once in the form message slot. Each field keeps
+ * a visually hidden copy so `aria-invalid` fields are described by it.
+ */
+const credentialsError = computed(() =>
+  isAlert.value ? t('views.auth.login.errors.invalidCredentials') : undefined,
+)
 
 async function login(event: SubmitEvent): Promise<void> {
   const form = event.currentTarget
   if (!(form instanceof HTMLFormElement)) return
 
+  // Read the submitted DOM values: browser/password-manager autofill may not have synced v-model yet.
   const formData = new FormData(form)
   const body = new URLSearchParams({
     email: String(formData.get('email') ?? '').trim(),
@@ -44,7 +68,8 @@ async function login(event: SubmitEvent): Promise<void> {
     })
 
     const user = await api.get('/api/v1/user').json<AuthUser>()
-    authStore.setUser(user)
+    await authStore.setUser(user)
+    passwordInput.value?.hide()
 
     const redirectTarget = sanitizeInternalRedirect(route.query.redirect) ?? '/dashboard'
     await router.push(redirectTarget)
@@ -53,56 +78,89 @@ async function login(event: SubmitEvent): Promise<void> {
   } finally {
     isSubmitting.value = false
   }
+
+  // The disabled (loading) submit button drops focus; return keyboard users to the form.
+  if (isAlert.value && (!document.activeElement || document.activeElement === document.body)) {
+    passwordInput.value?.inputRef?.focus()
+  }
 }
 </script>
 
 <template>
-  <AuthPageShell>
-    <Card class="w-full max-w-sm">
-      <CardHeader>
-        <CardTitle class="text-2xl">{{ $t('views.auth.login.title') }}</CardTitle>
-        <CardDescription>{{ $t('views.auth.login.description') }}</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <div
-          v-if="isSessionExpired"
-          class="mb-4 flex items-center gap-2 rounded-md border border-border bg-muted px-4 py-3 text-sm text-foreground shadow-sm"
-        >
-          <TriangleAlert class="h-4 w-4 shrink-0 text-destructive" />
-          <span>{{ $t('views.auth.login.errors.sessionExpired') }}</span>
-        </div>
-        <form @submit.prevent="login">
-          <div class="grid gap-4">
-            <AppFormField :label="$t('common.fields.email')" control-id="email">
-              <Input
-                id="email"
-                v-model="email"
-                name="email"
-                type="email"
-                :placeholder="$t('common.formHints.email')"
-                required
-              />
-            </AppFormField>
-            <AppFormField :label="$t('common.fields.password')" control-id="password">
-              <Input id="password" v-model="password" name="password" type="password" required />
-            </AppFormField>
+  <AppAuthLayout :motto="false">
+    <div :class="authMarkClass" aria-hidden="true">
+      <UIcon name="i-lucide-user" :class="authMarkIconClass" />
+    </div>
 
-            <p v-if="isAlert" class="text-sm text-destructive">
-              {{ $t('views.auth.login.errors.invalidCredentials') }}
-            </p>
+    <h1 :class="authTitleClass">
+      {{ t('views.auth.login.title') }}
+    </h1>
+    <p :class="authSubtitleClass">
+      {{ t('components.authLayout.motto') }}
+    </p>
 
-            <Button type="submit" :disabled="isSubmitting" class="w-full">
-              {{ isSubmitting ? $t('common.feedback.loggingIn') : $t('views.auth.login.submit') }}
-            </Button>
-          </div>
-        </form>
-        <div class="mt-4 text-center text-sm">
-          {{ $t('views.auth.login.links.registerPrompt') }}
-          <RouterLink to="/registration" class="text-(--app-button-fg) underline">
-            {{ $t('common.actions.signUp') }}
-          </RouterLink>
-        </div>
-      </CardContent>
-    </Card>
-  </AuthPageShell>
+    <form
+      class="mt-[44px] sm:mt-(--pocketr-auth-form-gap)"
+      :class="authFieldsClass"
+      @submit.prevent="login"
+    >
+      <FormMessage v-if="credentialsError" tone="error" :message="credentialsError" />
+      <FormMessage
+        v-else-if="isSessionExpired"
+        tone="warning"
+        :message="t('views.auth.login.errors.sessionExpired')"
+      />
+      <UFormField
+        :label="t('common.fields.email')"
+        name="email"
+        :error="credentialsError"
+        :ui="{ ...authFieldUi, error: 'sr-only' }"
+      >
+        <UInput
+          id="email"
+          v-model="email"
+          name="email"
+          type="email"
+          autocomplete="username"
+          :placeholder="t('common.formHints.emailPlaceholder')"
+          required
+          size="lg"
+          :icon="APP_ICONS.email"
+          class="w-full"
+        />
+      </UFormField>
+
+      <UFormField
+        :label="t('common.fields.password')"
+        name="password"
+        :error="credentialsError"
+        :ui="{ ...authFieldUi, error: 'sr-only' }"
+      >
+        <PasswordInput
+          id="password"
+          ref="passwordInput"
+          v-model="password"
+          name="password"
+          autocomplete="current-password"
+          required
+        />
+      </UFormField>
+
+      <UButton
+        type="submit"
+        size="xl"
+        block
+        :loading="isSubmitting"
+        :label="isSubmitting ? t('common.feedback.loggingIn') : t('common.actions.signIn')"
+        :class="authSubmitClass"
+      />
+    </form>
+
+    <p :class="authLinkRowClass">
+      {{ t('views.auth.login.links.registerPrompt') }}
+      <ULink to="/registration" :class="authLinkClass">
+        {{ t('views.auth.login.links.register') }}
+      </ULink>
+    </p>
+  </AppAuthLayout>
 </template>

@@ -23,9 +23,9 @@ export const useAuthStore = defineStore('auth', () => {
     return fullName || user.value.email
   })
 
-  function setUser(nextUser: AuthUser): void {
+  async function setUser(nextUser: AuthUser): Promise<void> {
     user.value = nextUser
-    setLocale(nextUser.language)
+    await setLocale(nextUser.language)
   }
 
   function clearUser(): void {
@@ -40,7 +40,7 @@ export const useAuthStore = defineStore('auth', () => {
 
     try {
       const nextUser = await api.get('/api/v1/user').json<AuthUser>()
-      setUser(nextUser)
+      await setUser(nextUser)
     } catch {
       clearUser()
     } finally {

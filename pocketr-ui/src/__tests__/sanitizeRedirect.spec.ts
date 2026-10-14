@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { sanitizeInternalRedirect } from '../utils/sanitizeRedirect'
+import { sanitizeInternalRedirect } from '../views/auth/sanitizeRedirect'
 
 describe('sanitizeInternalRedirect', () => {
   it('accepts a valid internal route', () => {
@@ -53,6 +53,17 @@ describe('sanitizeInternalRedirect', () => {
 
   it('accepts routes with hash fragments', () => {
     expect(sanitizeInternalRedirect('/accounts#section')).toBe('/accounts#section')
+  })
+
+  it.each(['/\\evil.example', '\\\\evil.example', '/foo\\bar'])(
+    'rejects redirects containing a backslash: %s',
+    (redirect) => {
+      expect(sanitizeInternalRedirect(redirect)).toBeNull()
+    },
+  )
+
+  it('still accepts internal routes with query params after the backslash check', () => {
+    expect(sanitizeInternalRedirect('/transactions?page=1')).toBe('/transactions?page=1')
   })
 
   it('rejects relative path without leading slash', () => {
