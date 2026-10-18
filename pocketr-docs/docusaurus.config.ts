@@ -8,6 +8,15 @@ const config: Config = {
   title: 'Pocketr',
   tagline: 'Personal finance tracking for everyday decisions',
   favicon: 'img/favicon.ico',
+  headTags: [16, 32, 48].map((size) => ({
+    tagName: 'link',
+    attributes: {
+      rel: 'icon',
+      type: 'image/png',
+      href: `/img/favicon-${size}x${size}.png`,
+      sizes: `${size}x${size}`,
+    },
+  })),
 
   // Future flags, see https://docusaurus.io/docs/api/docusaurus-config#future
   future: {
@@ -80,8 +89,9 @@ const config: Config = {
       title: 'Pocketr',
       logo: {
         alt: 'Pocketr Logo',
-        src: 'img/logo.svg',
-        srcDark: 'img/logo-dark.svg',
+        src: 'img/pocketr-logo-64x64.png',
+        width: 32,
+        height: 32,
       },
       items: [
         {
