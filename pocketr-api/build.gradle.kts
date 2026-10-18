@@ -42,6 +42,10 @@ extra["jackson-bom.version"] = "3.1.8"
 extra["tomcat.version"] = "11.0.27"
 extra["postgresql.version"] = "42.7.14"
 
+// CVE-2026-104721 is fixed only in Logback 1.6.x, while Spring Boot 4.1 still manages the 1.5.x line.
+// TODO: Remove this override once Spring Boot manages Logback 1.6.5 or newer.
+extra["logback.version"] = "1.6.5"
+
 dependencies {
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
     implementation("org.springframework.boot:spring-boot-starter-flyway")
