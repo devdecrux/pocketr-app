@@ -8,6 +8,7 @@ plugins {
     kotlin("plugin.jpa") version "2.4.21"
     id("org.jlleitschuh.gradle.ktlint") version "14.2.0"
     kotlin("plugin.lombok") version "2.4.21"
+    jacoco
 }
 
 group = "com.decrux"
@@ -130,4 +131,16 @@ tasks.register("lintFix") {
 
 tasks.withType<Test> {
     useJUnitPlatform()
+}
+
+tasks.test {
+    finalizedBy(tasks.jacocoTestReport)
+}
+
+tasks.jacocoTestReport {
+    dependsOn(tasks.test)
+    reports {
+        xml.required = true
+        html.required = false
+    }
 }
