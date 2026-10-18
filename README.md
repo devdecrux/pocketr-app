@@ -1,7 +1,12 @@
 <div align="center">
   <img src="pocketr-ui/public/pocketr-logo-256x256.png" alt="Pocketr logo" width="120" height="120" /><br />
   <strong><font size="6">Pocketr</font></strong><br />
-  <strong>Simple on the surface. Solid underneath.</strong>
+  <strong>Simple on the surface. Solid underneath.</strong><br /><br />
+  <a href="https://sonarcloud.io/summary/new_code?id=devdecrux_pocketr-app"><img src="https://sonarcloud.io/api/project_badges/measure?project=devdecrux_pocketr-app&metric=alert_status" alt="Quality Gate Status" /></a>
+  <a href="https://sonarcloud.io/summary/new_code?id=devdecrux_pocketr-app"><img src="https://sonarcloud.io/api/project_badges/measure?project=devdecrux_pocketr-app&metric=coverage" alt="Coverage" /></a>
+  <a href="https://sonarcloud.io/summary/new_code?id=devdecrux_pocketr-app"><img src="https://sonarcloud.io/api/project_badges/measure?project=devdecrux_pocketr-app&metric=security_rating" alt="Security Rating" /></a>
+  <a href="https://sonarcloud.io/summary/new_code?id=devdecrux_pocketr-app"><img src="https://sonarcloud.io/api/project_badges/measure?project=devdecrux_pocketr-app&metric=reliability_rating" alt="Reliability Rating" /></a>
+  <a href="https://sonarcloud.io/summary/new_code?id=devdecrux_pocketr-app"><img src="https://sonarcloud.io/api/project_badges/measure?project=devdecrux_pocketr-app&metric=sqale_rating" alt="Maintainability Rating" /></a>
 </div>
 
 ## About Pocketr
