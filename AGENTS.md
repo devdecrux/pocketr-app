@@ -50,6 +50,23 @@
 - Backend: JUnit 5 + Mockito (`spring-boot-starter-*-test`).
 - Frontend: Vitest (unit) + Playwright (e2e).
 - Add meaningful unit or integration tests in both backend and frontend. Creating a test for each small change is strongly unwanted. Tests bringing real value and code quality will be respected.
+- Frontend tests exist to catch real bugs that can happen during development. Each test must check that our own business logic is correct, with finance logic as the top priority.
+  - Before adding a test, ask: "Would this test fail because of a realistic bug in our code?" If not, do not write it.
+  - Write tests for:
+    - Financial logic: amounts in minor units, currency handling and totals, balances, transaction splits (debit/credit sides), rollover periods and date calculations.
+    - Validation rules: what a form or strategy accepts or rejects before sending a request.
+    - Requests: the payload and query params sent to the API.
+    - Failure handling: the app state after a request fails (nothing lost, nothing wrongly removed, the error is kept).
+    - Access rules: who can reach or change what, based on role, household membership and mode.
+    - Configuration that is easy to break: routes, auth guards, i18n locale loading and message parity.
+  - Do not write tests for:
+    - Framework or library behaviour (Vue, Nuxt, Nuxt UI, Tailwind or any other dependency), such as modals or drawers opening and closing, tabs switching or keyboard shortcuts. Proving their product works is their job, not ours.
+    - CSS, HTML or visual details: classes, colours/hex values, layout, responsive variants, markup structure. A test that checks whether a background is black or orange has no business value.
+    - Static UI details: rendered text and labels, empty states, ARIA attributes, focus handling, or `disabled` attributes (unless the `disabled` state enforces a business rule).
+    - Very small details, or logic already covered by another test.
+  - How to write them:
+    - Prefer testing extracted logic (utils, composables, strategies, stores) over mounting whole pages.
+    - Assert on behaviour (requests sent, emitted values, computed results, navigation targets), not on markup or wording.
 - Use targeted runs for speed, e.g. `./gradlew test --tests "com.decrux.pocketr.api.services.ledger.*"`.
 
 ## Commit & Pull Request Guidelines
