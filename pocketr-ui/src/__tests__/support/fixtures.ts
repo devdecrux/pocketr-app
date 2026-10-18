@@ -5,14 +5,16 @@ import type { AuthUser } from '@/types/auth'
 import type { Household, HouseholdAccountShare, HouseholdSummary } from '@/types/household'
 import type { Account, AccountBalance, CategoryTag, Currency, LedgerSplit, LedgerTxn, MonthlyReportEntry, PagedResponse } from '@/types/ledger'
 
-/** A ky `HTTPError` whose body is the backend's `{ message }` payload. */
+/** A ky `HTTPError` whose body is the backend's `{ message }` payload (exposed as `error.data`, as ky does). */
 export function httpError(message: string, status = 400): HTTPError {
   const request = new Request('http://localhost/api')
   const response = new Response(JSON.stringify({ message }), {
     status,
     headers: { 'Content-Type': 'application/json' },
   })
-  return new HTTPError(response, request, {} as never)
+  const error = new HTTPError(response, request, {} as never)
+  error.data = { message }
+  return error
 }
 
 export const CURRENCIES: Currency[] = [

@@ -4,7 +4,7 @@ import vueDevTools from 'vite-plugin-vue-devtools'
 import ui from '@nuxt/ui/vite'
 import os from 'node:os'
 import path from 'node:path'
-import { uiTheme } from './src/styles/theme'
+import { uiTheme } from './src/styles/theme.ts'
 
 const traefikUrl = process.env.VITE_TRAEFIK_URL ?? 'http://localhost'
 
@@ -55,7 +55,7 @@ export default defineConfig({
   ],
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, './src'),
+      '@': path.resolve(import.meta.dirname, './src'),
     },
   },
   build: {

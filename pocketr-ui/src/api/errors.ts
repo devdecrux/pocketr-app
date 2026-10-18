@@ -6,6 +6,8 @@ import { HTTPError } from 'ky'
  */
 export async function resolveErrorMessage(error: unknown, fallback: string): Promise<string> {
   if (!(error instanceof HTTPError)) return fallback
-  const payload = await error.response.json<{ message?: string }>().catch(() => null)
-  return payload?.message?.trim() || fallback
+  // Ky consumes the response body itself and exposes the parsed JSON payload as `error.data`.
+  const payload = error.data as { message?: unknown } | string | undefined
+  if (typeof payload !== 'object' || payload === null) return fallback
+  return (typeof payload.message === 'string' && payload.message.trim()) || fallback
 }

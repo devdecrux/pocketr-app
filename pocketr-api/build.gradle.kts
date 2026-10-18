@@ -1,13 +1,13 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
-    kotlin("jvm") version "2.3.10"
-    kotlin("plugin.spring") version "2.3.10"
-    id("org.springframework.boot") version "4.0.2"
+    kotlin("jvm") version "2.4.21"
+    kotlin("plugin.spring") version "2.4.21"
+    id("org.springframework.boot") version "4.1.1"
     id("io.spring.dependency-management") version "1.1.7"
-    kotlin("plugin.jpa") version "2.3.10"
-    id("org.jlleitschuh.gradle.ktlint") version "12.1.1"
-    kotlin("plugin.lombok") version "2.3.10"
+    kotlin("plugin.jpa") version "2.4.21"
+    id("org.jlleitschuh.gradle.ktlint") version "14.2.0"
+    kotlin("plugin.lombok") version "2.4.21"
 }
 
 group = "com.decrux"
@@ -32,8 +32,6 @@ repositories {
     mavenCentral()
 }
 
-val testcontainersVersion = "1.21.4"
-
 dependencyLocking {
     lockAllConfigurations()
 }
@@ -55,8 +53,8 @@ dependencies {
     testImplementation("org.springframework.boot:spring-boot-starter-webmvc-test")
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit5")
     testImplementation(kotlin("test"))
-    testImplementation("org.testcontainers:junit-jupiter:$testcontainersVersion")
-    testImplementation("org.testcontainers:postgresql:$testcontainersVersion")
+    testImplementation("org.testcontainers:testcontainers-junit-jupiter")
+    testImplementation("org.testcontainers:testcontainers-postgresql")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 
@@ -65,7 +63,7 @@ kotlin {
 
     compilerOptions {
         jvmTarget.set(JvmTarget.JVM_25)
-        freeCompilerArgs.addAll("-Xjsr305=strict", "-Xannotation-default-target=param-property")
+        freeCompilerArgs.addAll("-Xjsr305=strict")
     }
 }
 
@@ -91,6 +89,16 @@ ktlint {
     }
     filter {
         exclude("**/generated/**")
+    }
+}
+
+// ktlint 1.8.0 breaks on the Kotlin 2.4 compiler ("Extensions storage is not registered"), so its own classpath stays on 2.3.x.
+// TODO: Remove this block once a ktlint release supports Kotlin 2.4, and bump `ktlint { version }` to it.
+configurations.matching { it.name.startsWith("ktlint") }.configureEach {
+    resolutionStrategy.eachDependency {
+        if (requested.group == "org.jetbrains.kotlin") {
+            useVersion("2.3.21")
+        }
     }
 }
 

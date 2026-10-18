@@ -20,7 +20,7 @@ export const api = ky.create({
   credentials: 'include',
   hooks: {
     beforeRequest: [
-      (request) => {
+      ({ request }) => {
         const xsrfToken = getCookieValue('XSRF-TOKEN')
 
         if (xsrfToken) {
@@ -29,7 +29,7 @@ export const api = ky.create({
       },
     ],
     afterResponse: [
-      (_request, _options, response) => {
+      ({ response }) => {
         if (response.status === 401) {
           const pinia = getActivePinia()
           if (pinia) {

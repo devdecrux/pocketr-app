@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import { useCurrencyStore } from '@/stores/currency'
 import type { CurrencyAmount } from '@/utils/currencyTotals'
 import { formatMoney, PRIMARY_CURRENCY } from '@/utils/money'
@@ -8,7 +9,7 @@ import { formatMoney, PRIMARY_CURRENCY } from '@/utils/money'
  * badges) with a caption, a skeleton while loading or an empty message. Mobile lays the icon left
  * of the text; desktop (1/5 width) puts it top right beside the label.
  */
-defineProps<{
+const props = defineProps<{
   label: string
   icon: string
   tone: 'success' | 'error'
@@ -20,6 +21,13 @@ defineProps<{
 }>()
 
 const currencyStore = useCurrencyStore()
+
+const primaryAmountMinor = computed(
+  () => props.amounts.find((amount) => amount.currency === PRIMARY_CURRENCY)?.amountMinor ?? 0,
+)
+const otherAmounts = computed(() =>
+  props.amounts.filter((amount) => amount.currency !== PRIMARY_CURRENCY),
+)
 
 const TONE_CLASSES = {
   success: { tile: 'bg-success/10', icon: 'text-(--pocketr-success-fg)' },
@@ -54,29 +62,19 @@ const TONE_CLASSES = {
         <p
           class="text-[28px] font-bold leading-9 tabular-nums text-highlighted lg:col-span-2 lg:text-[22px] lg:leading-8 lg:[overflow-wrap:anywhere]"
         >
-          {{
-            formatMoney(
-              amounts.find((amount) => amount.currency === PRIMARY_CURRENCY)?.amountMinor ?? 0,
-              PRIMARY_CURRENCY,
-              currencyStore.getMinorUnit,
-            )
-          }}
+          {{ formatMoney(primaryAmountMinor, PRIMARY_CURRENCY, currencyStore.getMinorUnit) }}
         </p>
         <p class="text-sm text-muted lg:col-span-2 lg:truncate">{{ caption }}</p>
-        <div
-          v-if="amounts.some((amount) => amount.currency !== PRIMARY_CURRENCY)"
-          class="flex flex-wrap gap-1.5 pt-1 lg:col-span-2"
-        >
-          <template v-for="amount in amounts" :key="amount.currency">
-            <UBadge
-              v-if="amount.currency !== PRIMARY_CURRENCY"
-              color="neutral"
-              variant="outline"
-              size="sm"
-            >
-              {{ formatMoney(amount.amountMinor, amount.currency, currencyStore.getMinorUnit) }}
-            </UBadge>
-          </template>
+        <div v-if="otherAmounts.length > 0" class="flex flex-wrap gap-1.5 pt-1 lg:col-span-2">
+          <UBadge
+            v-for="amount in otherAmounts"
+            :key="amount.currency"
+            color="neutral"
+            variant="outline"
+            size="sm"
+          >
+            {{ formatMoney(amount.amountMinor, amount.currency, currencyStore.getMinorUnit) }}
+          </UBadge>
         </div>
       </template>
     </div>
