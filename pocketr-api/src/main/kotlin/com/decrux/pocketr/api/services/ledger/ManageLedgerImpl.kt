@@ -260,7 +260,7 @@ class ManageLedgerImpl(
                     filter.householdId
                         ?: throw BadRequestException("householdId is required for household mode")
                 if (!manageHousehold.isActiveMember(hhId, userId)) {
-                    throw ForbiddenException("Not an active member of this household")
+                    throw ForbiddenException(NOT_ACTIVE_HOUSEHOLD_MEMBER)
                 }
                 val sharedAccountIds = manageHousehold.getSharedAccountIds(hhId)
                 if (sharedAccountIds.isEmpty()) {
@@ -316,7 +316,7 @@ class ManageLedgerImpl(
 
         if (householdId != null) {
             if (!manageHousehold.isActiveMember(householdId, userId)) {
-                throw ForbiddenException("Not an active member of this household")
+                throw ForbiddenException(NOT_ACTIVE_HOUSEHOLD_MEMBER)
             }
             val sharedAccountIds = manageHousehold.getSharedAccountIds(householdId)
             if (accounts.any { it.owner?.userId != userId && it.id !in sharedAccountIds }) {
@@ -366,7 +366,7 @@ class ManageLedgerImpl(
         // In household mode, allow owned or shared accounts after membership is verified.
         if (householdId != null) {
             if (!manageHousehold.isActiveMember(householdId, userId)) {
-                throw ForbiddenException("Not an active member of this household")
+                throw ForbiddenException(NOT_ACTIVE_HOUSEHOLD_MEMBER)
             }
             if (account.owner?.userId != userId && !manageHousehold.isAccountShared(householdId, accountId)) {
                 throw ForbiddenException("Account is not shared into this household")
@@ -747,6 +747,7 @@ class ManageLedgerImpl(
 
     private companion object {
         const val USER_ID_MUST_NOT_BE_NULL = "User ID must not be null"
+        const val NOT_ACTIVE_HOUSEHOLD_MEMBER = "Not an active member of this household"
         private val logger = LoggerFactory.getLogger(ManageLedgerImpl::class.java)
         val DEBIT_NORMAL_TYPES = setOf(AccountType.ASSET, AccountType.EXPENSE)
         val TRANSFER_TYPES = setOf(AccountType.ASSET, AccountType.LIABILITY, AccountType.EQUITY)

@@ -8,8 +8,8 @@ import java.util.concurrent.atomic.AtomicReference
 fun interface CurrentBalanceSnapshotReadiness {
     fun isSnapshotAllowed(accountId: UUID): Boolean
 
-    object AlwaysAllowed : CurrentBalanceSnapshotReadiness {
-        override fun isSnapshotAllowed(accountId: UUID): Boolean = true
+    companion object {
+        val AlwaysAllowed = CurrentBalanceSnapshotReadiness { true }
     }
 }
 
