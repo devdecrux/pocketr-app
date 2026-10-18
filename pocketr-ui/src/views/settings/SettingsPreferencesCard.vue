@@ -67,7 +67,7 @@ async function savePreferences(): Promise<void> {
       await authStore.setUser(updatedUser)
       selectedLanguage.value = updatedUser.language
     } catch (error: unknown) {
-      errors.push(await resolveErrorMessage(error, translate('errors.language.update')))
+      errors.push(resolveErrorMessage(error, translate('errors.language.update')))
     }
   }
 
@@ -77,7 +77,7 @@ async function savePreferences(): Promise<void> {
       await authStore.setUser(updatedUser)
       selectedRolloverDay.value = updatedUser.rolloverDay
     } catch (error: unknown) {
-      errors.push(await resolveErrorMessage(error, translate('errors.rollover.update')))
+      errors.push(resolveErrorMessage(error, translate('errors.rollover.update')))
     }
   }
 

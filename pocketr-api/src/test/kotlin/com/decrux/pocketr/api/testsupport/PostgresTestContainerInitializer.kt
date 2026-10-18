@@ -3,7 +3,7 @@ package com.decrux.pocketr.api.testsupport
 import org.springframework.context.ApplicationContextInitializer
 import org.springframework.context.ConfigurableApplicationContext
 import org.springframework.test.context.support.TestPropertySourceUtils
-import org.testcontainers.containers.PostgreSQLContainer
+import org.testcontainers.postgresql.PostgreSQLContainer
 
 class PostgresTestContainerInitializer : ApplicationContextInitializer<ConfigurableApplicationContext> {
     override fun initialize(applicationContext: ConfigurableApplicationContext) {
@@ -22,7 +22,7 @@ class PostgresTestContainerInitializer : ApplicationContextInitializer<Configura
 
 private object TestPostgresContainer {
     val container =
-        KotlinPostgreSQLContainer("postgres:17.4-alpine")
+        PostgreSQLContainer("postgres:18.6-alpine3.24")
             .withDatabaseName("pocketr_test_db")
             .withUsername("pocketr_user")
             .withPassword("pocketr_password")
@@ -38,7 +38,3 @@ private object TestPostgresContainer {
         }
     }
 }
-
-private class KotlinPostgreSQLContainer(
-    imageName: String,
-) : PostgreSQLContainer<KotlinPostgreSQLContainer>(imageName)

@@ -1,4 +1,4 @@
-FROM node:22.15-alpine3.21 AS frontend-builder
+FROM node:24.22-alpine3.24 AS frontend-builder
 WORKDIR /vue-app
 COPY pocketr-ui/package-lock.json .
 COPY pocketr-ui/package.json .

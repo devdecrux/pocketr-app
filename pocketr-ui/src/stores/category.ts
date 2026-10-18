@@ -21,7 +21,7 @@ export const useCategoryStore = defineStore('category', () => {
     try {
       categories.value = await listCategories()
     } catch (nextError: unknown) {
-      error.value = await resolveErrorMessage(nextError, translate('errors.categories.load'))
+      error.value = resolveErrorMessage(nextError, translate('errors.categories.load'))
     } finally {
       isLoading.value = false
     }
@@ -35,7 +35,7 @@ export const useCategoryStore = defineStore('category', () => {
       categories.value = [...categories.value, created]
       return created
     } catch (nextError: unknown) {
-      error.value = await resolveErrorMessage(nextError, translate('errors.categories.create'))
+      error.value = resolveErrorMessage(nextError, translate('errors.categories.create'))
       return null
     }
   }
@@ -54,7 +54,7 @@ export const useCategoryStore = defineStore('category', () => {
       )
       return updated
     } catch (nextError: unknown) {
-      error.value = await resolveErrorMessage(nextError, translate('errors.categories.rename'))
+      error.value = resolveErrorMessage(nextError, translate('errors.categories.rename'))
       return null
     }
   }
@@ -67,7 +67,7 @@ export const useCategoryStore = defineStore('category', () => {
       categories.value = categories.value.filter((category) => category.id !== id)
       return true
     } catch (nextError: unknown) {
-      error.value = await resolveErrorMessage(nextError, translate('errors.categories.delete'))
+      error.value = resolveErrorMessage(nextError, translate('errors.categories.delete'))
       return false
     }
   }

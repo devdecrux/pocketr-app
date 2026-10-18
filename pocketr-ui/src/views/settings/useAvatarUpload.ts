@@ -78,7 +78,7 @@ export function useAvatarUpload() {
       success.value = translate('success.avatar.updated')
       return true
     } catch (nextError: unknown) {
-      error.value = await resolveErrorMessage(nextError, translate('errors.avatar.upload'))
+      error.value = resolveErrorMessage(nextError, translate('errors.avatar.upload'))
       return false
     } finally {
       isUploading.value = false

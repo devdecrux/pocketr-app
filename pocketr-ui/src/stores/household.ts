@@ -69,7 +69,7 @@ export const useHouseholdStore = defineStore('household', () => {
       }
       modeValidated.value = true
     } catch (nextError: unknown) {
-      error.value = await resolveErrorMessage(nextError, translate('errors.households.load'))
+      error.value = resolveErrorMessage(nextError, translate('errors.households.load'))
     } finally {
       isLoading.value = false
     }
@@ -94,7 +94,7 @@ export const useHouseholdStore = defineStore('household', () => {
     try {
       currentHousehold.value = await apiGetHousehold(id)
     } catch (nextError: unknown) {
-      error.value = await resolveErrorMessage(nextError, translate('errors.households.loadDetails'))
+      error.value = resolveErrorMessage(nextError, translate('errors.households.loadDetails'))
     } finally {
       isLoading.value = false
     }
@@ -110,7 +110,7 @@ export const useHouseholdStore = defineStore('household', () => {
       await loadHouseholds()
       return household
     } catch (nextError: unknown) {
-      error.value = await resolveErrorMessage(nextError, translate('errors.households.create'))
+      error.value = resolveErrorMessage(nextError, translate('errors.households.create'))
       return null
     } finally {
       isLoading.value = false
@@ -125,10 +125,7 @@ export const useHouseholdStore = defineStore('household', () => {
       await loadHousehold(householdId)
       return true
     } catch (nextError: unknown) {
-      error.value = await resolveErrorMessage(
-        nextError,
-        translate('errors.households.inviteMember'),
-      )
+      error.value = resolveErrorMessage(nextError, translate('errors.households.inviteMember'))
       return false
     }
   }
@@ -141,10 +138,7 @@ export const useHouseholdStore = defineStore('household', () => {
       await loadHouseholds()
       return true
     } catch (nextError: unknown) {
-      error.value = await resolveErrorMessage(
-        nextError,
-        translate('errors.households.acceptInvite'),
-      )
+      error.value = resolveErrorMessage(nextError, translate('errors.households.acceptInvite'))
       return false
     }
   }
@@ -159,7 +153,7 @@ export const useHouseholdStore = defineStore('household', () => {
       await loadHouseholds()
       return true
     } catch (nextError: unknown) {
-      error.value = await resolveErrorMessage(nextError, translate('errors.households.leave'))
+      error.value = resolveErrorMessage(nextError, translate('errors.households.leave'))
       return false
     }
   }
@@ -172,10 +166,7 @@ export const useHouseholdStore = defineStore('household', () => {
       await loadHouseholds()
       return true
     } catch (nextError: unknown) {
-      error.value = await resolveErrorMessage(
-        nextError,
-        translate('errors.households.updateRollover'),
-      )
+      error.value = resolveErrorMessage(nextError, translate('errors.households.updateRollover'))
       return false
     }
   }
@@ -186,7 +177,7 @@ export const useHouseholdStore = defineStore('household', () => {
     try {
       sharedAccounts.value = await apiListSharedAccounts(householdId)
     } catch (nextError: unknown) {
-      error.value = await resolveErrorMessage(
+      error.value = resolveErrorMessage(
         nextError,
         translate('errors.households.loadSharedAccounts'),
       )
@@ -201,10 +192,7 @@ export const useHouseholdStore = defineStore('household', () => {
       await loadSharedAccounts(householdId)
       return true
     } catch (nextError: unknown) {
-      error.value = await resolveErrorMessage(
-        nextError,
-        translate('errors.households.shareAccount'),
-      )
+      error.value = resolveErrorMessage(nextError, translate('errors.households.shareAccount'))
       return false
     }
   }
@@ -217,10 +205,7 @@ export const useHouseholdStore = defineStore('household', () => {
       await loadSharedAccounts(householdId)
       return true
     } catch (nextError: unknown) {
-      error.value = await resolveErrorMessage(
-        nextError,
-        translate('errors.households.unshareAccount'),
-      )
+      error.value = resolveErrorMessage(nextError, translate('errors.households.unshareAccount'))
       return false
     }
   }

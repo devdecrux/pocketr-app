@@ -6,7 +6,7 @@ import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.context.ContextConfiguration
 import org.springframework.test.context.TestPropertySource
 import org.springframework.test.context.support.TestPropertySourceUtils
-import org.testcontainers.containers.PostgreSQLContainer
+import org.testcontainers.postgresql.PostgreSQLContainer
 import kotlin.annotation.AnnotationRetention.RUNTIME
 import kotlin.annotation.AnnotationTarget.CLASS
 
@@ -40,7 +40,7 @@ class FlywayPostgresTestContainerInitializer : ApplicationContextInitializer<Con
 
 private object FlywayTestPostgresContainer {
     val container =
-        FlywayKotlinPostgreSQLContainer("postgres:17.4-alpine")
+        PostgreSQLContainer("postgres:18.6-alpine3.24")
             .withDatabaseName("pocketr_flyway_test_db")
             .withUsername("pocketr_user")
             .withPassword("pocketr_password")
@@ -56,7 +56,3 @@ private object FlywayTestPostgresContainer {
         }
     }
 }
-
-private class FlywayKotlinPostgreSQLContainer(
-    imageName: String,
-) : PostgreSQLContainer<FlywayKotlinPostgreSQLContainer>(imageName)

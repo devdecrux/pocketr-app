@@ -4,8 +4,12 @@
 {
   "extends": "@docusaurus/tsconfig",
   "compilerOptions": {
-    "baseUrl": ".",
-    "ignoreDeprecations": "6.0",
+    // TS 7 removed `baseUrl`, but @docusaurus/tsconfig still sets it, so it is unset here and `paths` re-declares `@site/*`.
+    // TODO: Remove `baseUrl` and `paths` once @docusaurus/tsconfig drops `baseUrl`.
+    "baseUrl": null,
+    "paths": {
+      "@site/*": ["./*"]
+    },
     "strict": true
   },
   "exclude": [".docusaurus", "build"]

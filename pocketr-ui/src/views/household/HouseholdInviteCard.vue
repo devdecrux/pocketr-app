@@ -51,10 +51,7 @@ async function handleInvite(): Promise<void> {
       inviteError.value = householdStore.error ?? translate('errors.households.sendInvitation')
     }
   } catch (error: unknown) {
-    inviteError.value = await resolveErrorMessage(
-      error,
-      translate('errors.households.sendInvitation'),
-    )
+    inviteError.value = resolveErrorMessage(error, translate('errors.households.sendInvitation'))
   } finally {
     isInviting.value = false
   }

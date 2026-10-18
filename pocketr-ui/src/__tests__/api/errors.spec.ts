@@ -10,7 +10,7 @@ function emptyBodyError(): HTTPError {
 
 describe('resolveErrorMessage', () => {
   it('returns the message of the backend error payload', async () => {
-    expect(await resolveErrorMessage(httpError('Account still has a balance'), 'Failed')).toBe(
+    expect(resolveErrorMessage(httpError('Account still has a balance'), 'Failed')).toBe(
       'Account still has a balance',
     )
   })
@@ -25,7 +25,7 @@ describe('resolveErrorMessage', () => {
       await Promise.all(
         Object.entries(cases).map(async ([label, error]) => [
           label,
-          await resolveErrorMessage(error, 'Failed'),
+          resolveErrorMessage(error, 'Failed'),
         ]),
       ),
     )

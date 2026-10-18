@@ -2,7 +2,7 @@ name: pocketr-dev
 
 services:
   db:
-    image: postgres:18.3-alpine3.23
+    image: postgres:18.6-alpine3.24
     container_name: pocketr-db
     ports:
       - "127.0.0.1:5432:5432"
@@ -17,7 +17,7 @@ services:
       - pocketr-network
 
   pgadmin:
-    image: dpage/pgadmin4:9.13.0
+    image: dpage/pgadmin4:9.18.0
     container_name: pocketr-pgadmin
     depends_on:
       - db
@@ -45,7 +45,7 @@ services:
       - pocketr-network
 
   traefik-reverse-proxy:
-    image: traefik:v3.6.2
+    image: traefik:v3.7.15
     container_name: pocketr-traefik
     ports:
       # Traefik is LAN-exposed (all interfaces) so a phone on the same Wi-Fi can reach the dev app.

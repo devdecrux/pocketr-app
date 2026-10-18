@@ -1,4 +1,4 @@
-import { FIELD_BASE_CLASS, MENU_CONTENT_CLASS, SELECT_CONTENT_CLASS } from './field'
+import { FIELD_BASE_CLASS, MENU_CONTENT_CLASS, SELECT_CONTENT_CLASS } from './field.ts'
 
 /** Every size of a Nuxt UI component, so a compound variant applies whichever `size` is set. */
 const ALL_SIZES = ['xs', 'sm', 'md', 'lg', 'xl']
