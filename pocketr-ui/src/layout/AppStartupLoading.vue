@@ -20,13 +20,12 @@ onBeforeUnmount(() => clearTimeout(timer))
 </script>
 
 <template>
-  <div
+  <output
     v-if="isVisible"
-    role="status"
     class="flex min-h-dvh flex-col items-center justify-center gap-4 bg-(--pocketr-bg-main)"
   >
     <img src="/pocketr-logo-128x128.png" width="64" height="64" alt="" class="size-16" />
     <UIcon :name="loadingIcon" class="size-6 text-muted motion-safe:animate-spin" />
     <span class="sr-only">{{ $t('common.feedback.loading') }}</span>
-  </div>
+  </output>
 </template>

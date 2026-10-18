@@ -33,18 +33,15 @@ function memberInitials(member: HouseholdMember): string {
   <UCard :ui="CARD_UI">
     <h3 :class="CARD_TITLE_CLASS">{{ t('views.householdSettings.tabs.members') }}</h3>
 
-    <div
+    <output
       v-if="!loaded"
-      role="status"
       :aria-label="t('views.householdSettings.members.loading')"
-      class="mt-3 space-y-3"
+      class="mt-3 block space-y-3"
     >
       <USkeleton v-for="index in 3" :key="index" class="h-10 w-full rounded-lg" />
-    </div>
-    <div
+    </output>
+    <section
       v-else-if="household?.members.length"
-      role="region"
-      tabindex="0"
       :aria-label="t('views.householdSettings.tabs.members')"
       :class="[SCROLL_AREA_CLASS, 'max-h-96']"
     >
@@ -86,7 +83,7 @@ function memberInitials(member: HouseholdMember): string {
           </div>
         </li>
       </ul>
-    </div>
+    </section>
     <p v-else :class="LIST_EMPTY_CLASS">
       {{ t('views.householdSettings.members.empty') }}
     </p>

@@ -24,7 +24,7 @@ class ManageCategoryImpl(
         dto: CreateCategoryDto,
         owner: User,
     ): CategoryDto {
-        val userId = requireNotNull(owner.userId) { "User ID must not be null" }
+        val userId = requireNotNull(owner.userId) { USER_ID_MUST_NOT_BE_NULL }
         val name = dto.name.trim()
 
         if (categoryTagRepository.existsByOwnerUserIdAndNameIgnoreCase(userId, name)) {
@@ -47,7 +47,7 @@ class ManageCategoryImpl(
 
     @Transactional(readOnly = true)
     override fun listCategories(owner: User): List<CategoryDto> {
-        val userId = requireNotNull(owner.userId) { "User ID must not be null" }
+        val userId = requireNotNull(owner.userId) { USER_ID_MUST_NOT_BE_NULL }
         return categoryTagRepository.findByOwnerUserId(userId).map { it.toDto() }
     }
 
@@ -64,7 +64,7 @@ class ManageCategoryImpl(
 
         ownershipGuard.requireOwner(tag.owner?.userId, requireNotNull(owner.userId), "Not the owner of this category")
 
-        val userId = requireNotNull(owner.userId) { "User ID must not be null" }
+        val userId = requireNotNull(owner.userId) { USER_ID_MUST_NOT_BE_NULL }
         val newName = dto.name.trim()
 
         if (!newName.equals(tag.name, ignoreCase = true) &&
@@ -103,6 +103,8 @@ class ManageCategoryImpl(
     }
 
     private companion object {
+        const val USER_ID_MUST_NOT_BE_NULL = "User ID must not be null"
+
         fun CategoryTag.toDto() =
             CategoryDto(
                 id = requireNotNull(id) { "Category ID must not be null" },

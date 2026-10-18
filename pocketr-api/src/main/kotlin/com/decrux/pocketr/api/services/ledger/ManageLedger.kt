@@ -21,13 +21,7 @@ interface ManageLedger {
 
     fun listTransactions(
         user: User,
-        mode: String?,
-        householdId: UUID?,
-        dateFrom: LocalDate?,
-        dateTo: LocalDate?,
-        accountId: UUID?,
-        categoryId: UUID?,
-        spendingOnly: Boolean,
+        filter: TransactionListFilter,
         page: Int,
         size: Int,
     ): PagedTransactionsDto

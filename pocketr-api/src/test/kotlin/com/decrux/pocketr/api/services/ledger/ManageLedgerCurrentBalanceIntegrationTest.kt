@@ -332,7 +332,7 @@ class ManageLedgerCurrentBalanceIntegrationTest
             accountRepository.saveAndFlush(cash)
 
             val transactions =
-                manageLedger.listTransactions(user, "INDIVIDUAL", null, null, null, null, null, false, 0, 20)
+                manageLedger.listTransactions(user, TransactionListFilter(mode = "INDIVIDUAL"), 0, 20)
             val balance = manageLedger.getAccountBalance(requireNotNull(cash.id), today, user, null)
             val archivedSplit =
                 transactions.content
@@ -512,13 +512,16 @@ class ManageLedgerCurrentBalanceIntegrationTest
             val result =
                 manageLedger.listTransactions(
                     user = user,
-                    mode = "INDIVIDUAL",
-                    householdId = null,
-                    dateFrom = null,
-                    dateTo = null,
-                    accountId = null,
-                    categoryId = null,
-                    spendingOnly = true,
+                    filter =
+                        TransactionListFilter(
+                            mode = "INDIVIDUAL",
+                            householdId = null,
+                            dateFrom = null,
+                            dateTo = null,
+                            accountId = null,
+                            categoryId = null,
+                            spendingOnly = true,
+                        ),
                     page = 0,
                     size = 10,
                 )

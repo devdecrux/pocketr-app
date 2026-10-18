@@ -12,8 +12,8 @@ class StorageInitializer {
         return try {
             normalizedPath.parent?.let { Files.createDirectories(it) }
             Files.createDirectories(normalizedPath)
-            if (!Files.isDirectory(normalizedPath) || !Files.isWritable(normalizedPath)) {
-                throw IllegalStateException("Storage directory is not writable: $normalizedPath")
+            check(Files.isDirectory(normalizedPath) && Files.isWritable(normalizedPath)) {
+                "Storage directory is not writable: $normalizedPath"
             }
             normalizedPath
         } catch (e: IOException) {

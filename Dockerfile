@@ -2,7 +2,7 @@ FROM node:22.15-alpine3.21 AS frontend-builder
 WORKDIR /vue-app
 COPY pocketr-ui/package-lock.json .
 COPY pocketr-ui/package.json .
-RUN npm ci
+RUN npm ci --ignore-scripts
 COPY pocketr-ui/ .
 RUN npm run build-only
 

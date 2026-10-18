@@ -9,7 +9,7 @@ export interface CurrencyAmount {
 /** The primary currency when it is in use, else the first one in use. */
 export function pickPrimaryCurrency(currencies: readonly string[]): string {
   if (currencies.includes(PRIMARY_CURRENCY)) return PRIMARY_CURRENCY
-  return [...currencies].sort()[0] ?? PRIMARY_CURRENCY
+  return [...currencies].sort((a, b) => a.localeCompare(b))[0] ?? PRIMARY_CURRENCY
 }
 
 /** Sums amounts per currency; the primary currency comes first, the others alphabetically. */
@@ -23,11 +23,9 @@ export function totalsByCurrency(
   }
   return [...totals.entries()]
     .map(([currency, amountMinor]) => ({ currency, amountMinor }))
-    .sort((a, b) =>
-      a.currency === primary
-        ? -1
-        : b.currency === primary
-          ? 1
-          : a.currency.localeCompare(b.currency),
-    )
+    .sort((a, b) => {
+      if (a.currency === primary) return -1
+      if (b.currency === primary) return 1
+      return a.currency.localeCompare(b.currency)
+    })
 }

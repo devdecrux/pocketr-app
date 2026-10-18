@@ -80,11 +80,9 @@ export const useHouseholdStore = defineStore('household', () => {
       return
     }
 
-    if (!ensureModeValidationPromise) {
-      ensureModeValidationPromise = loadHouseholds().finally(() => {
-        ensureModeValidationPromise = null
-      })
-    }
+    ensureModeValidationPromise ??= loadHouseholds().finally(() => {
+      ensureModeValidationPromise = null
+    })
 
     await ensureModeValidationPromise
   }

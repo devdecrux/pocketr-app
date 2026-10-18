@@ -84,8 +84,10 @@ async function savePhoto(): Promise<void> {
         </p>
 
         <input
+          id="avatar-file-input"
           ref="fileInput"
           type="file"
+          :aria-label="t('views.settings.profile.changePhoto')"
           class="hidden"
           tabindex="-1"
           aria-hidden="true"
@@ -140,13 +142,12 @@ async function savePhoto(): Promise<void> {
           />
         </div>
 
-        <p
+        <output
           v-if="avatar.pendingFile.value"
-          role="status"
-          class="mt-1.5 max-w-full text-xs [overflow-wrap:anywhere] text-muted"
+          class="mt-1.5 block max-w-full text-xs [overflow-wrap:anywhere] text-muted"
         >
           {{ t('views.settings.profile.pendingPhoto', { name: avatar.pendingFile.value.name }) }}
-        </p>
+        </output>
         <p v-else class="mt-1.5 text-[11px] text-muted">
           {{ t('views.settings.profile.acceptedFormats') }}
         </p>

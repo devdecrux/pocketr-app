@@ -41,9 +41,7 @@ class CurrencyExchangeRateSynchronizer(
         val newQuoteCodes = newRates.map { it.quote }.distinct()
         val storedQuoteCodes = currencyRepository.findAllById(newQuoteCodes).associateBy { it.code }
         val missingQuoteCodes = newQuoteCodes.filter { it !in storedQuoteCodes }
-        if (missingQuoteCodes.isNotEmpty()) {
-            throw IllegalStateException("Quote currencies are missing: $missingQuoteCodes")
-        }
+        check(missingQuoteCodes.isEmpty()) { "Quote currencies are missing: $missingQuoteCodes" }
 
         val updatedAt = Instant.now(clock)
         val entities =

@@ -18,6 +18,7 @@ import com.decrux.pocketr.api.repositories.LedgerTxnRepository
 import com.decrux.pocketr.api.repositories.UserRepository
 import com.decrux.pocketr.api.services.ledger.CurrentAccountBalanceMonitor
 import com.decrux.pocketr.api.services.ledger.ManageLedger
+import com.decrux.pocketr.api.services.ledger.TransactionListFilter
 import com.decrux.pocketr.api.testsupport.UsePostgresDb
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -362,6 +363,6 @@ class AccountArchivalValidationIntegrationTest
 
         private fun listTransactions(user: User): List<TransactionDto> =
             manageLedger
-                .listTransactions(user, "INDIVIDUAL", null, null, null, null, null, false, 0, 20)
+                .listTransactions(user, TransactionListFilter(mode = "INDIVIDUAL"), 0, 20)
                 .content
     }

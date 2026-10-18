@@ -33,10 +33,8 @@ const householdStore = useHouseholdStore()
     <div v-else-if="!loaded" class="mt-3 space-y-3" aria-hidden="true">
       <USkeleton v-for="index in 2" :key="index" class="h-10 w-full rounded-lg" />
     </div>
-    <div
+    <section
       v-else-if="householdStore.sharedAccounts.length"
-      role="region"
-      tabindex="0"
       :aria-label="t('views.householdSettings.accounts.sharedTitle')"
       :class="ACCOUNTS_SCROLL_CLASS"
     >
@@ -66,7 +64,7 @@ const householdStore = useHouseholdStore()
           </span>
         </li>
       </ul>
-    </div>
+    </section>
     <p v-else :class="LIST_EMPTY_CLASS">
       {{ t('views.householdSettings.accounts.sharedEmpty') }}
     </p>

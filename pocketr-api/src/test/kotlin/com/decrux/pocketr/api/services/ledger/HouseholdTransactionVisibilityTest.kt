@@ -221,13 +221,16 @@ class HouseholdTransactionVisibilityTest {
             val result =
                 service.listTransactions(
                     user = alice,
-                    mode = "HOUSEHOLD",
-                    householdId = householdId,
-                    dateFrom = null,
-                    dateTo = null,
-                    accountId = null,
-                    categoryId = null,
-                    spendingOnly = false,
+                    filter =
+                        TransactionListFilter(
+                            mode = "HOUSEHOLD",
+                            householdId = householdId,
+                            dateFrom = null,
+                            dateTo = null,
+                            accountId = null,
+                            categoryId = null,
+                            spendingOnly = false,
+                        ),
                     page = 0,
                     size = 50,
                 )
@@ -261,13 +264,16 @@ class HouseholdTransactionVisibilityTest {
             val result =
                 service.listTransactions(
                     user = bob,
-                    mode = "HOUSEHOLD",
-                    householdId = householdId,
-                    dateFrom = null,
-                    dateTo = null,
-                    accountId = null,
-                    categoryId = null,
-                    spendingOnly = false,
+                    filter =
+                        TransactionListFilter(
+                            mode = "HOUSEHOLD",
+                            householdId = householdId,
+                            dateFrom = null,
+                            dateTo = null,
+                            accountId = null,
+                            categoryId = null,
+                            spendingOnly = false,
+                        ),
                     page = 0,
                     size = 50,
                 )
@@ -288,13 +294,16 @@ class HouseholdTransactionVisibilityTest {
             val result =
                 service.listTransactions(
                     user = alice,
-                    mode = "HOUSEHOLD",
-                    householdId = householdId,
-                    dateFrom = null,
-                    dateTo = null,
-                    accountId = null,
-                    categoryId = null,
-                    spendingOnly = false,
+                    filter =
+                        TransactionListFilter(
+                            mode = "HOUSEHOLD",
+                            householdId = householdId,
+                            dateFrom = null,
+                            dateTo = null,
+                            accountId = null,
+                            categoryId = null,
+                            spendingOnly = false,
+                        ),
                     page = 0,
                     size = 50,
                 )
@@ -314,13 +323,16 @@ class HouseholdTransactionVisibilityTest {
                 assertThrows(ForbiddenException::class.java) {
                     service.listTransactions(
                         user = outsider,
-                        mode = "HOUSEHOLD",
-                        householdId = householdId,
-                        dateFrom = null,
-                        dateTo = null,
-                        accountId = null,
-                        categoryId = null,
-                        spendingOnly = false,
+                        filter =
+                            TransactionListFilter(
+                                mode = "HOUSEHOLD",
+                                householdId = householdId,
+                                dateFrom = null,
+                                dateTo = null,
+                                accountId = null,
+                                categoryId = null,
+                                spendingOnly = false,
+                            ),
                         page = 0,
                         size = 50,
                     )
@@ -337,13 +349,16 @@ class HouseholdTransactionVisibilityTest {
                 assertThrows(BadRequestException::class.java) {
                     service.listTransactions(
                         user = alice,
-                        mode = "HOUSEHOLD",
-                        householdId = null,
-                        dateFrom = null,
-                        dateTo = null,
-                        accountId = null,
-                        categoryId = null,
-                        spendingOnly = false,
+                        filter =
+                            TransactionListFilter(
+                                mode = "HOUSEHOLD",
+                                householdId = null,
+                                dateFrom = null,
+                                dateTo = null,
+                                accountId = null,
+                                categoryId = null,
+                                spendingOnly = false,
+                            ),
                         page = 0,
                         size = 50,
                     )
@@ -364,13 +379,16 @@ class HouseholdTransactionVisibilityTest {
             val result =
                 service.listTransactions(
                     user = alice,
-                    mode = "household",
-                    householdId = householdId,
-                    dateFrom = null,
-                    dateTo = null,
-                    accountId = null,
-                    categoryId = null,
-                    spendingOnly = false,
+                    filter =
+                        TransactionListFilter(
+                            mode = "household",
+                            householdId = householdId,
+                            dateFrom = null,
+                            dateTo = null,
+                            accountId = null,
+                            categoryId = null,
+                            spendingOnly = false,
+                        ),
                     page = 0,
                     size = 50,
                 )
@@ -392,13 +410,16 @@ class HouseholdTransactionVisibilityTest {
             val result =
                 service.listTransactions(
                     user = alice,
-                    mode = "HOUSEHOLD",
-                    householdId = householdId,
-                    dateFrom = LocalDate.of(2026, 2, 1),
-                    dateTo = null,
-                    accountId = null,
-                    categoryId = null,
-                    spendingOnly = false,
+                    filter =
+                        TransactionListFilter(
+                            mode = "HOUSEHOLD",
+                            householdId = householdId,
+                            dateFrom = LocalDate.of(2026, 2, 1),
+                            dateTo = null,
+                            accountId = null,
+                            categoryId = null,
+                            spendingOnly = false,
+                        ),
                     page = 0,
                     size = 50,
                 )
@@ -419,13 +440,16 @@ class HouseholdTransactionVisibilityTest {
 
             service.listTransactions(
                 user = alice,
-                mode = "HOUSEHOLD",
-                householdId = householdId,
-                dateFrom = null,
-                dateTo = LocalDate.of(2026, 2, 28),
-                accountId = null,
-                categoryId = null,
-                spendingOnly = false,
+                filter =
+                    TransactionListFilter(
+                        mode = "HOUSEHOLD",
+                        householdId = householdId,
+                        dateFrom = null,
+                        dateTo = LocalDate.of(2026, 2, 28),
+                        accountId = null,
+                        categoryId = null,
+                        spendingOnly = false,
+                    ),
                 page = 0,
                 size = 50,
             )
@@ -444,13 +468,16 @@ class HouseholdTransactionVisibilityTest {
 
             service.listTransactions(
                 user = alice,
-                mode = "HOUSEHOLD",
-                householdId = householdId,
-                dateFrom = null,
-                dateTo = null,
-                accountId = aliceCheckingId,
-                categoryId = null,
-                spendingOnly = false,
+                filter =
+                    TransactionListFilter(
+                        mode = "HOUSEHOLD",
+                        householdId = householdId,
+                        dateFrom = null,
+                        dateTo = null,
+                        accountId = aliceCheckingId,
+                        categoryId = null,
+                        spendingOnly = false,
+                    ),
                 page = 0,
                 size = 50,
             )
@@ -470,13 +497,16 @@ class HouseholdTransactionVisibilityTest {
             val categoryId = UUID.randomUUID()
             service.listTransactions(
                 user = alice,
-                mode = "HOUSEHOLD",
-                householdId = householdId,
-                dateFrom = null,
-                dateTo = null,
-                accountId = null,
-                categoryId = categoryId,
-                spendingOnly = false,
+                filter =
+                    TransactionListFilter(
+                        mode = "HOUSEHOLD",
+                        householdId = householdId,
+                        dateFrom = null,
+                        dateTo = null,
+                        accountId = null,
+                        categoryId = categoryId,
+                        spendingOnly = false,
+                    ),
                 page = 0,
                 size = 50,
             )
@@ -495,13 +525,16 @@ class HouseholdTransactionVisibilityTest {
 
             service.listTransactions(
                 user = alice,
-                mode = "HOUSEHOLD",
-                householdId = householdId,
-                dateFrom = LocalDate.of(2026, 1, 1),
-                dateTo = LocalDate.of(2026, 2, 28),
-                accountId = aliceCheckingId,
-                categoryId = UUID.randomUUID(),
-                spendingOnly = false,
+                filter =
+                    TransactionListFilter(
+                        mode = "HOUSEHOLD",
+                        householdId = householdId,
+                        dateFrom = LocalDate.of(2026, 1, 1),
+                        dateTo = LocalDate.of(2026, 2, 28),
+                        accountId = aliceCheckingId,
+                        categoryId = UUID.randomUUID(),
+                        spendingOnly = false,
+                    ),
                 page = 0,
                 size = 50,
             )
@@ -532,13 +565,16 @@ class HouseholdTransactionVisibilityTest {
             val result =
                 service.listTransactions(
                     user = alice,
-                    mode = "HOUSEHOLD",
-                    householdId = householdId,
-                    dateFrom = null,
-                    dateTo = null,
-                    accountId = null,
-                    categoryId = null,
-                    spendingOnly = false,
+                    filter =
+                        TransactionListFilter(
+                            mode = "HOUSEHOLD",
+                            householdId = householdId,
+                            dateFrom = null,
+                            dateTo = null,
+                            accountId = null,
+                            categoryId = null,
+                            spendingOnly = false,
+                        ),
                     page = 0,
                     size = 50,
                 )
@@ -576,13 +612,16 @@ class HouseholdTransactionVisibilityTest {
 
             service.listTransactions(
                 user = alice,
-                mode = "HOUSEHOLD",
-                householdId = householdId,
-                dateFrom = null,
-                dateTo = null,
-                accountId = null,
-                categoryId = null,
-                spendingOnly = false,
+                filter =
+                    TransactionListFilter(
+                        mode = "HOUSEHOLD",
+                        householdId = householdId,
+                        dateFrom = null,
+                        dateTo = null,
+                        accountId = null,
+                        categoryId = null,
+                        spendingOnly = false,
+                    ),
                 page = 0,
                 size = 50,
             )
@@ -604,13 +643,16 @@ class HouseholdTransactionVisibilityTest {
             val result =
                 service.listTransactions(
                     user = alice,
-                    mode = null,
-                    householdId = null,
-                    dateFrom = null,
-                    dateTo = null,
-                    accountId = null,
-                    categoryId = null,
-                    spendingOnly = false,
+                    filter =
+                        TransactionListFilter(
+                            mode = null,
+                            householdId = null,
+                            dateFrom = null,
+                            dateTo = null,
+                            accountId = null,
+                            categoryId = null,
+                            spendingOnly = false,
+                        ),
                     page = 0,
                     size = 50,
                 )
@@ -631,13 +673,16 @@ class HouseholdTransactionVisibilityTest {
             val result =
                 service.listTransactions(
                     user = alice,
-                    mode = "INDIVIDUAL",
-                    householdId = null,
-                    dateFrom = null,
-                    dateTo = null,
-                    accountId = null,
-                    categoryId = null,
-                    spendingOnly = false,
+                    filter =
+                        TransactionListFilter(
+                            mode = "INDIVIDUAL",
+                            householdId = null,
+                            dateFrom = null,
+                            dateTo = null,
+                            accountId = null,
+                            categoryId = null,
+                            spendingOnly = false,
+                        ),
                     page = 0,
                     size = 50,
                 )
@@ -654,13 +699,16 @@ class HouseholdTransactionVisibilityTest {
 
             service.listTransactions(
                 user = alice,
-                mode = null,
-                householdId = null,
-                dateFrom = LocalDate.of(2026, 2, 1),
-                dateTo = null,
-                accountId = null,
-                categoryId = null,
-                spendingOnly = false,
+                filter =
+                    TransactionListFilter(
+                        mode = null,
+                        householdId = null,
+                        dateFrom = LocalDate.of(2026, 2, 1),
+                        dateTo = null,
+                        accountId = null,
+                        categoryId = null,
+                        spendingOnly = false,
+                    ),
                 page = 0,
                 size = 50,
             )
@@ -676,13 +724,16 @@ class HouseholdTransactionVisibilityTest {
 
             service.listTransactions(
                 user = alice,
-                mode = null,
-                householdId = null,
-                dateFrom = null,
-                dateTo = LocalDate.of(2026, 2, 28),
-                accountId = null,
-                categoryId = null,
-                spendingOnly = false,
+                filter =
+                    TransactionListFilter(
+                        mode = null,
+                        householdId = null,
+                        dateFrom = null,
+                        dateTo = LocalDate.of(2026, 2, 28),
+                        accountId = null,
+                        categoryId = null,
+                        spendingOnly = false,
+                    ),
                 page = 0,
                 size = 50,
             )
@@ -698,13 +749,16 @@ class HouseholdTransactionVisibilityTest {
 
             service.listTransactions(
                 user = alice,
-                mode = null,
-                householdId = null,
-                dateFrom = null,
-                dateTo = null,
-                accountId = aliceCheckingId,
-                categoryId = null,
-                spendingOnly = false,
+                filter =
+                    TransactionListFilter(
+                        mode = null,
+                        householdId = null,
+                        dateFrom = null,
+                        dateTo = null,
+                        accountId = aliceCheckingId,
+                        categoryId = null,
+                        spendingOnly = false,
+                    ),
                 page = 0,
                 size = 50,
             )
@@ -721,13 +775,16 @@ class HouseholdTransactionVisibilityTest {
             val categoryId = UUID.randomUUID()
             service.listTransactions(
                 user = alice,
-                mode = null,
-                householdId = null,
-                dateFrom = null,
-                dateTo = null,
-                accountId = null,
-                categoryId = categoryId,
-                spendingOnly = false,
+                filter =
+                    TransactionListFilter(
+                        mode = null,
+                        householdId = null,
+                        dateFrom = null,
+                        dateTo = null,
+                        accountId = null,
+                        categoryId = categoryId,
+                        spendingOnly = false,
+                    ),
                 page = 0,
                 size = 50,
             )
@@ -744,13 +801,16 @@ class HouseholdTransactionVisibilityTest {
             val result =
                 service.listTransactions(
                     user = alice,
-                    mode = null,
-                    householdId = null,
-                    dateFrom = null,
-                    dateTo = null,
-                    accountId = null,
-                    categoryId = null,
-                    spendingOnly = false,
+                    filter =
+                        TransactionListFilter(
+                            mode = null,
+                            householdId = null,
+                            dateFrom = null,
+                            dateTo = null,
+                            accountId = null,
+                            categoryId = null,
+                            spendingOnly = false,
+                        ),
                     page = 0,
                     size = 50,
                 )
@@ -774,13 +834,16 @@ class HouseholdTransactionVisibilityTest {
 
             service.listTransactions(
                 user = alice,
-                mode = "HOUSEHOLD",
-                householdId = householdId,
-                dateFrom = null,
-                dateTo = null,
-                accountId = null,
-                categoryId = null,
-                spendingOnly = false,
+                filter =
+                    TransactionListFilter(
+                        mode = "HOUSEHOLD",
+                        householdId = householdId,
+                        dateFrom = null,
+                        dateTo = null,
+                        accountId = null,
+                        categoryId = null,
+                        spendingOnly = false,
+                    ),
                 page = 0,
                 size = 50,
             )
@@ -826,13 +889,16 @@ class HouseholdTransactionVisibilityTest {
             val result =
                 service.listTransactions(
                     user = alice,
-                    mode = "HOUSEHOLD",
-                    householdId = householdId,
-                    dateFrom = null,
-                    dateTo = null,
-                    accountId = null,
-                    categoryId = null,
-                    spendingOnly = false,
+                    filter =
+                        TransactionListFilter(
+                            mode = "HOUSEHOLD",
+                            householdId = householdId,
+                            dateFrom = null,
+                            dateTo = null,
+                            accountId = null,
+                            categoryId = null,
+                            spendingOnly = false,
+                        ),
                     page = 0,
                     size = 50,
                 )
@@ -853,13 +919,16 @@ class HouseholdTransactionVisibilityTest {
             val result =
                 service.listTransactions(
                     user = alice,
-                    mode = "HOUSEHOLD",
-                    householdId = householdId,
-                    dateFrom = null,
-                    dateTo = null,
-                    accountId = null,
-                    categoryId = null,
-                    spendingOnly = false,
+                    filter =
+                        TransactionListFilter(
+                            mode = "HOUSEHOLD",
+                            householdId = householdId,
+                            dateFrom = null,
+                            dateTo = null,
+                            accountId = null,
+                            categoryId = null,
+                            spendingOnly = false,
+                        ),
                     page = 0,
                     size = 50,
                 )

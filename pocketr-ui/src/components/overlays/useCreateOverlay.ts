@@ -42,8 +42,8 @@ export function useCreateOverlay<R>(options: CreateOverlayOptions<R>) {
       await options.create(request)
       isOpen.value = false
       await options.afterCreate()
-    } catch (caught: unknown) {
-      error.value = await options.errorMessage(caught)
+    } catch (error_: unknown) {
+      error.value = await options.errorMessage(error_)
     } finally {
       isBusy.value = false
     }
