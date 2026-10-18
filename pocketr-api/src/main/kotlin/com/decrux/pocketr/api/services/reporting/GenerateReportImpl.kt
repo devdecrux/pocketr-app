@@ -50,7 +50,7 @@ class GenerateReportImpl(
 
         when (mode.uppercase()) {
             MODE_INDIVIDUAL -> {
-                val userId = requireNotNull(user.userId) { "User ID must not be null" }
+                val userId = requireNotNull(user.userId) { USER_ID_MUST_NOT_BE_NULL }
                 rolloverDay = user.rolloverDay
                 val rolloverPeriod = RolloverPeriod.startingIn(period, rolloverDay)
                 expenseRows =
@@ -75,7 +75,7 @@ class GenerateReportImpl(
                 val hId =
                     householdId
                         ?: throw BadRequestException("householdId is required for household mode")
-                val userId = requireNotNull(user.userId) { "User ID must not be null" }
+                val userId = requireNotNull(user.userId) { USER_ID_MUST_NOT_BE_NULL }
                 if (!manageHousehold.isActiveMember(hId, userId)) {
                     throw ForbiddenException("Not an active member of this household")
                 }
@@ -135,7 +135,7 @@ class GenerateReportImpl(
 
         when (mode.uppercase()) {
             MODE_INDIVIDUAL -> {
-                val userId = requireNotNull(user.userId) { "User ID must not be null" }
+                val userId = requireNotNull(user.userId) { USER_ID_MUST_NOT_BE_NULL }
                 expenseRows =
                     ledgerSplitRepository.lifetimeExpensesByUser(
                         userId,
@@ -154,7 +154,7 @@ class GenerateReportImpl(
                 val hId =
                     householdId
                         ?: throw BadRequestException("householdId is required for household mode")
-                val userId = requireNotNull(user.userId) { "User ID must not be null" }
+                val userId = requireNotNull(user.userId) { USER_ID_MUST_NOT_BE_NULL }
                 if (!manageHousehold.isActiveMember(hId, userId)) {
                     throw ForbiddenException("Not an active member of this household")
                 }
@@ -192,7 +192,7 @@ class GenerateReportImpl(
         user: User,
         asOf: LocalDate,
     ): List<AccountBalanceSummaryDto> {
-        val userId = requireNotNull(user.userId) { "User ID must not be null" }
+        val userId = requireNotNull(user.userId) { USER_ID_MUST_NOT_BE_NULL }
         val accounts = accountRepository.findByOwnerUserId(userId)
 
         return accounts.map { account ->
@@ -241,7 +241,7 @@ class GenerateReportImpl(
             throw BadRequestException("dateFrom must be before or equal to dateTo")
         }
 
-        val userId = requireNotNull(user.userId) { "User ID must not be null" }
+        val userId = requireNotNull(user.userId) { USER_ID_MUST_NOT_BE_NULL }
 
         val account =
             accountRepository
@@ -297,6 +297,7 @@ class GenerateReportImpl(
     }
 
     private companion object {
+        const val USER_ID_MUST_NOT_BE_NULL = "User ID must not be null"
         const val DEBT_PAYMENT_CATEGORY_NAME = "Debt Payment"
         const val MODE_INDIVIDUAL = "INDIVIDUAL"
         const val MODE_HOUSEHOLD = "HOUSEHOLD"

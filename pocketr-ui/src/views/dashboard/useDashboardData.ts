@@ -53,7 +53,7 @@ export function useDashboardData() {
             DEFAULT_REPORT_PERIOD_COUNT
           )
         },
-        write: (count) => String(count),
+        write: String,
       },
     },
   )

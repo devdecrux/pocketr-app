@@ -83,7 +83,7 @@ class ManageLedgerImpl(
         dto: CreateTransactionDto,
         creator: User,
     ): TransactionDto {
-        val userId = requireNotNull(creator.userId) { "User ID must not be null" }
+        val userId = requireNotNull(creator.userId) { USER_ID_MUST_NOT_BE_NULL }
         val isHouseholdMode = dto.mode?.uppercase() == "HOUSEHOLD"
 
         validateSplits(dto.splits)
@@ -225,7 +225,7 @@ class ManageLedgerImpl(
         id: UUID,
         user: User,
     ) {
-        val userId = requireNotNull(user.userId) { "User ID must not be null" }
+        val userId = requireNotNull(user.userId) { USER_ID_MUST_NOT_BE_NULL }
         val txn =
             ledgerTxnRepository
                 .findOneById(id)
@@ -247,23 +247,17 @@ class ManageLedgerImpl(
     @Transactional(readOnly = true)
     override fun listTransactions(
         user: User,
-        mode: String?,
-        householdId: UUID?,
-        dateFrom: LocalDate?,
-        dateTo: LocalDate?,
-        accountId: UUID?,
-        categoryId: UUID?,
-        spendingOnly: Boolean,
+        filter: TransactionListFilter,
         page: Int,
         size: Int,
     ): PagedTransactionsDto {
-        val userId = requireNotNull(user.userId) { "User ID must not be null" }
-        val isHouseholdMode = mode?.uppercase() == "HOUSEHOLD"
+        val userId = requireNotNull(user.userId) { USER_ID_MUST_NOT_BE_NULL }
+        val isHouseholdMode = filter.mode?.uppercase() == "HOUSEHOLD"
 
         var spec: Specification<LedgerTxn> =
             if (isHouseholdMode) {
                 val hhId =
-                    householdId
+                    filter.householdId
                         ?: throw BadRequestException("householdId is required for household mode")
                 if (!manageHousehold.isActiveMember(hhId, userId)) {
                     throw ForbiddenException("Not an active member of this household")
@@ -277,11 +271,11 @@ class ManageLedgerImpl(
                 LedgerTxnSpecs.forUser(userId)
             }
 
-        dateFrom?.let { spec = spec.and(LedgerTxnSpecs.dateFrom(it)) }
-        dateTo?.let { spec = spec.and(LedgerTxnSpecs.dateTo(it)) }
-        accountId?.let { spec = spec.and(LedgerTxnSpecs.hasAccount(it)) }
-        categoryId?.let { spec = spec.and(LedgerTxnSpecs.hasCategory(it)) }
-        if (spendingOnly) {
+        filter.dateFrom?.let { spec = spec.and(LedgerTxnSpecs.dateFrom(it)) }
+        filter.dateTo?.let { spec = spec.and(LedgerTxnSpecs.dateTo(it)) }
+        filter.accountId?.let { spec = spec.and(LedgerTxnSpecs.hasAccount(it)) }
+        filter.categoryId?.let { spec = spec.and(LedgerTxnSpecs.hasCategory(it)) }
+        if (filter.spendingOnly) {
             spec = spec.and(LedgerTxnSpecs.spendingOnly())
         }
 
@@ -313,7 +307,7 @@ class ManageLedgerImpl(
             return emptyList()
         }
 
-        val userId = requireNotNull(user.userId) { "User ID must not be null" }
+        val userId = requireNotNull(user.userId) { USER_ID_MUST_NOT_BE_NULL }
         val uniqueAccountIds = accountIds.distinct()
         val accounts = accountRepository.findAllById(uniqueAccountIds)
         if (accounts.size != uniqueAccountIds.size) {
@@ -362,7 +356,7 @@ class ManageLedgerImpl(
         user: User,
         householdId: UUID?,
     ): BalanceDto {
-        val userId = requireNotNull(user.userId) { "User ID must not be null" }
+        val userId = requireNotNull(user.userId) { USER_ID_MUST_NOT_BE_NULL }
 
         val account =
             accountRepository
@@ -752,6 +746,7 @@ class ManageLedgerImpl(
     private fun elapsedMillis(startedAtNanos: Long): Long = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startedAtNanos)
 
     private companion object {
+        const val USER_ID_MUST_NOT_BE_NULL = "User ID must not be null"
         private val logger = LoggerFactory.getLogger(ManageLedgerImpl::class.java)
         val DEBIT_NORMAL_TYPES = setOf(AccountType.ASSET, AccountType.EXPENSE)
         val TRANSFER_TYPES = setOf(AccountType.ASSET, AccountType.LIABILITY, AccountType.EQUITY)

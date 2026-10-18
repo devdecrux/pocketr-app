@@ -6,6 +6,7 @@ import com.decrux.pocketr.api.entities.dtos.CreateTransactionDto
 import com.decrux.pocketr.api.entities.dtos.PagedTransactionsDto
 import com.decrux.pocketr.api.entities.dtos.TransactionDto
 import com.decrux.pocketr.api.services.ledger.ManageLedger
+import com.decrux.pocketr.api.services.ledger.TransactionListFilter
 import org.springframework.format.annotation.DateTimeFormat
 import org.springframework.http.HttpStatus
 import org.springframework.security.core.annotation.AuthenticationPrincipal
@@ -39,7 +40,12 @@ class LedgerController(
         @RequestParam(defaultValue = "0") page: Int,
         @RequestParam(defaultValue = "15") size: Int,
     ): PagedTransactionsDto =
-        manageLedger.listTransactions(user, mode, householdId, dateFrom, dateTo, accountId, categoryId, spendingOnly, page, size)
+        manageLedger.listTransactions(
+            user,
+            TransactionListFilter(mode, householdId, dateFrom, dateTo, accountId, categoryId, spendingOnly),
+            page,
+            size,
+        )
 
     @PostMapping("/transactions")
     @ResponseStatus(HttpStatus.CREATED)

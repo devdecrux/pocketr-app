@@ -5,7 +5,7 @@ import java.util.UUID
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicReference
 
-interface CurrentBalanceSnapshotReadiness {
+fun interface CurrentBalanceSnapshotReadiness {
     fun isSnapshotAllowed(accountId: UUID): Boolean
 
     object AlwaysAllowed : CurrentBalanceSnapshotReadiness {

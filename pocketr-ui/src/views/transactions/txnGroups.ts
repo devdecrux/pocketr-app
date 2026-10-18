@@ -36,7 +36,7 @@ export function groupTransactionsByDay<T extends { txnDate: string }>(
   const groups: TxnGroup<T>[] = []
   for (const txn of txns) {
     const { id, monthDate } = groupIdFor(txn.txnDate, today)
-    const last = groups[groups.length - 1]
+    const last = groups.at(-1)
     if (last?.id === id) last.items.push(txn)
     else groups.push({ id, monthDate, items: [txn] })
   }

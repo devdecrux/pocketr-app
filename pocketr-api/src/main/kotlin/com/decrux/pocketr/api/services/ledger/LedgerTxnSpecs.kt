@@ -39,7 +39,7 @@ object LedgerTxnSpecs {
         }
 
     fun hasAnySharedAccount(accountIds: Set<UUID>): Specification<LedgerTxn> =
-        Specification { root, query, cb ->
+        Specification { root, query, _ ->
             query.distinct(true)
             val splits = root.join<Any, Any>("splits")
             splits.get<Any>("account").get<UUID>("id").`in`(accountIds)

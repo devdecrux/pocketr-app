@@ -66,12 +66,8 @@ class UserAvatarService(
         user: User,
         avatar: MultipartFile,
     ): String {
-        if (avatar.isEmpty) {
-            throw IllegalArgumentException("Avatar file is required")
-        }
-        if (avatar.size > MAX_AVATAR_SIZE_BYTES) {
-            throw IllegalArgumentException("Avatar file is too large. Maximum size is 5MB")
-        }
+        require(!avatar.isEmpty) { "Avatar file is required" }
+        require(avatar.size <= MAX_AVATAR_SIZE_BYTES) { "Avatar file is too large. Maximum size is 5MB" }
 
         val contentType = validateAvatarType(avatar)
         val filename =
@@ -81,9 +77,7 @@ class UserAvatarService(
             )
         val targetPath = avatarStoragePath.resolve(filename).normalize()
 
-        if (!targetPath.startsWith(avatarStoragePath)) {
-            throw IllegalArgumentException("Invalid avatar path")
-        }
+        require(targetPath.startsWith(avatarStoragePath)) { "Invalid avatar path" }
 
         try {
             avatar.inputStream.use { inputStream ->
@@ -102,10 +96,8 @@ class UserAvatarService(
             avatar.contentType?.lowercase(Locale.ROOT)
                 ?: throw IllegalArgumentException("Avatar content type is required")
 
-        if (contentType !in CONTENT_TYPE_TO_EXTENSION) {
-            throw IllegalArgumentException(
-                "Unsupported avatar format. Allowed formats: JPEG, PNG, GIF, WEBP",
-            )
+        require(contentType in CONTENT_TYPE_TO_EXTENSION) {
+            "Unsupported avatar format. Allowed formats: JPEG, PNG, GIF, WEBP"
         }
 
         return contentType

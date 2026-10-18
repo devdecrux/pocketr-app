@@ -111,6 +111,7 @@ async function register(): Promise<void> {
             id="first-name"
             v-model="firstName"
             name="firstName"
+            type="text"
             autocomplete="given-name"
             :placeholder="t('views.auth.registration.firstNamePlaceholder')"
             required
@@ -123,6 +124,7 @@ async function register(): Promise<void> {
             id="last-name"
             v-model="lastName"
             name="lastName"
+            type="text"
             autocomplete="family-name"
             :placeholder="t('views.auth.registration.lastNamePlaceholder')"
             required

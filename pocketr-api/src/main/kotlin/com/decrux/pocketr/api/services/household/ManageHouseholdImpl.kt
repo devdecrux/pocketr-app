@@ -43,7 +43,7 @@ class ManageHouseholdImpl(
         dto: CreateHouseholdDto,
         creator: User,
     ): HouseholdDto {
-        val creatorId = requireNotNull(creator.userId) { "User ID must not be null" }
+        val creatorId = requireNotNull(creator.userId) { USER_ID_MUST_NOT_BE_NULL }
         ensureNoActiveMembership(
             creatorId,
             "Cannot create a household while already an active member of another household",
@@ -72,7 +72,7 @@ class ManageHouseholdImpl(
 
     @Transactional(readOnly = true)
     override fun listHouseholds(user: User): List<HouseholdSummaryDto> {
-        val userId = requireNotNull(user.userId) { "User ID must not be null" }
+        val userId = requireNotNull(user.userId) { USER_ID_MUST_NOT_BE_NULL }
         return memberRepository
             .findByUserUserId(userId)
             .sortedWith(
@@ -96,13 +96,13 @@ class ManageHouseholdImpl(
         id: UUID,
         user: User,
     ): HouseholdDto {
-        val userId = requireNotNull(user.userId) { "User ID must not be null" }
+        val userId = requireNotNull(user.userId) { USER_ID_MUST_NOT_BE_NULL }
         requireActiveMembership(id, userId)
 
         val household =
             householdRepository
                 .findById(id)
-                .orElseThrow { ResponseStatusException(HttpStatus.NOT_FOUND, "Household not found") }
+                .orElseThrow { ResponseStatusException(HttpStatus.NOT_FOUND, HOUSEHOLD_NOT_FOUND) }
 
         return household.toDto()
     }
@@ -113,7 +113,7 @@ class ManageHouseholdImpl(
         dto: InviteMemberDto,
         inviter: User,
     ): HouseholdMemberDto {
-        val inviterId = requireNotNull(inviter.userId) { "User ID must not be null" }
+        val inviterId = requireNotNull(inviter.userId) { USER_ID_MUST_NOT_BE_NULL }
         val inviterMember = requireActiveMembership(householdId, inviterId)
 
         if (inviterMember.role !in setOf(HouseholdRole.OWNER, HouseholdRole.ADMIN)) {
@@ -126,7 +126,7 @@ class ManageHouseholdImpl(
             userRepository
                 .findByEmail(dto.email.trim())
                 .orElseThrow { ResponseStatusException(HttpStatus.BAD_REQUEST, "User not found with email: ${dto.email}") }
-        val inviteeId = requireNotNull(invitee.userId) { "User ID must not be null" }
+        val inviteeId = requireNotNull(invitee.userId) { USER_ID_MUST_NOT_BE_NULL }
 
         val existingMember = memberRepository.findByHouseholdIdAndUserUserId(householdId, inviteeId)
         if (existingMember != null) {
@@ -155,7 +155,7 @@ class ManageHouseholdImpl(
         householdId: UUID,
         user: User,
     ): HouseholdMemberDto {
-        val userId = requireNotNull(user.userId) { "User ID must not be null" }
+        val userId = requireNotNull(user.userId) { USER_ID_MUST_NOT_BE_NULL }
 
         val member =
             memberRepository.findByHouseholdIdAndUserUserId(householdId, userId)
@@ -184,7 +184,7 @@ class ManageHouseholdImpl(
         householdId: UUID,
         user: User,
     ) {
-        val userId = requireNotNull(user.userId) { "User ID must not be null" }
+        val userId = requireNotNull(user.userId) { USER_ID_MUST_NOT_BE_NULL }
         val member =
             memberRepository.findByHouseholdIdAndUserUserId(householdId, userId)
                 ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "Not a member of this household")
@@ -231,7 +231,7 @@ class ManageHouseholdImpl(
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, "rolloverDay must be between 1 and 31")
         }
 
-        val userId = requireNotNull(user.userId) { "User ID must not be null" }
+        val userId = requireNotNull(user.userId) { USER_ID_MUST_NOT_BE_NULL }
         val member = requireActiveMembership(householdId, userId)
         if (member.role !in setOf(HouseholdRole.OWNER, HouseholdRole.ADMIN)) {
             throw ResponseStatusException(HttpStatus.FORBIDDEN, "Only OWNER or ADMIN can update household rollover")
@@ -248,13 +248,13 @@ class ManageHouseholdImpl(
         dto: ShareAccountDto,
         user: User,
     ): HouseholdAccountShareDto {
-        val userId = requireNotNull(user.userId) { "User ID must not be null" }
+        val userId = requireNotNull(user.userId) { USER_ID_MUST_NOT_BE_NULL }
         requireActiveMembership(householdId, userId)
 
         val household =
             householdRepository
                 .findById(householdId)
-                .orElseThrow { ResponseStatusException(HttpStatus.NOT_FOUND, "Household not found") }
+                .orElseThrow { ResponseStatusException(HttpStatus.NOT_FOUND, HOUSEHOLD_NOT_FOUND) }
 
         val account =
             accountRepository
@@ -287,7 +287,7 @@ class ManageHouseholdImpl(
         accountId: UUID,
         user: User,
     ) {
-        val userId = requireNotNull(user.userId) { "User ID must not be null" }
+        val userId = requireNotNull(user.userId) { USER_ID_MUST_NOT_BE_NULL }
         requireActiveMembership(householdId, userId)
 
         val share =
@@ -304,7 +304,7 @@ class ManageHouseholdImpl(
         householdId: UUID,
         user: User,
     ): List<HouseholdAccountShareDto> {
-        val userId = requireNotNull(user.userId) { "User ID must not be null" }
+        val userId = requireNotNull(user.userId) { USER_ID_MUST_NOT_BE_NULL }
         requireActiveMembership(householdId, userId)
 
         return shareRepository
@@ -317,7 +317,7 @@ class ManageHouseholdImpl(
         householdId: UUID,
         user: User,
     ): List<AccountDto> {
-        val userId = requireNotNull(user.userId) { "User ID must not be null" }
+        val userId = requireNotNull(user.userId) { USER_ID_MUST_NOT_BE_NULL }
         requireActiveMembership(householdId, userId)
 
         return shareRepository
@@ -360,7 +360,7 @@ class ManageHouseholdImpl(
     override fun getRolloverDay(householdId: UUID): Int =
         householdRepository
             .findById(householdId)
-            .orElseThrow { ResponseStatusException(HttpStatus.NOT_FOUND, "Household not found") }
+            .orElseThrow { ResponseStatusException(HttpStatus.NOT_FOUND, HOUSEHOLD_NOT_FOUND) }
             .rolloverDay
 
     private fun requireActiveMembership(
@@ -399,6 +399,9 @@ class ManageHouseholdImpl(
     }
 
     private companion object {
+        const val USER_ID_MUST_NOT_BE_NULL = "User ID must not be null"
+        const val HOUSEHOLD_NOT_FOUND = "Household not found"
+
         fun Household.toDto() =
             HouseholdDto(
                 id = requireNotNull(id) { "Household ID must not be null" },
@@ -410,7 +413,7 @@ class ManageHouseholdImpl(
 
         fun HouseholdMember.toDto() =
             HouseholdMemberDto(
-                userId = requireNotNull(user?.userId) { "User ID must not be null" },
+                userId = requireNotNull(user?.userId) { USER_ID_MUST_NOT_BE_NULL },
                 email = requireNotNull(user?.email) { "User email must not be null" },
                 firstName = user?.firstName,
                 lastName = user?.lastName,

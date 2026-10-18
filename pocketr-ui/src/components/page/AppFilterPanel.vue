@@ -33,11 +33,10 @@ async function clear(): Promise<void> {
 </script>
 
 <template>
-  <div
+  <fieldset
     :id="id"
-    role="group"
     :aria-label="t('common.filters.title')"
-    class="grid gap-2.5 lg:flex lg:flex-wrap lg:items-center"
+    class="m-0 grid min-w-0 gap-2.5 border-0 p-0 lg:flex lg:flex-wrap lg:items-center"
   >
     <slot />
     <UTooltip v-if="count > 0" :text="t('common.filters.clear')">
@@ -53,5 +52,5 @@ async function clear(): Promise<void> {
         @click="clear"
       />
     </UTooltip>
-  </div>
+  </fieldset>
 </template>

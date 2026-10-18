@@ -58,11 +58,11 @@ export function parseToMinor(
   minorUnit: number,
   allowNegative = false,
 ): number {
-  const cleaned = inputString.trim().replace(/,/g, '.')
+  const cleaned = inputString.trim().replaceAll(',', '.')
 
   const pattern = allowNegative ? /^-?\d+(\.\d*)?$/ : /^\d+(\.\d*)?$/
   if (cleaned === '' || !pattern.test(cleaned)) {
-    return NaN
+    return Number.NaN
   }
 
   const isNegative = cleaned.startsWith('-')
@@ -76,6 +76,6 @@ export function parseToMinor(
   const parts = normalized.split('.')
   const intPart = parts[0]
   const fracPart = (parts[1] ?? '').padEnd(minorUnit, '0').slice(0, minorUnit)
-  const parsed = parseInt(intPart + fracPart, 10)
+  const parsed = Number.parseInt(intPart + fracPart, 10)
   return isNegative ? -parsed : parsed
 }

@@ -32,7 +32,9 @@ export function useAccountFilters() {
   })
 
   const availableCurrencies = computed(() =>
-    [...new Set(accountStore.activeAccounts.map((a) => a.currency))].sort(),
+    [...new Set(accountStore.activeAccounts.map((a) => a.currency))].sort((a, b) =>
+      a.localeCompare(b),
+    ),
   )
 
   // An archived account can take the selected currency out of the list; fall back to all currencies.

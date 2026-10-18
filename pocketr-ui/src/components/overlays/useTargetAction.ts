@@ -65,10 +65,10 @@ export function useTargetAction<T extends { id: string }, I = void>(
       returnFocus.value = options.returnFocusTarget?.() ?? null
       target.value = null
       await options.afterClose?.()
-    } catch (caught: unknown) {
+    } catch (error_: unknown) {
       if (options.closeOnError ?? true) target.value = null
       error.value =
-        caught instanceof ActionFailed ? caught.message : await options.errorMessage(caught)
+        error_ instanceof ActionFailed ? error_.message : await options.errorMessage(error_)
     } finally {
       busyId.value = null
     }

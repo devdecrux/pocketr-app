@@ -15,6 +15,7 @@ import com.decrux.pocketr.api.repositories.AccountRepository
 import com.decrux.pocketr.api.repositories.UserRepository
 import com.decrux.pocketr.api.services.OwnershipGuard
 import com.decrux.pocketr.api.services.ledger.ManageLedger
+import com.decrux.pocketr.api.services.ledger.TransactionListFilter
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.DisplayName
@@ -285,13 +286,7 @@ class OpeningBalanceServiceImplTest {
 
         override fun listTransactions(
             user: User,
-            mode: String?,
-            householdId: UUID?,
-            dateFrom: LocalDate?,
-            dateTo: LocalDate?,
-            accountId: UUID?,
-            categoryId: UUID?,
-            spendingOnly: Boolean,
+            filter: TransactionListFilter,
             page: Int,
             size: Int,
         ): PagedTransactionsDto = PagedTransactionsDto(content = emptyList(), page = 0, size = 50, totalElements = 0, totalPages = 0)
