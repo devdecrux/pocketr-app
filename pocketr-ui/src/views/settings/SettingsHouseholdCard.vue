@@ -94,7 +94,7 @@ async function createHousehold(): Promise<void> {
       householdError.value = householdStore.error ?? translate('errors.households.create')
     }
   } catch (error: unknown) {
-    householdError.value = await resolveErrorMessage(error, translate('errors.households.create'))
+    householdError.value = resolveErrorMessage(error, translate('errors.households.create'))
   } finally {
     isCreatingHousehold.value = false
   }

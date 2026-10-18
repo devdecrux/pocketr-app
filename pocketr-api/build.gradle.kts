@@ -36,6 +36,12 @@ dependencyLocking {
     lockAllConfigurations()
 }
 
+// Security patches ahead of the Spring Boot BOM (SonarCloud SCA).
+// TODO: Remove these overrides once Spring Boot ships these versions.
+extra["jackson-bom.version"] = "3.1.8"
+extra["tomcat.version"] = "11.0.27"
+extra["postgresql.version"] = "42.7.14"
+
 dependencies {
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
     implementation("org.springframework.boot:spring-boot-starter-flyway")
