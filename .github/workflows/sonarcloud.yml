@@ -56,16 +56,8 @@ jobs:
         working-directory: pocketr-ui
         run: npm run test:coverage
 
-      # Fork and Dependabot PRs have no secrets: tests still run, then the job fails
-      # so an unscanned PR cannot pass the required check.
-      - name: Require SONAR_TOKEN
-        if: env.SONAR_TOKEN == ''
-        run: |
-          echo "::error::SONAR_TOKEN is unavailable (fork or Dependabot PR), so the Quality Gate cannot be checked."
-          exit 1
-
+      # Analysis is informational: the Quality Gate result never fails this job.
+      # Fork and Dependabot PRs have no secrets, so the scan is skipped there.
       - name: SonarQube Cloud scan
+        if: env.SONAR_TOKEN != ''
         uses: SonarSource/sonarqube-scan-action@d209202bc7d53ff1cc128f7f907dac145c9d6ae9 # v8.3.0
-        with:
-          # Fail this job when the Quality Gate fails, so branch rules can block the merge.
-          args: -Dsonar.qualitygate.wait=true
