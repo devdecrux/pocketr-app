@@ -11,6 +11,12 @@ export default mergeConfig(
       mockReset: true,
       exclude: [...configDefaults.exclude, 'e2e/**'],
       root: fileURLToPath(new URL('./', import.meta.url)),
+      coverage: {
+        provider: 'v8',
+        reporter: ['text-summary', 'lcov'],
+        include: ['src/**/*.{ts,vue}'],
+        exclude: ['src/__tests__/**', '**/*.d.ts'],
+      },
     },
   }),
 )
