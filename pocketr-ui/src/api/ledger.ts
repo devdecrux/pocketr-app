@@ -13,6 +13,10 @@ export function createTxn(req: CreateTxnRequest): Promise<LedgerTxn> {
   return api.post(`${BASE}/transactions`, { json: req }).json<LedgerTxn>()
 }
 
+export function updateTxn(id: string, req: CreateTxnRequest): Promise<LedgerTxn> {
+  return api.patch(`${BASE}/transactions/${id}`, { json: req }).json<LedgerTxn>()
+}
+
 export function deleteTxn(id: string): Promise<void> {
   return api.delete(`${BASE}/transactions/${id}`).then(() => undefined)
 }

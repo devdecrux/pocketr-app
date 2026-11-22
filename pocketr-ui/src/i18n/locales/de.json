@@ -335,6 +335,10 @@
         "title": "Neue Transaktion",
         "typeLabel": "Transaktionstyp"
       },
+      "edit": {
+        "description": "Ändere die Angaben dieser Transaktion.",
+        "title": "Transaktion bearbeiten"
+      },
       "delete": {
         "confirm": "Transaktion löschen",
         "description": "Die Transaktion wird aus deinen Aufzeichnungen entfernt."
@@ -387,6 +391,7 @@
         "collapse": "Details zu {description} ausblenden",
         "collapseAll": "Alle Zeilen zuklappen",
         "delete": "{description} löschen",
+        "edit": "{description} bearbeiten",
         "expand": "Details zu {description} anzeigen",
         "expandAll": "Alle Zeilen aufklappen"
       },
@@ -452,7 +457,8 @@
     "transactions": {
       "create": "Die Transaktion konnte nicht erstellt werden.",
       "delete": "Die Transaktion konnte nicht gelöscht werden.",
-      "load": "Die Transaktionen konnten nicht geladen werden."
+      "load": "Die Transaktionen konnten nicht geladen werden.",
+      "update": "Die Transaktion konnte nicht aktualisiert werden."
     },
     "currencies": {
       "load": "Währungen konnten nicht geladen werden."

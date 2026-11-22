@@ -8,12 +8,14 @@ import AppFiltersToggle from '@/components/page/AppFiltersToggle.vue'
 import AppPageHeading from '@/components/page/AppPageHeading.vue'
 import { PAGE_STACK_CLASS } from '@/styles/page'
 import TransactionCreateDialog from '@/views/transactions/TransactionCreateDialog.vue'
+import TransactionEditDialog from '@/views/transactions/TransactionEditDialog.vue'
 import TransactionFilters from '@/views/transactions/TransactionFilters.vue'
 import TransactionsList from '@/views/transactions/TransactionsList.vue'
 import { useTransactionDelete } from '@/views/transactions/useTransactionDelete'
 import { useTransactionsList } from '@/views/transactions/useTransactionsList'
 import AppContent from '@/layout/AppContent.vue'
 import { useLedgerStore } from '@/stores/ledger'
+import type { LedgerTxn } from '@/types/ledger'
 
 const FILTERS_PANEL_ID = 'transaction-filters'
 
@@ -52,6 +54,12 @@ const createDialog = ref<InstanceType<typeof TransactionCreateDialog> | null>(nu
 
 function openCreate(): void {
   createDialog.value?.open()
+}
+
+const editDialog = ref<InstanceType<typeof TransactionEditDialog> | null>(null)
+
+function openEdit(txn: LedgerTxn): void {
+  editDialog.value?.open(txn)
 }
 </script>
 
@@ -97,6 +105,7 @@ function openCreate(): void {
         :rows="filteredTransactions"
         :pagination="pagination"
         :deleting-id="deletingTxnId"
+        @edit="openEdit"
         @delete="requestDelete"
         @update:page="goToPage"
         @update:page-size="changePageSize"
@@ -104,6 +113,7 @@ function openCreate(): void {
     </div>
 
     <TransactionCreateDialog ref="createDialog" @created="loadData()" />
+    <TransactionEditDialog ref="editDialog" @saved="loadData()" />
 
     <AppConfirmDialog
       v-model:open="isDeleteDialogOpen"

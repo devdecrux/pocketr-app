@@ -91,6 +91,31 @@ class FrankfurterClientTest {
     }
 
     @Test
+    fun keepsOnlyFiatCurrenciesFromCatalog() {
+        server
+            .expect(requestTo("https://provider.test/v2/currencies"))
+            .andRespond(
+                withSuccess(
+                    """
+                    [
+                      {"iso_code":"AAVE","name":"Aave","symbol":"AAVE","type":"crypto"},
+                      {"iso_code":"BTC","name":"Bitcoin","symbol":"BTC","type":"crypto"},
+                      {"iso_code":"XAU","name":"Gold","symbol":"XAU","type":"metal"},
+                      {"iso_code":"EUR","name":"Euro","symbol":"€","type":"currency"},
+                      {"iso_code":"USD","name":"US Dollar","symbol":"$"}
+                    ]
+                    """.trimIndent(),
+                    MediaType.APPLICATION_JSON,
+                ),
+            )
+
+        val result = client.fetchCurrencies()
+
+        assertEquals(listOf("EUR", "USD"), result.map { it.code })
+        server.verify()
+    }
+
+    @Test
     fun missingRequiredCurrencyFieldFailsClearly() {
         server
             .expect(requestTo("https://provider.test/v2/currencies"))

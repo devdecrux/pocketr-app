@@ -3,7 +3,7 @@ import { translate } from '@/i18n/translate'
 import { useAccountStore } from '@/stores/account'
 import { useCurrencyStore } from '@/stores/currency'
 import { useModeStore } from '@/stores/mode'
-import type { CreateTxnRequest } from '@/types/ledger'
+import type { CreateTxnRequest, LedgerTxn } from '@/types/ledger'
 import { todayIso } from '@/utils/dates'
 import {
   debtPaymentStrategy,
@@ -11,6 +11,7 @@ import {
   incomeStrategy,
   transferStrategy,
 } from '@/views/transactions/txnStrategies'
+import { prefillFromTxn } from '@/views/transactions/txnEditMapping'
 
 export const TXN_TABS = ['expense', 'income', 'transfer', 'debt-payment'] as const
 export type TxnTab = (typeof TXN_TABS)[number]
@@ -23,9 +24,10 @@ interface TxnStrategyResult {
 /**
  * Draft state of the create-transaction form: one field set per transaction type (kept while the
  * user switches tabs), the currency derived from the account the money leaves or arrives in, and the
- * validation and request building of the active type through the `txnStrategies`.
+ * validation and request building of the active type through the `txnStrategies`. With `initial`
+ * (editing) the draft starts as that transaction, on the tab of its kind, and the tab is locked.
  */
-export function useTransactionDraft() {
+export function useTransactionDraft(initial?: LedgerTxn) {
   const accountStore = useAccountStore()
   const currencyStore = useCurrencyStore()
   const modeStore = useModeStore()
@@ -55,6 +57,15 @@ export function useTransactionDraft() {
     amount: 0,
     description: '',
   })
+
+  const prefill = initial ? prefillFromTxn(initial) : null
+  const isEditing = prefill !== null
+  if (prefill) {
+    const { tab, ...fields } = prefill
+    const fieldSets = { expense, income, transfer, 'debt-payment': debtPayment }
+    Object.assign(fieldSets[tab], fields)
+    activeTab.value = tab
+  }
 
   // The currency follows the first account of the active type.
   const currencyAccountId = computed(() => {
@@ -152,6 +163,7 @@ export function useTransactionDraft() {
 
   return {
     activeTab,
+    isEditing,
     expense,
     income,
     transfer,

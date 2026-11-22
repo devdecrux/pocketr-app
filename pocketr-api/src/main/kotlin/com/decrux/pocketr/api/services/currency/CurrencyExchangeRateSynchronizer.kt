@@ -41,11 +41,18 @@ class CurrencyExchangeRateSynchronizer(
         val newQuoteCodes = newRates.map { it.quote }.distinct()
         val storedQuoteCodes = currencyRepository.findAllById(newQuoteCodes).associateBy { it.code }
         val missingQuoteCodes = newQuoteCodes.filter { it !in storedQuoteCodes }
-        check(missingQuoteCodes.isEmpty()) { "Quote currencies are missing: $missingQuoteCodes" }
+        if (missingQuoteCodes.isNotEmpty()) {
+            logger.warn("Skipping exchange rates for quote currencies not in the catalog: {}", missingQuoteCodes)
+        }
+        val knownRates = newRates.filter { it.quote in storedQuoteCodes }
+        if (knownRates.isEmpty()) {
+            logger.warn("No exchange rates for {} match catalog currencies; keeping existing rates.", normalizedBase)
+            return
+        }
 
         val updatedAt = Instant.now(clock)
         val entities =
-            newRates.map { synced ->
+            knownRates.map { synced ->
                 val quote = requireNotNull(storedQuoteCodes[synced.quote])
                 CurrencyExchangeRate(
                     id = CurrencyExchangeRateId(normalizedBase, synced.quote),

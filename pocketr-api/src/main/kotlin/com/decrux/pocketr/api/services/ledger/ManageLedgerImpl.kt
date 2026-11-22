@@ -47,6 +47,7 @@ import org.springframework.data.jpa.domain.Specification
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.Clock
+import java.time.Instant
 import java.time.LocalDate
 import java.util.UUID
 import java.util.concurrent.TimeUnit
@@ -84,7 +85,7 @@ class ManageLedgerImpl(
         creator: User,
     ): TransactionDto {
         val userId = requireNotNull(creator.userId) { USER_ID_MUST_NOT_BE_NULL }
-        val isHouseholdMode = dto.mode?.uppercase() == "HOUSEHOLD"
+        val isHouseholdMode = dto.mode?.uppercase() == MODE_HOUSEHOLD
 
         validateSplits(dto.splits)
 
@@ -115,8 +116,9 @@ class ManageLedgerImpl(
             .findById(currencyCode)
             .orElseThrow { BadRequestException("Invalid currency: $currencyCode") }
 
-    private fun loadAccounts(splits: List<CreateSplitDto>): Map<UUID, Account> {
-        val accountIds = splits.map { it.accountId }.distinct()
+    private fun loadAccounts(splits: List<CreateSplitDto>): Map<UUID, Account> = loadAccountsByIds(splits.map { it.accountId }.distinct())
+
+    private fun loadAccountsByIds(accountIds: List<UUID>): Map<UUID, Account> {
         val accounts = accountRepository.findAllByIdInOrderByIdAsc(accountIds)
         if (accounts.size != accountIds.size) {
             val foundIds = accounts.map { it.id }.toSet()
@@ -195,29 +197,55 @@ class ManageLedgerImpl(
                 currency = currency,
             )
 
-        txn.splits =
-            dto.splits
-                .map { splitDto ->
-                    val account = accountMap.getValue(splitDto.accountId)
-                    val accountCurrency = requireNotNull(account.currency) { "Account currency must not be null" }
-                    val conversion =
-                        currencyConversionService.convert(
-                            sourceCurrency = currency,
-                            targetCurrency = accountCurrency,
-                            baseCurrencyCode = baseCurrency,
-                            amountMinor = splitDto.amountMinor,
-                        )
-                    LedgerSplit(
-                        transaction = txn,
-                        account = account,
-                        side = SplitSide.valueOf(splitDto.side),
-                        amountMinor = conversion.amountMinor,
-                        exchangeRate = conversion.exchangeRate,
-                        categoryTag = splitDto.categoryTagId?.let { categoryTagMap[it] },
-                    )
-                }.toMutableList()
+        txn.splits = buildSplits(txn, dto, currency, accountMap, categoryTagMap)
 
         return txn
+    }
+
+    @Transactional
+    override fun updateTransaction(
+        id: UUID,
+        dto: CreateTransactionDto,
+        user: User,
+    ): TransactionDto {
+        val userId = requireNotNull(user.userId) { USER_ID_MUST_NOT_BE_NULL }
+        val isHouseholdMode = dto.mode?.uppercase() == MODE_HOUSEHOLD
+        val txn =
+            ledgerTxnRepository
+                .findAndLockById(id)
+                .orElseThrow { NotFoundException("Transaction not found") }
+
+        validateSplits(dto.splits)
+        val currency = loadCurrency(dto.currency)
+
+        val oldAccountIds = txn.splits.map { it.requireAccountId() }.distinct()
+        val newAccountIds = dto.splits.map { it.accountId }.distinct()
+        // One ordered locking query over old and new accounts keeps lock order deadlock-safe.
+        val accountMap = loadAccountsByIds((oldAccountIds + newAccountIds).distinct().sorted())
+        val oldAccounts = oldAccountIds.map { accountMap.getValue(it) }
+        val newAccounts = newAccountIds.map { accountMap.getValue(it) }
+
+        validateDeleteTransactionAccess(txn, oldAccounts, userId)
+        validateAccountsActiveForDeletion(oldAccounts, "edited")
+        validateAccountAccess(dto, newAccounts, userId, isHouseholdMode)
+        validateAccountsActive(newAccounts)
+        val categoryTagMap = loadCategoryTags(dto.splits, userId)
+
+        reverseCurrentBalanceProjection(txn.splits)
+
+        val newSplits = buildSplits(txn, dto, currency, accountMap, categoryTagMap)
+        txn.txnDate = dto.txnDate
+        txn.description = dto.description.trim()
+        txn.currency = currency
+        txn.householdId = if (isHouseholdMode) dto.householdId else null
+        txn.splits.clear()
+        txn.splits.addAll(newSplits)
+        txn.updatedAt = Instant.now(clock)
+
+        val savedTxn = ledgerTxnRepository.saveAndFlush(txn)
+        applyCurrentBalanceProjection(savedTxn.splits)
+
+        return savedTxn.toDto(userAvatarService)
     }
 
     @Transactional
@@ -228,7 +256,7 @@ class ManageLedgerImpl(
         val userId = requireNotNull(user.userId) { USER_ID_MUST_NOT_BE_NULL }
         val txn =
             ledgerTxnRepository
-                .findOneById(id)
+                .findAndLockById(id)
                 .orElseThrow { NotFoundException("Transaction not found") }
         val accountIds =
             txn.splits
@@ -252,7 +280,7 @@ class ManageLedgerImpl(
         size: Int,
     ): PagedTransactionsDto {
         val userId = requireNotNull(user.userId) { USER_ID_MUST_NOT_BE_NULL }
-        val isHouseholdMode = filter.mode?.uppercase() == "HOUSEHOLD"
+        val isHouseholdMode = filter.mode?.uppercase() == MODE_HOUSEHOLD
 
         var spec: Specification<LedgerTxn> =
             if (isHouseholdMode) {
@@ -419,9 +447,12 @@ class ManageLedgerImpl(
         crossUserAssetAccountTypeValidator.validate(accounts, txn.splits.map { it.toCreateSplitDto() }, userId)
     }
 
-    private fun validateAccountsActiveForDeletion(accounts: List<Account>) {
+    private fun validateAccountsActiveForDeletion(
+        accounts: List<Account>,
+        action: String = "deleted",
+    ) {
         if (accounts.any { it.status == AccountStatus.ARCHIVED }) {
-            throw BadRequestException("Transactions involving archived accounts cannot be deleted")
+            throw BadRequestException("Transactions involving archived accounts cannot be $action")
         }
     }
 
@@ -748,6 +779,7 @@ class ManageLedgerImpl(
     private companion object {
         const val USER_ID_MUST_NOT_BE_NULL = "User ID must not be null"
         const val NOT_ACTIVE_HOUSEHOLD_MEMBER = "Not an active member of this household"
+        const val MODE_HOUSEHOLD = "HOUSEHOLD"
         private val logger = LoggerFactory.getLogger(ManageLedgerImpl::class.java)
         val DEBIT_NORMAL_TYPES = setOf(AccountType.ASSET, AccountType.EXPENSE)
         val TRANSFER_TYPES = setOf(AccountType.ASSET, AccountType.LIABILITY, AccountType.EQUITY)
@@ -839,4 +871,32 @@ class ManageLedgerImpl(
             )
         }
     }
+
+    private fun buildSplits(
+        txn: LedgerTxn,
+        dto: CreateTransactionDto,
+        currency: Currency,
+        accountMap: Map<UUID, Account>,
+        categoryTagMap: Map<UUID, CategoryTag>,
+    ): MutableList<LedgerSplit> =
+        dto.splits
+            .map { splitDto ->
+                val account = accountMap.getValue(splitDto.accountId)
+                val accountCurrency = requireNotNull(account.currency) { "Account currency must not be null" }
+                val conversion =
+                    currencyConversionService.convert(
+                        sourceCurrency = currency,
+                        targetCurrency = accountCurrency,
+                        baseCurrencyCode = baseCurrency,
+                        amountMinor = splitDto.amountMinor,
+                    )
+                LedgerSplit(
+                    transaction = txn,
+                    account = account,
+                    side = SplitSide.valueOf(splitDto.side),
+                    amountMinor = conversion.amountMinor,
+                    exchangeRate = conversion.exchangeRate,
+                    categoryTag = splitDto.categoryTagId?.let { categoryTagMap[it] },
+                )
+            }.toMutableList()
 }

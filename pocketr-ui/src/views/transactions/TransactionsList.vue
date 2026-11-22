@@ -2,8 +2,9 @@
 /**
  * The transactions list on top of `AppResponsiveList`: the desktop table columns and cells, the
  * grouped phone rows and their details panel. Loading, filtering and paging stay with the page;
- * row expansion is shared with it through `v-model:expanded`, and deleting is handed back through
- * `delete`.
+ * row expansion is shared with it through `v-model:expanded`, and editing and deleting are handed
+ * back through `edit` and `delete`. Every row shows the edit button; it is disabled for transactions
+ * the form cannot represent.
  */
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
@@ -25,6 +26,7 @@ import { useModeStore } from '@/stores/mode'
 import type { LedgerTxn } from '@/types/ledger'
 import { APP_ICONS } from '@/utils/appearance/appIcons'
 import { getTxnAppearance } from '@/utils/appearance/txnAppearance'
+import { isTxnEditable } from '@/views/transactions/txnEditMapping'
 import { formatIsoDate } from '@/utils/dates'
 import { initialsFromName } from '@/utils/initials'
 
@@ -37,6 +39,7 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
+  edit: [txn: LedgerTxn]
   delete: [txn: LedgerTxn]
   'update:page': [page: number]
   'update:page-size': [size: number]
@@ -81,6 +84,10 @@ function detailsFor(txn: LedgerTxn): TxnDetails {
     categories: categoryStore.categories,
     minorUnit: currencyStore.getMinorUnit,
   })
+}
+
+function editLabel(txn: LedgerTxn): string {
+  return t('views.transactions.rowActions.edit', { description: txn.description })
 }
 
 function deleteLabel(txn: LedgerTxn): string {
@@ -165,8 +172,8 @@ const columns = computed<AppTableColumn<LedgerTxn>[]>(() => {
       header: t('common.table.actions'),
       meta: {
         class: {
-          th: 'h-[50px] min-w-[66px] px-0',
-          td: `${ROW_HEIGHT} min-w-[66px] px-0 py-0 text-center`,
+          th: 'h-[50px] min-w-[92px] px-0',
+          td: `${ROW_HEIGHT} min-w-[92px] px-0 py-0 text-center`,
         },
       },
     },
@@ -315,15 +322,25 @@ function groupLabel(id: string, monthDate?: Date): string {
       <TransactionAmount :txn="row.original" />
     </template>
     <template #actions-cell="{ row }">
-      <AppRowIconButton
-        destructive
-        :icon="APP_ICONS.remove"
-        :tooltip="t('common.actions.delete')"
-        :label="deleteLabel(row.original)"
-        :loading="deletingId === row.original.id"
-        :disabled="deletingId !== null"
-        @click="emit('delete', row.original)"
-      />
+      <div class="inline-flex items-center justify-center gap-1">
+        <AppRowIconButton
+          warning
+          :icon="APP_ICONS.edit"
+          :tooltip="t('common.actions.edit')"
+          :label="editLabel(row.original)"
+          :disabled="deletingId !== null || !isTxnEditable(row.original)"
+          @click="emit('edit', row.original)"
+        />
+        <AppRowIconButton
+          destructive
+          :icon="APP_ICONS.remove"
+          :tooltip="t('common.actions.delete')"
+          :label="deleteLabel(row.original)"
+          :loading="deletingId === row.original.id"
+          :disabled="deletingId !== null"
+          @click="emit('delete', row.original)"
+        />
+      </div>
     </template>
     <template #expand-cell="{ row }">
       <UButton
@@ -374,6 +391,14 @@ function groupLabel(id: string, monthDate?: Date): string {
         :date="
           group.id === 'today' || group.id === 'yesterday' ? undefined : formatIsoDate(txn.txnDate)
         "
+      />
+      <AppRowPanelButton
+        warning
+        :icon="APP_ICONS.edit"
+        :label="t('common.actions.edit')"
+        :accessible-label="editLabel(txn)"
+        :disabled="deletingId !== null || !isTxnEditable(txn)"
+        @click="emit('edit', txn)"
       />
       <AppRowPanelButton
         destructive
