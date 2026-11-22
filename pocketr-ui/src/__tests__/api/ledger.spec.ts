@@ -1,9 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { api } from '@/api/http'
+import type { CreateTxnRequest } from '@/types/ledger'
 
 // The real endpoint module over the globally mocked HTTP client.
 vi.unmock('@/api/ledger')
-const { getAccountBalances } = await import('@/api/ledger')
+const { getAccountBalances, updateTxn } = await import('@/api/ledger')
 
 function lastSearchParams(): URLSearchParams {
   const [, options] = vi.mocked(api.get).mock.lastCall as unknown as [
@@ -40,5 +41,30 @@ describe('getAccountBalances', () => {
     expect(params.getAll('accountIds')).toEqual(['acc-1'])
     expect(params.get('asOf')).toBe('2026-01-31')
     expect(params.get('householdId')).toBe('hh-uuid-42')
+  })
+})
+
+describe('updateTxn', () => {
+  it('puts the same body as create to the transaction url and returns the updated transaction', async () => {
+    const updated = { id: 'txn-1', description: 'Rent' }
+    const json = vi.fn().mockResolvedValue(updated)
+    vi.mocked(api.patch).mockReturnValue({ json } as never)
+    const request: CreateTxnRequest = {
+      mode: 'INDIVIDUAL',
+      householdId: null,
+      txnDate: '2026-09-20',
+      currency: 'EUR',
+      description: 'Rent',
+      splits: [
+        { accountId: 'daily', side: 'CREDIT', amountMinor: 90000 },
+        { accountId: 'rent', side: 'DEBIT', amountMinor: 90000, categoryTagId: null },
+      ],
+    }
+
+    expect(await updateTxn('txn-1', request)).toBe(updated)
+
+    expect(api.patch).toHaveBeenCalledExactlyOnceWith('/api/v1/ledger/transactions/txn-1', {
+      json: request,
+    })
   })
 })

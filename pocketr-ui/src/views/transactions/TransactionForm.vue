@@ -6,7 +6,8 @@
  * in the overlay footer and targets this form through `id`; it is enabled through `valid`.
  *
  * The draft starts empty each time the form mounts, so the page remounts it for every new
- * transaction.
+ * transaction. With `initial` the form edits that transaction: the draft starts as it is and the
+ * type is locked to its kind.
  */
 import { watchEffect } from 'vue'
 import { useI18n } from 'vue-i18n'
@@ -23,9 +24,9 @@ import {
   useTransactionDraft,
 } from '@/views/transactions/useTransactionDraft'
 import { useModeStore } from '@/stores/mode'
-import type { CreateTxnRequest } from '@/types/ledger'
+import type { CreateTxnRequest, LedgerTxn } from '@/types/ledger'
 
-const props = defineProps<{ id: string; serverError?: string | null }>()
+const props = defineProps<{ id: string; serverError?: string | null; initial?: LedgerTxn }>()
 
 const valid = defineModel<boolean>('valid', { default: false })
 
@@ -35,7 +36,7 @@ const { t } = useI18n()
 const modeStore = useModeStore()
 const { accountSelect } = useAccountOptions()
 const { categorySelect } = useCategoryOptions()
-const draft = useTransactionDraft()
+const draft = useTransactionDraft(props.initial)
 const { activeTab, expense, income, transfer, debtPayment } = draft
 
 watchEffect(() => {
@@ -50,9 +51,11 @@ const TAB_KINDS: Record<TxnTab, string> = {
   'debt-payment': 'DEBT_PAYMENT',
 }
 
+// Editing keeps the kind of the transaction: the other types are shown but cannot be chosen.
 const tabItems = TXN_TABS.map((tab) => ({
   value: tab,
   label: t(`display.transactionKinds.${TAB_KINDS[tab]}`),
+  disabled: draft.isEditing && tab !== activeTab.value,
 }))
 
 function onSubmit(): void {

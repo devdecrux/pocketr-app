@@ -10,6 +10,7 @@ import com.decrux.pocketr.api.entities.db.ledger.SplitSide
 import com.decrux.pocketr.api.entities.dtos.CreateSplitDto
 import com.decrux.pocketr.api.entities.dtos.CreateTransactionDto
 import com.decrux.pocketr.api.exceptions.BadRequestException
+import com.decrux.pocketr.api.exceptions.ForbiddenException
 import com.decrux.pocketr.api.repositories.AccountCurrentBalanceRepository
 import com.decrux.pocketr.api.repositories.AccountRepository
 import com.decrux.pocketr.api.repositories.CurrencyExchangeRateRepository
@@ -661,6 +662,159 @@ class ManageLedgerCurrentBalanceIntegrationTest
                     .associate { requireNotNull(it.accountId) to it.rawBalanceMinor },
             )
         }
+
+        @Test
+        @DisplayName("editing amount and description reapplies projection and keeps balances consistent")
+        fun editingAmountUpdatesProjectionAndBalances() {
+            val user = persistUser("integration-edit-amount")
+            val cashId = requireNotNull(persistAccount(user, "Edit Cash", AccountType.ASSET).id)
+            val expenseId = requireNotNull(persistAccount(user, "Edit Expense", AccountType.EXPENSE).id)
+            val today = LocalDate.now()
+            val created = manageLedger.createTransaction(editDto(cashId, expenseId, 1_200, "Lunch"), user)
+
+            val edited = manageLedger.updateTransaction(created.id, editDto(cashId, expenseId, 2_500, "  Dinner  "), user)
+
+            assertEquals(created.id, edited.id)
+            assertEquals("Dinner", edited.description)
+            assertEquals(1L, ledgerTxnRepository.count())
+            assertEquals(2L, ledgerSplitRepository.count())
+            assertEquals(setOf(2_500L), edited.splits.map { it.amountMinor }.toSet())
+            assertEquals(mapOf(cashId to -2_500L, expenseId to 2_500L), projection(cashId, expenseId))
+            assertEquals(-2_500L, manageLedger.getAccountBalance(cashId, today, user, null).balanceMinor)
+            assertEquals(2_500L, manageLedger.getAccountBalance(expenseId, today, user, null).balanceMinor)
+            assertEquals(0L, accountCurrentBalanceRepository.countAccountsBalanceMismatch())
+        }
+
+        @Test
+        @DisplayName("moving a split to another account reverses the old account and applies the new one")
+        fun editingMovesSplitBetweenAccounts() {
+            val user = persistUser("integration-edit-move")
+            val cashId = requireNotNull(persistAccount(user, "Move Cash", AccountType.ASSET).id)
+            val cardId = requireNotNull(persistAccount(user, "Move Card", AccountType.ASSET).id)
+            val expenseId = requireNotNull(persistAccount(user, "Move Expense", AccountType.EXPENSE).id)
+            val created = manageLedger.createTransaction(editDto(cashId, expenseId, 1_000, "Coffee"), user)
+
+            val edited = manageLedger.updateTransaction(created.id, editDto(cardId, expenseId, 1_000, "Coffee"), user)
+
+            assertEquals(setOf(cardId, expenseId), edited.splits.map { it.accountId }.toSet())
+            assertEquals(mapOf(cashId to 0L, cardId to -1_000L, expenseId to 1_000L), projection(cashId, cardId, expenseId))
+            assertEquals(2L, ledgerSplitRepository.count())
+            assertEquals(0L, accountCurrentBalanceRepository.countAccountsBalanceMismatch())
+        }
+
+        @Test
+        @DisplayName("editing the currency converts split amounts into each account currency")
+        fun editingCurrencyRecomputesConvertedAmounts() {
+            val user = persistUser("integration-edit-currency")
+            val usdCashId = requireNotNull(persistAccount(user, "Edit USD Cash", AccountType.ASSET, usd).id)
+            val eurExpenseId = requireNotNull(persistAccount(user, "Edit EUR Expense", AccountType.EXPENSE, eur).id)
+            persistRate("EUR", "USD", "1.20")
+            val created = manageLedger.createTransaction(editDto(usdCashId, eurExpenseId, 1_000, "Trip", "EUR"), user)
+            assertEquals(mapOf(usdCashId to -1_200L, eurExpenseId to 1_000L), projection(usdCashId, eurExpenseId))
+
+            val edited = manageLedger.updateTransaction(created.id, editDto(usdCashId, eurExpenseId, 2_000, "Trip", "EUR"), user)
+
+            val amountByAccount = edited.splits.associate { it.accountId to it.amountMinor }
+            assertEquals(2_400L, amountByAccount.getValue(usdCashId))
+            assertEquals(2_000L, amountByAccount.getValue(eurExpenseId))
+            assertEquals(mapOf(usdCashId to -2_400L, eurExpenseId to 2_000L), projection(usdCashId, eurExpenseId))
+            assertEquals(0L, accountCurrentBalanceRepository.countAccountsBalanceMismatch())
+        }
+
+        @Test
+        @DisplayName("failed edit validation leaves transaction, splits and projection unchanged")
+        fun failedEditLeavesStateUnchanged() {
+            val user = persistUser("integration-edit-rollback")
+            val cashId = requireNotNull(persistAccount(user, "Rollback Cash", AccountType.ASSET).id)
+            val expenseId = requireNotNull(persistAccount(user, "Rollback Expense", AccountType.EXPENSE).id)
+            val archived = persistAccount(user, "Rollback Archived", AccountType.ASSET)
+            val archivedId = requireNotNull(archived.id)
+            val created = manageLedger.createTransaction(editDto(cashId, expenseId, 1_200, "Original"), user)
+            archived.archive(Instant.parse("2026-07-12T10:00:00Z"))
+            accountRepository.saveAndFlush(archived)
+
+            val unbalanced =
+                editDto(cashId, expenseId, 1_200, "Unbalanced").let { dto ->
+                    dto.copy(splits = listOf(dto.splits[0], dto.splits[1].copy(amountMinor = 900)))
+                }
+            assertThrows(BadRequestException::class.java) {
+                manageLedger.updateTransaction(created.id, unbalanced, user)
+            }
+            val archivedException =
+                assertThrows(BadRequestException::class.java) {
+                    manageLedger.updateTransaction(created.id, editDto(archivedId, expenseId, 1_200, "To archived"), user)
+                }
+            assertEquals("Archived accounts cannot be used in new transactions", archivedException.message)
+
+            val persisted = ledgerTxnRepository.findById(created.id).orElseThrow()
+            assertEquals("Original", persisted.description)
+            assertEquals(1L, ledgerTxnRepository.count())
+            assertEquals(2L, ledgerSplitRepository.count())
+            assertEquals(mapOf(cashId to -1_200L, expenseId to 1_200L), projection(cashId, expenseId))
+            assertEquals(0L, accountCurrentBalanceRepository.countAccountsBalanceMismatch())
+        }
+
+        @Test
+        @DisplayName("editing is rejected when the existing transaction touches an archived account")
+        fun editingIsRejectedForArchivedOldAccount() {
+            val user = persistUser("integration-edit-archived-old")
+            val cash = persistAccount(user, "Old Archived Cash", AccountType.ASSET)
+            val cashId = requireNotNull(cash.id)
+            val expenseId = requireNotNull(persistAccount(user, "Old Expense", AccountType.EXPENSE).id)
+            val otherCashId = requireNotNull(persistAccount(user, "Other Cash", AccountType.ASSET).id)
+            val created = manageLedger.createTransaction(editDto(cashId, expenseId, 1_200, "History"), user)
+            cash.archive(Instant.parse("2026-07-12T10:00:00Z"))
+            accountRepository.saveAndFlush(cash)
+
+            val exception =
+                assertThrows(BadRequestException::class.java) {
+                    manageLedger.updateTransaction(created.id, editDto(otherCashId, expenseId, 1_200, "Moved"), user)
+                }
+
+            assertEquals("Transactions involving archived accounts cannot be edited", exception.message)
+            assertEquals(mapOf(cashId to -1_200L, expenseId to 1_200L), projection(cashId, expenseId))
+            assertEquals(2L, ledgerSplitRepository.count())
+        }
+
+        @Test
+        @DisplayName("editing another user's non-shared transaction is forbidden and changes nothing")
+        fun editingForeignTransactionIsForbidden() {
+            val owner = persistUser("integration-edit-owner")
+            val intruder = persistUser("integration-edit-intruder")
+            val cashId = requireNotNull(persistAccount(owner, "Foreign Cash", AccountType.ASSET).id)
+            val expenseId = requireNotNull(persistAccount(owner, "Foreign Expense", AccountType.EXPENSE).id)
+            val created = manageLedger.createTransaction(editDto(cashId, expenseId, 1_200, "Private"), owner)
+
+            assertThrows(ForbiddenException::class.java) {
+                manageLedger.updateTransaction(created.id, editDto(cashId, expenseId, 5_000, "Hijacked"), intruder)
+            }
+
+            assertEquals("Private", ledgerTxnRepository.findById(created.id).orElseThrow().description)
+            assertEquals(mapOf(cashId to -1_200L, expenseId to 1_200L), projection(cashId, expenseId))
+        }
+
+        private fun editDto(
+            cashId: UUID,
+            expenseId: UUID,
+            amountMinor: Long,
+            description: String,
+            currency: String = "EUR",
+        ): CreateTransactionDto =
+            CreateTransactionDto(
+                txnDate = LocalDate.now(),
+                currency = currency,
+                description = description,
+                splits =
+                    listOf(
+                        CreateSplitDto(accountId = cashId, side = "CREDIT", amountMinor = amountMinor),
+                        CreateSplitDto(accountId = expenseId, side = "DEBIT", amountMinor = amountMinor),
+                    ),
+            )
+
+        private fun projection(vararg accountIds: UUID): Map<UUID, Long> =
+            accountCurrentBalanceRepository
+                .findAllByAccountIdIn(accountIds.toList())
+                .associate { requireNotNull(it.accountId) to it.rawBalanceMinor }
 
         private fun persistUser(prefix: String): User =
             userRepository.save(

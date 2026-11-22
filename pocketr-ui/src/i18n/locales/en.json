@@ -359,6 +359,10 @@
         "title": "New transaction",
         "typeLabel": "Transaction type"
       },
+      "edit": {
+        "description": "Change the details of this transaction.",
+        "title": "Edit transaction"
+      },
       "empty": "No transactions found. Create your first transaction to get started.",
       "fields": {
         "debtPaymentLiabilityAccount": "Liability account",
@@ -413,6 +417,7 @@
         "collapse": "Hide details of {description}",
         "collapseAll": "Collapse all rows",
         "delete": "Delete {description}",
+        "edit": "Edit {description}",
         "expand": "Show details of {description}",
         "expandAll": "Expand all rows"
       }
@@ -505,7 +510,8 @@
     "transactions": {
       "create": "Failed to create transaction.",
       "delete": "Failed to delete transaction.",
-      "load": "Failed to load transactions."
+      "load": "Failed to load transactions.",
+      "update": "Failed to update transaction."
     }
   },
   "success": {

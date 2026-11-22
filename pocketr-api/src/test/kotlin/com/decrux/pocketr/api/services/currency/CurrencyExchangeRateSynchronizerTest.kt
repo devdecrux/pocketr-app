@@ -104,18 +104,33 @@ class CurrencyExchangeRateSynchronizerTest {
     }
 
     @Test
-    fun missingQuoteCurrencyDoesNotPartiallyReplaceRows() {
+    fun skipsRatesForQuoteCurrenciesMissingFromCatalog() {
+        `when`(frankfurterClient.fetchRates("EUR"))
+            .thenReturn(
+                listOf(
+                    Rate(LocalDate.of(2026, 2, 20), "EUR", "USD", BigDecimal("1.08")),
+                    Rate(LocalDate.of(2026, 2, 20), "EUR", "AAVE", BigDecimal("0.011261")),
+                ),
+            )
+        `when`(currencyRepository.findById("EUR")).thenReturn(Optional.of(eur))
+        `when`(currencyRepository.findAllById(listOf("USD", "AAVE"))).thenReturn(listOf(usd))
+
+        synchronizer.update("EUR")
+
+        verify(exchangeRateRepository).deleteByIdBaseCurrency("EUR")
+        assertEquals(listOf("USD"), savedRates.map { it.id.quoteCurrency })
+        assertEquals(BigDecimal("1.08"), savedRates.single().rate)
+    }
+
+    @Test
+    fun noQuoteCurrencyInCatalogPreservesExistingRows() {
         `when`(frankfurterClient.fetchRates("EUR"))
             .thenReturn(listOf(Rate(LocalDate.of(2026, 2, 20), "EUR", "USD", BigDecimal("1.08"))))
         `when`(currencyRepository.findById("EUR")).thenReturn(Optional.of(eur))
         `when`(currencyRepository.findAllById(listOf("USD"))).thenReturn(emptyList())
 
-        val ex =
-            assertThrows(IllegalStateException::class.java) {
-                synchronizer.update("EUR")
-            }
+        synchronizer.update("EUR")
 
-        assertEquals("Quote currencies are missing: [USD]", ex.message)
         verify(exchangeRateRepository, never()).deleteByIdBaseCurrency("EUR")
         verify(exchangeRateRepository, never()).saveAll(anyRates())
     }

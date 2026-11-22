@@ -1057,7 +1057,7 @@ class LedgerTransactionValidationTest {
                         amountMinor = 1_000,
                     ),
                 )
-            `when`(ledgerTxnRepository.findOneById(txnId)).thenReturn(Optional.of(txn))
+            `when`(ledgerTxnRepository.findAndLockById(txnId)).thenReturn(Optional.of(txn))
             stubLockedAccounts(upperAccount, lowerAccount)
 
             service.deleteTransaction(txnId, userA)
@@ -1111,7 +1111,7 @@ class LedgerTransactionValidationTest {
                         amountMinor = 1_000,
                     ),
                 )
-            `when`(ledgerTxnRepository.findOneById(txnId)).thenReturn(Optional.of(txn))
+            `when`(ledgerTxnRepository.findAndLockById(txnId)).thenReturn(Optional.of(txn))
             stubLockedAccounts(archivedAccount, activeAccount)
 
             val exception =
@@ -1129,7 +1129,7 @@ class LedgerTransactionValidationTest {
         @DisplayName("should return 404 when deleting a missing transaction")
         fun notFoundForMissingTransaction() {
             val missingId = UUID.randomUUID()
-            `when`(ledgerTxnRepository.findOneById(missingId)).thenReturn(Optional.empty())
+            `when`(ledgerTxnRepository.findAndLockById(missingId)).thenReturn(Optional.empty())
 
             assertThrows(NotFoundException::class.java) {
                 service.deleteTransaction(missingId, userA)
@@ -1169,7 +1169,7 @@ class LedgerTransactionValidationTest {
                         amountMinor = 1_000,
                     ),
                 )
-            `when`(ledgerTxnRepository.findOneById(txnId)).thenReturn(Optional.of(txn))
+            `when`(ledgerTxnRepository.findAndLockById(txnId)).thenReturn(Optional.of(txn))
             stubLockedAccounts(userBSavings, liability)
 
             assertThrows(ForbiddenException::class.java) {
@@ -1178,6 +1178,58 @@ class LedgerTransactionValidationTest {
 
             verifyNoInteractions(accountCurrentBalanceRepository)
             verify(ledgerTxnRepository, never()).delete(any(LedgerTxn::class.java))
+        }
+
+        @Test
+        @DisplayName("should reject editing a non-owned individual transaction")
+        fun rejectEditingNonOwnedIndividualTransaction() {
+            val txnId = UUID.randomUUID()
+            val liability = bobLiability()
+            val txn =
+                LedgerTxn(
+                    id = txnId,
+                    createdBy = userB,
+                    txnDate = LocalDate.of(2026, 2, 20),
+                    description = "Bob transfer",
+                    currency = eur,
+                )
+            txn.splits =
+                mutableListOf(
+                    LedgerSplit(
+                        id = UUID.randomUUID(),
+                        transaction = txn,
+                        account = userBSavings,
+                        side = SplitSide.DEBIT,
+                        amountMinor = 1_000,
+                    ),
+                    LedgerSplit(
+                        id = UUID.randomUUID(),
+                        transaction = txn,
+                        account = liability,
+                        side = SplitSide.CREDIT,
+                        amountMinor = 1_000,
+                    ),
+                )
+            `when`(ledgerTxnRepository.findAndLockById(txnId)).thenReturn(Optional.of(txn))
+            stubLockedAccounts(userBSavings, liability)
+            val dto =
+                CreateTransactionDto(
+                    txnDate = LocalDate.of(2026, 2, 21),
+                    currency = "EUR",
+                    description = "Edited",
+                    splits =
+                        listOf(
+                            CreateSplitDto(accountId = userBSavingsId, side = "DEBIT", amountMinor = 2_000),
+                            CreateSplitDto(accountId = requireNotNull(liability.id), side = "CREDIT", amountMinor = 2_000),
+                        ),
+                )
+
+            assertThrows(ForbiddenException::class.java) {
+                service.updateTransaction(txnId, dto, userA)
+            }
+
+            verifyNoInteractions(accountCurrentBalanceRepository)
+            verify(ledgerTxnRepository, never()).saveAndFlush(any(LedgerTxn::class.java))
         }
 
         @Test
@@ -1211,7 +1263,7 @@ class LedgerTransactionValidationTest {
                         amountMinor = 1_000,
                     ),
                 )
-            `when`(ledgerTxnRepository.findOneById(txnId)).thenReturn(Optional.of(txn))
+            `when`(ledgerTxnRepository.findAndLockById(txnId)).thenReturn(Optional.of(txn))
             stubLockedAccounts(checking, userBSavings)
             `when`(manageHousehold.isActiveMember(householdId, userA.userId!!)).thenReturn(true)
             `when`(manageHousehold.isAccountShared(householdId, userBSavingsId)).thenReturn(true)

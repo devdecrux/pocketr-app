@@ -29,7 +29,8 @@ class FrankfurterClient(
                 .retrieve()
                 .body<Array<FrankfurterCurrencyResponse>>()
                 ?: emptyArray()
-        ).map { it.toDomain() }
+        ).filter { it.isFiat() }
+            .map { it.toDomain() }
 
     fun fetchRates(baseCurrency: String): List<Rate> =
         (
@@ -51,7 +52,12 @@ private data class FrankfurterCurrencyResponse(
     val isoCode: String = "",
     val name: String = "",
     val symbol: String? = null,
+    val type: String? = null,
 ) {
+    // Only fiat currencies fit the 3-letter ISO 4217 catalog; crypto and metals are skipped.
+    // A missing type is treated as fiat to stay compatible with responses that omit it.
+    fun isFiat(): Boolean = type == null || type.equals(FIAT_TYPE, ignoreCase = true)
+
     fun toDomain(): Currency {
         require(isoCode.isNotBlank()) { "Missing Frankfurter field: iso_code" }
         require(name.isNotBlank()) { "Missing Frankfurter field: name" }
@@ -61,6 +67,10 @@ private data class FrankfurterCurrencyResponse(
             name = name,
             symbol = symbol?.takeIf { it.isNotBlank() } ?: code,
         )
+    }
+
+    private companion object {
+        private const val FIAT_TYPE = "currency"
     }
 }
 

@@ -279,6 +279,12 @@ class OpeningBalanceServiceImplTest {
             )
         }
 
+        override fun updateTransaction(
+            id: UUID,
+            dto: CreateTransactionDto,
+            user: User,
+        ): TransactionDto = throw UnsupportedOperationException("Not used in this test")
+
         override fun deleteTransaction(
             id: UUID,
             user: User,
